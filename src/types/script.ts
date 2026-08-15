@@ -83,6 +83,7 @@ export interface MovementBeat extends BaseBeat {
   speed?: number; // 1 = normal, 2 = fast, 0.5 = slow
   facing?: Direction;
   animationState?: 'walk' | 'run' | 'tiptoe' | 'sneak';
+  durationMs?: number;
 }
 
 export interface InteractionBeat extends BaseBeat {

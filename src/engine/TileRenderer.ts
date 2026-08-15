@@ -840,35 +840,225 @@ export class TileRenderer {
         break;
       }
 
-      case 'dundie_trophy': {
-        ctx.fillStyle = '#d97706';
-        ctx.fillRect(px + 4, py + 4, 8, 14);
-        ctx.fillStyle = '#fbbf24';
-        ctx.fillRect(px + 6, py + 2, 4, 4);
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(px + 2, py + 18, 12, 6);
+      case 'conference_table': {
+        // Large executive conference table with mahogany finish, papers & pens
+        ctx.fillStyle = '#451a03'; // Table border
+        ctx.fillRect(px, py + 2, w, h - 4);
+        ctx.fillStyle = '#78350f'; // Table surface
+        ctx.fillRect(px + 3, py + 5, w - 6, h - 10);
+        ctx.fillStyle = '#9a3412'; // Surface wood shine
+        ctx.fillRect(px + 6, py + 8, w - 12, 3);
+
+        // White paper folders and legal pads on table
+        const padCount = Math.max(2, Math.floor(w / 40));
+        for (let p = 0; p < padCount; p++) {
+          const padX = px + 14 + p * 38;
+          ctx.fillStyle = '#fef08a'; // Yellow legal pad
+          ctx.fillRect(padX, py + 10, 10, 12);
+          ctx.fillStyle = '#ef4444'; // Red pen
+          ctx.fillRect(padX + 12, py + 11, 2, 8);
+          // White paper
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(padX + 20, py + 9, 12, 13);
+          ctx.fillStyle = '#3b82f6';
+          ctx.fillRect(padX + 22, py + 12, 8, 1);
+        }
+
+        // Central speakerphone unit
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(px + w / 2 - 8, py + h / 2 - 5, 16, 10);
+        ctx.fillStyle = '#22c55e';
+        ctx.fillRect(px + w / 2 - 2, py + h / 2 - 2, 4, 3);
         break;
       }
 
-      case 'vending_machine': {
-        ctx.fillStyle = '#1e293b';
-        ctx.fillRect(px, py, w, h);
+      case 'water_cooler': {
+        // Breakroom Water Cooler with bubbly jug & paper cone dispenser
+        // Stand base
+        ctx.fillStyle = '#475569';
+        ctx.fillRect(px + 4, py + 16, w - 8, h - 16);
+        ctx.fillStyle = '#64748b';
+        ctx.fillRect(px + 6, py + 18, w - 12, 8);
+
+        // Spigots (blue cold, red hot)
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(px + 8, py + 20, 3, 4);
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(px + w - 11, py + 20, 3, 4);
+
+        // Inverted Blue Water Bottle Jug
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.75)';
+        ctx.beginPath();
+        ctx.ellipse(px + w / 2, py + 8, 8, 8, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(px + w / 2 - 3, py + 15, 6, 2); // Jug neck
+
+        // Animated Water Bubbles
+        const bubbleY = (now / 180) % 10;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.fillRect(px + w / 2 - 2, py + 12 - bubbleY, 2, 2);
+        ctx.fillRect(px + w / 2 + 2, py + 10 - ((bubbleY + 5) % 10), 2, 2);
+
+        // Side cone cup dispenser
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fillRect(px + w - 4, py + 8, 4, 16);
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(px + w - 3, py + 22, 2, 3);
+        break;
+      }
+
+      case 'photocopier': {
+        // Office Photocopier / Multi-function Printer
+        ctx.fillStyle = '#334155'; // Main body
+        ctx.fillRect(px + 2, py + 6, w - 4, h - 6);
+        ctx.fillStyle = '#475569';
+        ctx.fillRect(px + 4, py + 8, w - 8, 12);
+
+        // Top document scanner lid
+        ctx.fillStyle = '#64748b';
+        ctx.fillRect(px + 4, py + 2, w - 8, 5);
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillRect(px + 6, py + 3, w - 12, 3);
+
+        // Touch control panel & status LED
         ctx.fillStyle = '#0f172a';
-        ctx.fillRect(px + 4, py + 4, w - 8, h - 22);
-        const colors = ['#ef4444', '#f59e0b', '#10b981', '#f97316', '#a855f7'];
-        for (let row = 0; row < 3; row++) {
-          const sy = py + 8 + row * 10;
-          ctx.fillStyle = '#334155';
-          ctx.fillRect(px + 6, sy + 7, w - 12, 2);
-          for (let item = 0; item < 4; item++) {
-            ctx.fillStyle = colors[(row + item) % colors.length];
-            ctx.fillRect(px + 8 + item * 8, sy, 5, 6);
-          }
+        ctx.fillRect(px + w - 12, py + 3, 8, 6);
+        ctx.fillStyle = (Math.floor(now / 400) % 2 === 0) ? '#22c55e' : '#10b981';
+        ctx.fillRect(px + w - 10, py + 4, 3, 2); // Green power LED
+
+        // Output paper tray with sheets of paper
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(px + 6, py + 20, 16, 6);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(px + 7, py + 21, 14, 4);
+        ctx.fillStyle = '#3b82f6';
+        ctx.fillRect(px + 9, py + 22, 8, 1);
+        break;
+      }
+
+      case 'desk_reception': {
+        // Pam's Wooden L-Shaped / curved reception counter
+        ctx.fillStyle = '#5c3a1e';
+        ctx.fillRect(px, py + 4, w, h - 4);
+        ctx.fillStyle = '#7a4e28';
+        ctx.fillRect(px + 2, py + 6, w - 4, 8);
+
+        // Receptionist gold nameplate
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillRect(px + 6, py + 2, 14, 4);
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(px + 8, py + 3, 10, 1);
+
+        // Candy jellybean dish
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+        ctx.beginPath();
+        ctx.arc(px + 26, py + 8, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(px + 24, py + 7, 2, 2);
+        ctx.fillStyle = '#22c55e';
+        ctx.fillRect(px + 26, py + 6, 2, 2);
+
+        // Desktop phone & computer
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(px + w - 16, py + 2, 12, 8); // Monitor
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(px + w - 14, py + 4, 8, 5);
+        ctx.fillStyle = '#475569';
+        ctx.fillRect(px + w - 24, py + 6, 6, 6); // Phone handset
+        break;
+      }
+
+      case 'desk_michael': {
+        // Michael Scott's Executive Walnut Desk
+        ctx.fillStyle = '#3b1c0a'; // Dark walnut
+        ctx.fillRect(px, py + 4, w, h - 4);
+        ctx.fillStyle = '#5c2b0e';
+        ctx.fillRect(px + 2, py + 6, w - 4, 8);
+
+        // Leather desk blotter
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(px + w / 2 - 12, py + 6, 24, 10);
+
+        // World's Best Boss Coffee Mug
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(px + 8, py + 7, 5, 5);
+        ctx.fillStyle = '#0284c7';
+        ctx.fillRect(px + 8, py + 7, 5, 1);
+
+        // Golden Dundie statuette on desk
+        ctx.fillStyle = '#f59e0b';
+        ctx.fillRect(px + w - 12, py + 3, 4, 9);
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(px + w - 14, py + 11, 8, 3);
+
+        // Executive phone & in-tray
+        ctx.fillStyle = '#475569';
+        ctx.fillRect(px + 16, py + 6, 7, 6);
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(px + w - 24, py + 7, 8, 6); // In-tray paper
+        break;
+      }
+
+      case 'filing_cabinet': {
+        // Multi-drawer metallic office filing cabinet
+        ctx.fillStyle = '#475569';
+        ctx.fillRect(px + 2, py + 2, w - 4, h - 4);
+        ctx.fillStyle = '#64748b';
+        // 3 Drawers
+        const drawH = Math.floor((h - 8) / 3);
+        for (let d = 0; d < 3; d++) {
+          const dy = py + 4 + d * drawH;
+          ctx.strokeRect(px + 4, dy, w - 8, drawH - 2);
+          ctx.fillStyle = '#94a3b8';
+          ctx.fillRect(px + w / 2 - 3, dy + drawH / 2 - 1, 6, 2); // Metal handle
+          ctx.fillStyle = '#f8fafc';
+          ctx.fillRect(px + 6, dy + 2, 4, 3); // White label
         }
-        ctx.fillStyle = '#334155';
-        ctx.fillRect(px + 6, py + h - 16, w - 12, 10);
-        ctx.fillStyle = '#10b981';
-        ctx.fillRect(px + w - 12, py + h - 14, 2, 2);
+        break;
+      }
+
+      case 'microwave': {
+        // Kitchen Microwave
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(px + 2, py + 4, w - 4, h - 6);
+        ctx.fillStyle = '#38bdf8'; // Glowing door window
+        ctx.fillRect(px + 4, py + 6, w - 14, h - 10);
+        ctx.fillStyle = '#22c55e'; // Green digital clock
+        ctx.fillRect(px + w - 8, py + 6, 4, 2);
+        break;
+      }
+
+      case 'pc_monitor': {
+        // Standalone computer monitor
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(px + 4, py + 2, w - 8, h - 8);
+        ctx.fillStyle = '#0284c7';
+        ctx.fillRect(px + 6, py + 4, w - 12, h - 12);
+        ctx.fillStyle = '#475569';
+        ctx.fillRect(px + w / 2 - 2, py + h - 6, 4, 4);
+        break;
+      }
+
+      case 'fire_hazard': {
+        // Fire Hazard marker / ignited box
+        ctx.fillStyle = '#ea580c';
+        ctx.fillRect(px + 2, py + 4, w - 4, h - 6);
+        ctx.fillStyle = '#fef08a';
+        ctx.font = 'bold 9px monospace';
+        ctx.fillText('⚠', px + 4, py + h / 2 + 2);
+        break;
+      }
+
+      case 'jello_stapler': {
+        // Classic Stapler encased in green Jello
+        ctx.fillStyle = 'rgba(34, 197, 94, 0.85)';
+        ctx.fillRect(px + 4, py + 4, w - 8, h - 8);
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(px + 8, py + 8, w - 16, 4);
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillRect(px + 10, py + 7, 4, 2);
         break;
       }
 

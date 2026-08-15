@@ -51,6 +51,7 @@ export interface CharacterRuntimeState {
   speed: number;
   animFrame: number;
   animTimer: number;
+  animSpeed?: number;
   currentAction?: string;
   isSitting?: boolean;
   heldItem?: HoldableItemType;
@@ -62,6 +63,7 @@ export interface CharacterRuntimeState {
     emotion: EmotionType;
     totalDuration: number;
     elapsed: number;
+    speedMultiplier?: number;
   };
   currentEmote?: {
     icon: EmoteIconType;

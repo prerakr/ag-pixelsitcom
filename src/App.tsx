@@ -113,7 +113,10 @@ export function App() {
         setIsScriptStudioOpen(false);
         setIsCastDrawerOpen(false);
         setIsHelpOpen(false);
-        if (talkingHead) setTalkingHead(null);
+        if (talkingHead) {
+          setTalkingHead(null);
+          engine.nextBeat();
+        }
       }
     };
 

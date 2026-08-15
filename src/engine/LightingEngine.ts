@@ -5,13 +5,19 @@ export class LightingEngine {
   public currentTime: TimeOfDay = 'day';
   public targetTime: TimeOfDay = 'day';
   public transitionProgress: number = 1.0;
+  private transitionSpeed: number = 1.25;
 
-  public setTimeOfDay(time: TimeOfDay, instant = false) {
+  public setTimeOfDay(time: TimeOfDay, instant = false, durationMs?: number) {
     if (instant) {
       this.currentTime = time;
       this.targetTime = time;
       this.transitionProgress = 1.0;
       return;
+    }
+    if (durationMs && durationMs > 0) {
+      this.transitionSpeed = 1000 / durationMs;
+    } else {
+      this.transitionSpeed = 1.25;
     }
     if (this.currentTime === time && this.targetTime === time) return;
     this.targetTime = time;
@@ -20,7 +26,7 @@ export class LightingEngine {
 
   public update(dt: number) {
     if (this.currentTime !== this.targetTime) {
-      this.transitionProgress += dt * 1.25;
+      this.transitionProgress += dt * this.transitionSpeed;
       if (this.transitionProgress >= 1.0) {
         this.currentTime = this.targetTime;
         this.transitionProgress = 1.0;

@@ -22,10 +22,11 @@ export class Camera {
   }
 
   public update(dt: number) {
-    // Smooth lerp towards target position
-    this.x += (this.targetX - this.x) * this.lerpSpeed;
-    this.y += (this.targetY - this.y) * this.lerpSpeed;
-    this.zoom += (this.targetZoom - this.zoom) * this.lerpSpeed;
+    // Frame-rate independent exponential decay lerp towards target position and zoom
+    const factor = 1 - Math.pow(1 - Math.min(0.95, this.lerpSpeed), Math.max(0.001, dt * 60));
+    this.x += (this.targetX - this.x) * factor;
+    this.y += (this.targetY - this.y) * factor;
+    this.zoom += (this.targetZoom - this.zoom) * factor;
 
     if (this.shakeTimer > 0) {
       this.shakeTimer -= dt;
