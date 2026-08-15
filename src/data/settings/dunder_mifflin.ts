@@ -369,6 +369,11 @@ export const DUNDER_MIFFLIN_SCRANTON: SettingDefinition = {
     main_entrance: { id: 'main_entrance', name: 'Front Office Entrance', x: 6, y: 19, facing: 'up', zone: 'reception' },
     annex_toby: { id: 'annex_toby', name: "Toby's Annex Corner", x: 31, y: 14.5, facing: 'down', zone: 'annex' },
     phyllis_desk: { id: 'phyllis_desk', name: "Phyllis's Desk", x: 16.5, y: 17.2, facing: 'up', zone: 'sales_bullpen' },
+    ryan_desk: { id: 'ryan_desk', name: "Ryan's Desk", x: 10.5, y: 14.5, facing: 'right', zone: 'sales_bullpen' },
+    annex_kelly: { id: 'annex_kelly', name: "Kelly's Desk", x: 29.5, y: 16.5, facing: 'left', zone: 'annex' },
+    oscar_desk: { id: 'oscar_desk', name: "Oscar's Desk", x: 25.5, y: 12.2, facing: 'down', zone: 'accounting' },
+    creed_desk: { id: 'creed_desk', name: "Creed's Desk", x: 20.5, y: 17.2, facing: 'up', zone: 'sales_bullpen' },
+    meredith_desk: { id: 'meredith_desk', name: "Meredith's Desk", x: 20.5, y: 12.2, facing: 'down', zone: 'sales_bullpen' },
   },
   spawnPoints: {
     michael: { id: 'michael', name: 'Michael Spawn', x: 4.5, y: 5.5, facing: 'down' },
@@ -380,5 +385,10 @@ export const DUNDER_MIFFLIN_SCRANTON: SettingDefinition = {
     stanley: { id: 'stanley', name: 'Stanley Spawn', x: 16.5, y: 12.2, facing: 'down' },
     toby: { id: 'toby', name: 'Toby Spawn', x: 31, y: 14.5, facing: 'down' },
     phyllis: { id: 'phyllis', name: 'Phyllis Spawn', x: 16.5, y: 17.2, facing: 'up' },
+    ryan: { id: 'ryan', name: 'Ryan Spawn', x: 10.5, y: 14.5, facing: 'right' },
+    kelly: { id: 'kelly', name: 'Kelly Spawn', x: 29.5, y: 16.5, facing: 'left' },
+    oscar: { id: 'oscar', name: 'Oscar Spawn', x: 25.5, y: 12.2, facing: 'down' },
+    creed: { id: 'creed', name: 'Creed Spawn', x: 20.5, y: 17.2, facing: 'up' },
+    meredith: { id: 'meredith', name: 'Meredith Spawn', x: 20.5, y: 12.2, facing: 'down' },
   },
 };

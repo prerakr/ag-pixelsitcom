@@ -1,0 +1,102 @@
+import { SitcomScript } from '../../types/script';
+
+export const HIMYM_ROBIN_SPARKLES_EPISODE: SitcomScript = {
+  version: '1.0',
+  title: "Let's Go To The Mall & The Ducky Tie",
+  showId: 'himym',
+  settingId: 'maclarens_pub',
+  synopsis:
+    'Barney is forced to wear the infamous yellow ducky tie to MacLaren’s while the jukebox unexpectedly plays Canadian teen sensation Robin Sparkles.',
+  author: 'Writer Room',
+  characters: ['barney', 'robin', 'ted', 'marshall', 'lily', 'carl_bartender'],
+  scenes: [
+    {
+      id: 'scene_1',
+      name: 'Scene 1: The Mall Jukebox Revelation',
+      timeOfDay: 'golden_hour',
+      synopsis: 'The gang discovers Robin’s 80s Canadian pop star past.',
+      beats: [
+        {
+          type: 'dialogue',
+          speaker: 'barney',
+          text: 'Ladies and gentlemen, after six months of intense digital espionage in Ottawa, I present Robin Sparkles!',
+          emotion: 'smug',
+          sfx: 'theme_jingle',
+          emote: 'exclamation',
+          durationMs: 4400,
+        },
+        {
+          type: 'dialogue',
+          speaker: 'robin',
+          text: 'Barney! Turn that off! The 80s didn’t come to Canada until 1993!',
+          emotion: 'shock',
+          sfx: 'laugh_roar',
+          emote: 'panic',
+          durationMs: 4000,
+        },
+        {
+          type: 'movement',
+          character: 'marshall',
+          target: 'pub_floor_center',
+          speed: 1.1,
+          facing: 'right',
+        },
+        {
+          type: 'dialogue',
+          speaker: 'marshall',
+          text: 'Let’s go to the mall, everybody! Put on your jelly bracelets, Ted, this is a cultural masterpiece!',
+          emotion: 'happy',
+          sfx: 'cheer',
+          emote: 'heart',
+          durationMs: 4200,
+        },
+      ],
+    },
+    {
+      id: 'scene_2',
+      name: 'Scene 2: The Ducky Tie Concession',
+      timeOfDay: 'night',
+      synopsis: 'Barney pays his bet by wearing the bright yellow ducky tie for an entire year.',
+      beats: [
+        {
+          type: 'time_of_day',
+          time: 'night',
+          durationMs: 1200,
+        },
+        {
+          type: 'movement',
+          character: 'barney',
+          target: 'bar_stool_1',
+          speed: 0.9,
+          facing: 'up',
+        },
+        {
+          type: 'dialogue',
+          speaker: 'barney',
+          text: 'This ducky tie ruins the clean silhouette of my Italian silk lapels. I feel like a giant toddler attending a christening.',
+          emotion: 'deadpan',
+          sfx: 'slapstick_boing',
+          emote: 'sweat',
+          durationMs: 4400,
+        },
+        {
+          type: 'dialogue',
+          speaker: 'lily',
+          text: 'You lost the teppanyaki bet, Barney. The ducks stay on until next November!',
+          emotion: 'proud',
+          sfx: 'laugh_track',
+          emote: 'dundie',
+          durationMs: 4000,
+        },
+        {
+          type: 'dialogue',
+          speaker: 'ted',
+          text: 'Carl, a round of Glen McKenna for everyone at the booth. Tonight is officially legendary.',
+          emotion: 'happy',
+          sfx: 'cheer',
+          durationMs: 4000,
+        },
+      ],
+    },
+  ],
+};

@@ -147,4 +147,52 @@ export const FRIENDS_CAST: Record<string, CharacterDefinition> = {
     defaultWaypoint: 'coffee_counter',
     defaultFacing: 'down',
   },
+  janice: {
+    id: 'janice',
+    name: 'Janice Hosenstein',
+    nickname: 'Janice',
+    role: 'Chandler’s Ex / Unstoppable Force',
+    showId: 'friends',
+    visual: {
+      skinColor: '#fed7aa',
+      hairColor: '#451a03',
+      hairStyle: 'curls',
+      shirtColor: '#ca8a04', // Leopard print golden blouse
+      pantsColor: '#18181b',
+      shoesColor: '#dc2626',
+      heightScale: 0.97,
+    },
+    signatureQuotes: [
+      'OH. MY. GAWD!',
+      'You love me, Chandler Bing. You just don’t know it yet.',
+      '*Machine gun laugh*',
+    ],
+    personalityTraits: ['Machine gun laugh', 'Leopard print enthusiast', 'Always returns', 'Unfiltered optimism'],
+    defaultWaypoint: 'street_table_left',
+    defaultFacing: 'down',
+  },
+  mike: {
+    id: 'mike',
+    name: 'Mike Hannigan',
+    nickname: 'Crap Bag',
+    role: 'Pianist / Phoebe’s Soulmate',
+    showId: 'friends',
+    visual: {
+      skinColor: '#fce7d2',
+      hairColor: '#4a3728',
+      hairStyle: 'floppy',
+      shirtColor: '#2563eb', // Blue button-down
+      pantsColor: '#334155',
+      shoesColor: '#0f172a',
+      heightScale: 1.05,
+    },
+    signatureQuotes: [
+      'I’m Crap Bag. First name Crap, last name Bag.',
+      'Phoebe, I love you. You’re delightfully bizarre.',
+      'I can play air piano with the best of them.',
+    ],
+    personalityTraits: ['Charming pianist', 'Crap Bag', 'Phoebe whisperer', 'Genuinely wholesome'],
+    defaultWaypoint: 'stage_piano',
+    defaultFacing: 'down',
+  },
 };

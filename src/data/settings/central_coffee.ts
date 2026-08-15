@@ -14,6 +14,13 @@ export const CENTRAL_COFFEE: SettingDefinition = {
     y: 350,
     zoom: 1.15,
   },
+  zones: [
+    { id: 'couch_circle', name: 'Main Couch Lounge', x: 8, y: 8, w: 14, h: 8, color: '#fed7aa' },
+    { id: 'coffee_bar', name: 'Gunther Espresso Counter', x: 2, y: 2, w: 10, h: 6, color: '#fef08a' },
+    { id: 'stage', name: 'Phoebe Acoustic Corner', x: 21, y: 2, w: 9, h: 6, color: '#ddd6fe' },
+    { id: 'street_seating', name: 'Street Window Tables', x: 2, y: 12, w: 6, h: 8, color: '#bbf7d0' },
+    { id: 'entrance', name: 'Greenwich Village Entrance', x: 12, y: 16, w: 8, h: 5, color: '#e2e8f0' },
+  ],
   tiles: {},
   props: [
     // 1. Ornate Persian Rug beneath couch circle (rendered at lowest floor layer)
@@ -94,6 +101,16 @@ export const CENTRAL_COFFEE: SettingDefinition = {
       name: 'Shiny Italian Espresso Machine',
       interactive: true,
     },
+    {
+      id: 'prop_chalkboard_menu',
+      type: 'whiteboard',
+      x: 1,
+      y: 3.5,
+      width: 1.8,
+      height: 2.5,
+      name: 'Daily Specials Chalkboard',
+      interactive: true,
+    },
 
     // 4. Phoebe's Acoustic Guitar Stage & Mic Stand
     {
@@ -113,8 +130,34 @@ export const CENTRAL_COFFEE: SettingDefinition = {
       y: 3.2,
       name: 'Stage Ficus',
     },
+    {
+      id: 'prop_corner_plant',
+      type: 'potted_plant',
+      x: 29.5,
+      y: 3.2,
+      name: 'Corner Palm',
+    },
 
-    // 5. Central Perk Neon Street Sign
+    // 5. Street Window Bistro Seating
+    {
+      id: 'prop_bistro_table_1',
+      type: 'desk_wood',
+      x: 3.5,
+      y: 13.5,
+      width: 2.2,
+      height: 1.5,
+      name: 'Window Bistro Table',
+      interactive: true,
+    },
+    {
+      id: 'prop_coat_rack',
+      type: 'potted_plant',
+      x: 11,
+      y: 17.5,
+      name: 'Wooden Coat Rack',
+    },
+
+    // 6. Central Perk Neon Street Sign
     {
       id: 'prop_perk_neon',
       type: 'neon_sign',
@@ -127,7 +170,6 @@ export const CENTRAL_COFFEE: SettingDefinition = {
     },
   ],
   waypoints: {
-    // Precise seating coordinates positioned comfortably in front of cushions
     orange_couch_left: { id: 'orange_couch_left', name: 'Orange Couch (Ross)', x: 12.2, y: 10.2, facing: 'down', zone: 'couch_circle' },
     orange_couch_center: { id: 'orange_couch_center', name: 'Orange Couch (Rachel)', x: 14.2, y: 10.2, facing: 'down', zone: 'couch_circle' },
     orange_couch_right: { id: 'orange_couch_right', name: 'Orange Couch (Chandler)', x: 16.2, y: 10.2, facing: 'down', zone: 'couch_circle' },
@@ -137,6 +179,8 @@ export const CENTRAL_COFFEE: SettingDefinition = {
     coffee_counter: { id: 'coffee_counter', name: 'Gunther Barista Post', x: 7, y: 4.2, facing: 'down', zone: 'coffee_bar' },
     order_register: { id: 'order_register', name: 'Coffee Order Line', x: 7, y: 6.5, facing: 'up', zone: 'coffee_bar' },
     guitar_stage: { id: 'guitar_stage', name: 'Phoebe Performance Rug', x: 25, y: 5.2, facing: 'down', zone: 'stage' },
+    stage_piano: { id: 'stage_piano', name: 'Mike Piano Post', x: 26.5, y: 5.2, facing: 'down', zone: 'stage' },
+    street_table_left: { id: 'street_table_left', name: 'Window Bistro Seat (Janice)', x: 4.5, y: 14.5, facing: 'right', zone: 'street_seating' },
     perk_entrance: { id: 'perk_entrance', name: 'Central Perk Front Door', x: 14.2, y: 18, facing: 'up', zone: 'entrance' },
   },
   spawnPoints: {
@@ -147,6 +191,8 @@ export const CENTRAL_COFFEE: SettingDefinition = {
     joey: { id: 'joey', name: 'Joey Spawn', x: 18.2, y: 11.2, facing: 'left' },
     phoebe: { id: 'phoebe', name: 'Phoebe Spawn', x: 25, y: 5.2, facing: 'down' },
     gunther: { id: 'gunther', name: 'Gunther Spawn', x: 7, y: 4.2, facing: 'down' },
+    janice: { id: 'janice', name: 'Janice Spawn', x: 4.5, y: 14.5, facing: 'right' },
+    mike: { id: 'mike', name: 'Mike Spawn', x: 26.5, y: 5.2, facing: 'down' },
   },
 };
 

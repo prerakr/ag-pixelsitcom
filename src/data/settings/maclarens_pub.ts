@@ -14,6 +14,14 @@ export const MACLARENS_PUB: SettingDefinition = {
     y: 384,
     zoom: 1.15,
   },
+  zones: [
+    { id: 'gang_booth', name: "The Gang's Red Booth", x: 4, y: 6, w: 8, h: 6, color: '#fca5a5' },
+    { id: 'bar_counter', name: "Carl's Main Bar", x: 17, y: 2, w: 13, h: 8, color: '#fed7aa' },
+    { id: 'main_floor', name: 'Center High-Tops & Floor', x: 14, y: 10, w: 14, h: 8, color: '#fef08a' },
+    { id: 'vip_booth', name: "Captain's VIP Booth", x: 4, y: 12, w: 8, h: 6, color: '#ddd6fe' },
+    { id: 'entertainment', name: 'Jukebox & Darts Area', x: 29, y: 8, w: 6, h: 12, color: '#bfdbfe' },
+    { id: 'entrance', name: "Street Entrance & Umbrella Stand", x: 14, y: 18, w: 8, h: 5, color: '#bbf7d0' },
+  ],
   tiles: {},
   props: [
     // 1. The Gang's Iconic Red Tufted Leather Booth
