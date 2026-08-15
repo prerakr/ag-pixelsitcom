@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { VisualizerEngine } from '../engine/CanvasRenderer';
-import { ZoomIn, ZoomOut, Maximize2, Video, Eye, MapPin, Tag } from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize2, Video, VideoOff, Eye, MapPin, Tag } from 'lucide-react';
 import { CharacterDefinition } from '../types/character';
 import { soundEngine } from '../engine/SoundEngine';
 
@@ -25,10 +25,10 @@ export const Viewport: React.FC<ViewportProps> = ({ engine, onInspectCharacter }
     moved: false,
   });
 
-  const [camMode, setCamMode] = useState<'auto' | 'free'>('auto');
+  const [allowCameraJumps, setAllowCameraJumpsState] = useState(engine.allowCameraJumps);
   const [showWaypoints, setShowWaypoints] = useState(false);
   const [showNameTags, setShowNameTags] = useState(true);
-  const [crtEffect, setCrtEffect] = useState(false); // Default off on mobile for max sharpness
+  const [crtEffect, setCrtEffect] = useState(false);
   const [selectedEntity, setSelectedEntity] = useState<any | null>(null);
 
   // Auto-fit camera for mobile on first mount and resize
@@ -39,7 +39,6 @@ export const Viewport: React.FC<ViewportProps> = ({ engine, onInspectCharacter }
     const worldH = engine.setting.gridHeight * engine.setting.tileSize;
 
     if (rect.width < 768) {
-      // Mobile screen: Fit whole office or active bullpen
       engine.camera.fitToViewport(rect.width, rect.height, worldW, worldH);
     } else {
       engine.camera.setTarget(
@@ -146,11 +145,6 @@ export const Viewport: React.FC<ViewportProps> = ({ engine, onInspectCharacter }
     engine.camera.targetX = engine.camera.x;
     engine.camera.targetY = engine.camera.y;
     setDragStart({ x: e.clientX, y: e.clientY });
-
-    if (camMode !== 'free') {
-      setCamMode('free');
-      engine.cameraMode = 'free';
-    }
   };
 
   const handleMouseUp = (e: React.MouseEvent) => {
@@ -166,7 +160,10 @@ export const Viewport: React.FC<ViewportProps> = ({ engine, onInspectCharacter }
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
     const zoomFactor = e.deltaY < 0 ? 1.15 : 0.87;
-    const newZoom = Math.max(engine.camera.minZoom, Math.min(3.5, engine.camera.targetZoom * zoomFactor));
+    const newZoom = Math.max(
+      engine.camera.minZoom,
+      Math.min(3.5, engine.camera.targetZoom * zoomFactor)
+    );
     engine.camera.targetZoom = newZoom;
   };
 
@@ -199,7 +196,12 @@ export const Viewport: React.FC<ViewportProps> = ({ engine, onInspectCharacter }
       const dx = (touch.clientX - touchStartRef.current.x) / engine.camera.zoom;
       const dy = (touch.clientY - touchStartRef.current.y) / engine.camera.zoom;
 
-      if (Math.hypot(touch.clientX - touchStartRef.current.x, touch.clientY - touchStartRef.current.y) > 6) {
+      if (
+        Math.hypot(
+          touch.clientX - touchStartRef.current.x,
+          touch.clientY - touchStartRef.current.y
+        ) > 6
+      ) {
         touchStartRef.current.moved = true;
       }
 
@@ -210,11 +212,6 @@ export const Viewport: React.FC<ViewportProps> = ({ engine, onInspectCharacter }
 
       touchStartRef.current.x = touch.clientX;
       touchStartRef.current.y = touch.clientY;
-
-      if (camMode !== 'free') {
-        setCamMode('free');
-        engine.cameraMode = 'free';
-      }
     } else if (e.touches.length === 2) {
       // Pinch Zoom
       const dx = e.touches[0].clientX - e.touches[1].clientX;
@@ -223,7 +220,10 @@ export const Viewport: React.FC<ViewportProps> = ({ engine, onInspectCharacter }
 
       if (touchStartRef.current.dist > 0) {
         const factor = newDist / touchStartRef.current.dist;
-        const newZoom = Math.max(engine.camera.minZoom, Math.min(3.5, engine.camera.targetZoom * factor));
+        const newZoom = Math.max(
+          engine.camera.minZoom,
+          Math.min(3.5, engine.camera.targetZoom * factor)
+        );
         engine.camera.targetZoom = newZoom;
         engine.camera.zoom = newZoom;
       }
@@ -250,14 +250,15 @@ export const Viewport: React.FC<ViewportProps> = ({ engine, onInspectCharacter }
 
   const handleResetCamera = () => {
     autoFitCamera();
-    setCamMode('auto');
-    engine.cameraMode = 'auto';
   };
 
-  const toggleCamMode = () => {
-    const next = camMode === 'auto' ? 'free' : 'auto';
-    setCamMode(next);
-    engine.cameraMode = next;
+  const toggleCameraJumps = () => {
+    const next = !allowCameraJumps;
+    setAllowCameraJumpsState(next);
+    engine.setAllowCameraJumps(next);
+    if (!next) {
+      autoFitCamera();
+    }
   };
 
   const toggleWaypoints = () => {
@@ -294,53 +295,67 @@ export const Viewport: React.FC<ViewportProps> = ({ engine, onInspectCharacter }
       <div className="absolute top-3 right-3 flex flex-col gap-1 z-10 bg-[#131b26]/90 p-1 rounded-lg border border-[#2a374a] shadow-xl backdrop-blur-md">
         <button
           onClick={handleZoomIn}
-          className="p-2 sm:p-2 bg-[#1c2738] active:bg-amber-600 hover:bg-amber-600 rounded text-slate-200 hover:text-white transition-colors"
+          className="p-2 bg-[#1c2738] active:bg-amber-600 hover:bg-amber-600 rounded text-slate-200 hover:text-white transition-colors"
           title="Zoom In (+)"
         >
           <ZoomIn className="w-4 h-4" />
         </button>
         <button
           onClick={handleZoomOut}
-          className="p-2 sm:p-2 bg-[#1c2738] active:bg-amber-600 hover:bg-amber-600 rounded text-slate-200 hover:text-white transition-colors"
+          className="p-2 bg-[#1c2738] active:bg-amber-600 hover:bg-amber-600 rounded text-slate-200 hover:text-white transition-colors"
           title="Zoom Out (-)"
         >
           <ZoomOut className="w-4 h-4" />
         </button>
         <button
           onClick={handleResetCamera}
-          className="p-2 sm:p-2 bg-[#1c2738] active:bg-amber-600 hover:bg-amber-600 rounded text-slate-200 hover:text-white transition-colors"
-          title="Fit to Screen (Center)"
+          className="p-2 bg-[#1c2738] active:bg-amber-600 hover:bg-amber-600 rounded text-slate-200 hover:text-white transition-colors"
+          title="Fit to Screen (Center Office)"
         >
           <Maximize2 className="w-4 h-4" />
         </button>
 
         <div className="h-[1px] bg-[#2a374a] my-0.5" />
 
+        {/* Camera Jumps Toggle Button */}
         <button
-          onClick={toggleCamMode}
-          className={`p-2 rounded transition-colors ${camMode === 'auto' ? 'bg-blue-600 text-white' : 'bg-[#1c2738] text-slate-400'}`}
-          title={camMode === 'auto' ? 'Auto-Director: ON' : 'Free Pan: ON'}
+          onClick={toggleCameraJumps}
+          className={`p-2 rounded transition-colors ${
+            allowCameraJumps ? 'bg-cyan-600 text-white' : 'bg-[#1c2738] text-slate-400'
+          }`}
+          title={
+            allowCameraJumps
+              ? 'Camera Jumps: ACTIVE (Auto-follow dialogue & scene cues)'
+              : 'Camera Jumps: DISABLED (Static overview locked)'
+          }
         >
-          <Video className="w-4 h-4" />
+          {allowCameraJumps ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
         </button>
+
         <button
           onClick={toggleNameTags}
-          className={`p-2 rounded transition-colors ${showNameTags ? 'bg-amber-600 text-white' : 'bg-[#1c2738] text-slate-400'}`}
+          className={`p-2 rounded transition-colors ${
+            showNameTags ? 'bg-amber-600 text-white' : 'bg-[#1c2738] text-slate-400'
+          }`}
           title="Toggle Character Names"
         >
           <Tag className="w-4 h-4" />
         </button>
         <button
           onClick={toggleWaypoints}
-          className={`p-2 rounded transition-colors ${showWaypoints ? 'bg-purple-600 text-white' : 'bg-[#1c2738] text-slate-400'}`}
+          className={`p-2 rounded transition-colors ${
+            showWaypoints ? 'bg-purple-600 text-white' : 'bg-[#1c2738] text-slate-400'
+          }`}
           title="Toggle Waypoint Markers"
         >
           <MapPin className="w-4 h-4" />
         </button>
         <button
           onClick={() => setCrtEffect(!crtEffect)}
-          className={`p-2 rounded transition-colors ${crtEffect ? 'bg-emerald-700 text-white' : 'bg-[#1c2738] text-slate-400'}`}
-          title="Toggle CRT Shader"
+          className={`p-2 rounded transition-colors ${
+            crtEffect ? 'bg-emerald-700 text-white' : 'bg-[#1c2738] text-slate-400'
+          }`}
+          title="Toggle CRT Retro Shader"
         >
           <Eye className="w-4 h-4" />
         </button>
@@ -370,7 +385,10 @@ export const Viewport: React.FC<ViewportProps> = ({ engine, onInspectCharacter }
               </p>
               <div className="flex flex-wrap gap-1">
                 {selectedEntity.data.personalityTraits.map((t: string, i: number) => (
-                  <span key={i} className="text-[10px] px-1.5 py-0.5 bg-[#1e293b] text-amber-300 rounded font-mono">
+                  <span
+                    key={i}
+                    className="text-[10px] px-1.5 py-0.5 bg-[#1e293b] text-amber-300 rounded font-mono"
+                  >
                     {t}
                   </span>
                 ))}

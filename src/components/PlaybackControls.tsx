@@ -1,5 +1,15 @@
 import React from 'react';
-import { Play, Pause, SkipBack, SkipForward, FastForward, RotateCcw, Clapperboard } from 'lucide-react';
+import {
+  Play,
+  Pause,
+  SkipBack,
+  SkipForward,
+  FastForward,
+  RotateCcw,
+  Clapperboard,
+  Video,
+  VideoOff,
+} from 'lucide-react';
 import { SitcomScript, ScriptBeat } from '../types/script';
 
 interface PlaybackControlsProps {
@@ -9,6 +19,8 @@ interface PlaybackControlsProps {
   currentBeat: ScriptBeat | null;
   isPlaying: boolean;
   playbackSpeed: number;
+  allowCameraJumps?: boolean;
+  onToggleCameraJumps?: () => void;
   onTogglePlay: () => void;
   onPrevBeat: () => void;
   onNextBeat: () => void;
@@ -24,6 +36,8 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
   currentBeat,
   isPlaying,
   playbackSpeed,
+  allowCameraJumps = true,
+  onToggleCameraJumps,
   onTogglePlay,
   onPrevBeat,
   onNextBeat,
@@ -118,7 +132,7 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
       </div>
 
       {/* Bottom Controls Deck */}
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
         {/* Playback Transport Buttons */}
         <div className="flex items-center gap-1.5 sm:gap-2">
           <button
@@ -162,22 +176,51 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
           </button>
         </div>
 
-        {/* Speed Selector */}
-        <div className="flex items-center gap-0.5 sm:gap-1 bg-[#0b0f17] p-0.5 sm:p-1 border border-[#2a374a] rounded">
-          <FastForward className="w-3 h-3 text-amber-400 ml-1 mr-0.5 hidden xs:inline" />
-          {[0.5, 1.0, 1.5, 2.0].map((s) => (
+        {/* Right side: Camera Jump Toggle & Speed */}
+        <div className="flex items-center gap-2">
+          {/* Camera Jump Toggle Pill */}
+          {onToggleCameraJumps && (
             <button
-              key={s}
-              onClick={() => onChangeSpeed(s)}
-              className={`px-1.5 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-[11px] font-mono font-bold rounded transition-colors ${
-                playbackSpeed === s
-                  ? 'bg-amber-500 text-slate-950 shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+              onClick={onToggleCameraJumps}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-[10px] sm:text-[11px] font-mono font-bold border transition-colors ${
+                allowCameraJumps
+                  ? 'bg-cyan-950/80 border-cyan-500 text-cyan-300'
+                  : 'bg-[#1b2636] border-[#2a374a] text-slate-400 hover:text-slate-200'
               }`}
+              title={
+                allowCameraJumps
+                  ? 'Camera Follow: ON (Auto-director frames talking characters)'
+                  : 'Camera Follow: OFF (Locked static overview)'
+              }
             >
-              {s}x
+              {allowCameraJumps ? (
+                <Video className="w-3.5 h-3.5 text-cyan-400" />
+              ) : (
+                <VideoOff className="w-3.5 h-3.5 text-slate-400" />
+              )}
+              <span className="hidden xs:inline">
+                {allowCameraJumps ? 'FOLLOW CAM' : 'STATIC CAM'}
+              </span>
             </button>
-          ))}
+          )}
+
+          {/* Speed Selector */}
+          <div className="flex items-center gap-0.5 sm:gap-1 bg-[#0b0f17] p-0.5 sm:p-1 border border-[#2a374a] rounded">
+            <FastForward className="w-3 h-3 text-amber-400 ml-1 mr-0.5 hidden xs:inline" />
+            {[0.5, 1.0, 1.5, 2.0].map((s) => (
+              <button
+                key={s}
+                onClick={() => onChangeSpeed(s)}
+                className={`px-1.5 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-[11px] font-mono font-bold rounded transition-colors ${
+                  playbackSpeed === s
+                    ? 'bg-amber-500 text-slate-950 shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                {s}x
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </div>

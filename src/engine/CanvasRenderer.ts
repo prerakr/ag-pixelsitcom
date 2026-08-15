@@ -39,6 +39,7 @@ export class VisualizerEngine {
 
   // Camera tracking mode: 'auto' | 'free'
   public cameraMode: 'auto' | 'free' = 'auto';
+  public allowCameraJumps: boolean = true;
   public showWaypoints: boolean = false;
   public showNameTags: boolean = true;
 
@@ -74,6 +75,22 @@ export class VisualizerEngine {
 
   public setCallbacks(callbacks: VisualizerCallbacks) {
     this.callbacks = { ...this.callbacks, ...callbacks };
+  }
+
+  public setAllowCameraJumps(allow: boolean) {
+    this.allowCameraJumps = allow;
+  }
+
+  public getSafeTargetZoom(requestedZoom: number): number {
+    const isMobile = this.canvas
+      ? this.canvas.width / (window.devicePixelRatio || 1) < 768
+      : false;
+    if (isMobile) {
+      // Mobile screens need wider framing so speech bubbles and surrounding context are never cut off
+      return Math.max(0.6, Math.min(0.95, requestedZoom * 0.7));
+    }
+    // Desktop screens: clamp comfortably between 0.85 and 1.35
+    return Math.max(0.85, Math.min(1.35, requestedZoom));
   }
 
   public setSetting(setting: SettingDefinition) {
@@ -275,8 +292,11 @@ export class VisualizerEngine {
           if (d.sfx) {
             soundEngine.playSfx(d.sfx);
           }
-          if (this.cameraMode === 'auto' && (d.cameraFocus !== false)) {
-            this.camera.setTarget(state.x, state.y, 1.4);
+          // Only move camera if allowed and in auto director mode
+          if (this.cameraMode === 'auto' && this.allowCameraJumps && d.cameraFocus !== false) {
+            const zoom = this.getSafeTargetZoom(1.15);
+            // Target character with safe vertical offset so speech bubble is centered and visible
+            this.camera.setTarget(state.x, Math.max(70, state.y - 18), zoom);
           }
         }
         break;
@@ -321,23 +341,43 @@ export class VisualizerEngine {
 
       case 'camera_cue': {
         const cam = beat as CameraCueBeat;
-        const zoom = cam.zoom || 1.2;
-        if (cam.target === 'overview') {
-          this.camera.setTarget(this.setting.defaultCamera.x, this.setting.defaultCamera.y, this.setting.defaultCamera.zoom);
-        } else if (typeof cam.target === 'string') {
-          const charState = this.characterStates.get(cam.target);
-          const waypoint = this.setting.waypoints[cam.target];
-          if (charState) {
-            if (cam.style === 'jim_stare') {
-              charState.currentAction = 'jim_stare';
-              this.camera.shake(0.2, 4);
+        if (this.cameraMode === 'auto' && this.allowCameraJumps) {
+          const rawZoom = cam.zoom || 1.15;
+          const zoom = this.getSafeTargetZoom(rawZoom);
+
+          if (cam.target === 'overview') {
+            if (this.canvas) {
+              const rectW = this.canvas.width / (window.devicePixelRatio || 1);
+              const rectH = this.canvas.height / (window.devicePixelRatio || 1);
+              const worldW = this.setting.gridWidth * this.setting.tileSize;
+              const worldH = this.setting.gridHeight * this.setting.tileSize;
+              this.camera.fitToViewport(rectW, rectH, worldW, worldH);
+            } else {
+              this.camera.setTarget(
+                this.setting.defaultCamera.x,
+                this.setting.defaultCamera.y,
+                this.setting.defaultCamera.zoom
+              );
             }
-            this.camera.setTarget(charState.x, charState.y, zoom);
-          } else if (waypoint) {
-            this.camera.setTarget(waypoint.x * this.setting.tileSize, waypoint.y * this.setting.tileSize, zoom);
+          } else if (typeof cam.target === 'string') {
+            const charState = this.characterStates.get(cam.target);
+            const waypoint = this.setting.waypoints[cam.target];
+            if (charState) {
+              if (cam.style === 'jim_stare') {
+                charState.currentAction = 'jim_stare';
+                this.camera.shake(0.2, 4);
+              }
+              this.camera.setTarget(charState.x, Math.max(70, charState.y - 18), zoom);
+            } else if (waypoint) {
+              this.camera.setTarget(
+                waypoint.x * this.setting.tileSize,
+                waypoint.y * this.setting.tileSize,
+                zoom
+              );
+            }
+          } else if (typeof cam.target === 'object') {
+            this.camera.setTarget(cam.target.x, cam.target.y, zoom);
           }
-        } else if (typeof cam.target === 'object') {
-          this.camera.setTarget(cam.target.x, cam.target.y, zoom);
         }
         this.beatDuration = cam.durationMs || 1800;
         break;
