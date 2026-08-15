@@ -1,5 +1,15 @@
 import React from 'react';
-import { Play, Pause, SkipBack, SkipForward, FastForward, RotateCcw, Clapperboard, Sparkles } from 'lucide-react';
+import {
+  Play,
+  Pause,
+  SkipBack,
+  SkipForward,
+  FastForward,
+  RotateCcw,
+  Clapperboard,
+  Video,
+  VideoOff,
+} from 'lucide-react';
 import { SitcomScript, ScriptBeat } from '../types/script';
 
 interface PlaybackControlsProps {
@@ -9,6 +19,8 @@ interface PlaybackControlsProps {
   currentBeat: ScriptBeat | null;
   isPlaying: boolean;
   playbackSpeed: number;
+  allowCameraJumps?: boolean;
+  onToggleCameraJumps?: () => void;
   onTogglePlay: () => void;
   onPrevBeat: () => void;
   onNextBeat: () => void;
@@ -24,6 +36,8 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
   currentBeat,
   isPlaying,
   playbackSpeed,
+  allowCameraJumps = true,
+  onToggleCameraJumps,
   onTogglePlay,
   onPrevBeat,
   onNextBeat,
@@ -39,20 +53,20 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
 
   // Format active beat description
   const getBeatSummary = () => {
-    if (!currentBeat) return 'Ready to play episode';
+    if (!currentBeat) return 'Ready to play';
     switch (currentBeat.type) {
       case 'dialogue':
         return `💬 ${(currentBeat as any).speaker.toUpperCase()}: "${(currentBeat as any).text}"`;
       case 'movement':
-        return `🚶 ${(currentBeat as any).character.toUpperCase()} moving to ${(currentBeat as any).target}`;
+        return `🚶 ${(currentBeat as any).character.toUpperCase()} to ${(currentBeat as any).target}`;
       case 'interaction':
-        return `⚡ ${(currentBeat as any).character.toUpperCase()} ${(currentBeat as any).action} on ${(currentBeat as any).targetProp}`;
+        return `⚡ ${(currentBeat as any).character.toUpperCase()} ${(currentBeat as any).action}`;
       case 'talking_head':
-        return `🎬 TALKING HEAD: ${(currentBeat as any).speaker.toUpperCase()} solo interview`;
+        return `🎬 CONFESSIONAL: ${(currentBeat as any).speaker.toUpperCase()}`;
       case 'camera_cue':
-        return `🎥 Camera focusing on ${(currentBeat as any).target}`;
+        return `🎥 Camera: ${(currentBeat as any).target}`;
       case 'emote':
-        return `✨ ${(currentBeat as any).character.toUpperCase()} reaction: ${(currentBeat as any).emote}`;
+        return `✨ ${(currentBeat as any).character.toUpperCase()}: ${(currentBeat as any).emote}`;
       case 'audio_cue':
         return `🔊 SFX: ${(currentBeat as any).sfx}`;
       case 'group_action':
@@ -62,36 +76,46 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
     }
   };
 
+  const handleScrubberClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickRatio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const targetBeat = Math.floor(clickRatio * totalBeats);
+    onJumpToBeat(currentSceneIdx, Math.min(totalBeats - 1, targetBeat));
+  };
+
   return (
-    <div className="bg-[#131b26] border-t-2 border-[#2a374a] px-4 py-3 text-white select-none z-20 shadow-2xl">
+    <div className="bg-[#131b26] border-t-2 border-[#2a374a] px-3 sm:px-4 py-2 sm:py-3 text-white select-none z-20 shadow-2xl shrink-0">
       {/* Top Banner: Episode & Beat Summary */}
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-        <div className="flex items-center gap-2 overflow-hidden">
-          <Clapperboard className="w-4 h-4 text-amber-400 shrink-0" />
-          <span className="pixel-font text-[10px] text-amber-300 font-bold truncate">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1.5 sm:gap-2 mb-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 overflow-hidden w-full sm:w-auto">
+          <Clapperboard className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400 shrink-0" />
+          <span className="pixel-font text-[9px] sm:text-[10px] text-amber-300 font-bold truncate">
             {script.title}
           </span>
-          <span className="text-[11px] text-slate-400 font-mono hidden sm:inline">
+          <span className="text-[10px] sm:text-[11px] text-slate-400 font-mono hidden md:inline">
             • {currentScene?.name || 'Scene 1'}
           </span>
         </div>
 
         {/* Current Beat Info Pill */}
-        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-[#0b0f17] border border-[#2a374a] rounded max-w-md truncate">
-          <span className="text-[10px] text-emerald-400 font-mono font-bold">
-            BEAT {currentBeatIdx + 1}/{totalBeats}:
+        <div className="flex items-center gap-1.5 px-2 py-0.5 sm:py-1 bg-[#0b0f17] border border-[#2a374a] rounded w-full sm:w-auto sm:max-w-md truncate">
+          <span className="text-[9px] sm:text-[10px] text-emerald-400 font-mono font-bold shrink-0">
+            [{currentBeatIdx + 1}/{totalBeats}]
           </span>
-          <span className="typewriter-font text-[13px] text-slate-200 truncate">
+          <span className="typewriter-font text-[12px] sm:text-[13px] text-slate-200 truncate">
             {getBeatSummary()}
           </span>
         </div>
       </div>
 
       {/* Interactive Timeline Scrubber */}
-      <div className="relative w-full h-4 flex items-center mb-3 group cursor-pointer">
-        <div className="w-full h-2 bg-[#0c1017] rounded-full overflow-hidden border border-[#2a374a] relative">
+      <div
+        onClick={handleScrubberClick}
+        className="relative w-full h-5 flex items-center mb-2 group cursor-pointer"
+      >
+        <div className="w-full h-2.5 sm:h-2 bg-[#0c1017] rounded-full overflow-hidden border border-[#2a374a] relative">
           <div
-            className="h-full bg-gradient-to-r from-amber-500 to-yellow-400 transition-all duration-200"
+            className="h-full bg-gradient-to-r from-amber-500 to-yellow-400 transition-all duration-150"
             style={{ width: `${progressPercent}%` }}
           />
         </div>
@@ -108,62 +132,95 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
       </div>
 
       {/* Bottom Controls Deck */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
         {/* Playback Transport Buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <button
             onClick={onRestartEpisode}
-            className="p-2 bg-[#1b2636] hover:bg-amber-600 rounded text-slate-300 hover:text-white transition-colors"
+            className="p-1.5 sm:p-2 bg-[#1b2636] active:bg-amber-600 hover:bg-amber-600 rounded text-slate-300 hover:text-white transition-colors"
             title="Restart Episode"
           >
-            <RotateCcw className="w-4 h-4" />
+            <RotateCcw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </button>
 
           <button
             onClick={onPrevBeat}
             disabled={currentBeatIdx === 0 && currentSceneIdx === 0}
-            className="pixel-btn text-[9px] px-2.5 py-2 disabled:opacity-40 disabled:cursor-not-allowed"
-            title="Previous Beat (Left Arrow)"
+            className="pixel-btn text-[8px] sm:text-[9px] px-2 sm:px-2.5 py-1.5 sm:py-2 disabled:opacity-40 disabled:cursor-not-allowed"
+            title="Previous Beat"
           >
-            <SkipBack className="w-3.5 h-3.5" />
+            <SkipBack className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             <span className="hidden sm:inline">PREV</span>
           </button>
 
           <button
             onClick={onTogglePlay}
-            className="pixel-btn btn-primary text-xs px-4 py-2 flex items-center gap-2"
-            title={isPlaying ? 'Pause (Spacebar)' : 'Play Episode (Spacebar)'}
+            className="pixel-btn btn-primary text-[10px] sm:text-xs px-3 sm:px-4 py-1.5 sm:py-2 flex items-center gap-1.5 sm:gap-2"
+            title={isPlaying ? 'Pause' : 'Play Episode'}
           >
-            {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 fill-white" />}
+            {isPlaying ? (
+              <Pause className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            ) : (
+              <Play className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-white" />
+            )}
             <span className="font-bold">{isPlaying ? 'PAUSE' : 'PLAY'}</span>
           </button>
 
           <button
             onClick={onNextBeat}
-            className="pixel-btn text-[9px] px-2.5 py-2"
-            title="Next Beat (Right Arrow)"
+            className="pixel-btn text-[8px] sm:text-[9px] px-2 sm:px-2.5 py-1.5 sm:py-2"
+            title="Next Beat"
           >
             <span className="hidden sm:inline">NEXT</span>
-            <SkipForward className="w-3.5 h-3.5" />
+            <SkipForward className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
           </button>
         </div>
 
-        {/* Speed Selector */}
-        <div className="flex items-center gap-1 bg-[#0b0f17] p-1 border border-[#2a374a] rounded">
-          <FastForward className="w-3.5 h-3.5 text-amber-400 ml-1.5 mr-0.5" />
-          {[0.5, 1.0, 1.5, 2.0].map((s) => (
+        {/* Right side: Camera Jump Toggle & Speed */}
+        <div className="flex items-center gap-2">
+          {/* Camera Jump Toggle Pill */}
+          {onToggleCameraJumps && (
             <button
-              key={s}
-              onClick={() => onChangeSpeed(s)}
-              className={`px-2 py-1 text-[11px] font-mono font-bold rounded transition-colors ${
-                playbackSpeed === s
-                  ? 'bg-amber-500 text-slate-950 shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+              onClick={onToggleCameraJumps}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-[10px] sm:text-[11px] font-mono font-bold border transition-colors ${
+                allowCameraJumps
+                  ? 'bg-cyan-950/80 border-cyan-500 text-cyan-300'
+                  : 'bg-[#1b2636] border-[#2a374a] text-slate-400 hover:text-slate-200'
               }`}
+              title={
+                allowCameraJumps
+                  ? 'Camera Follow: ON (Auto-director frames talking characters)'
+                  : 'Camera Follow: OFF (Locked static overview)'
+              }
             >
-              {s}x
+              {allowCameraJumps ? (
+                <Video className="w-3.5 h-3.5 text-cyan-400" />
+              ) : (
+                <VideoOff className="w-3.5 h-3.5 text-slate-400" />
+              )}
+              <span className="hidden xs:inline">
+                {allowCameraJumps ? 'FOLLOW CAM' : 'STATIC CAM'}
+              </span>
             </button>
-          ))}
+          )}
+
+          {/* Speed Selector */}
+          <div className="flex items-center gap-0.5 sm:gap-1 bg-[#0b0f17] p-0.5 sm:p-1 border border-[#2a374a] rounded">
+            <FastForward className="w-3 h-3 text-amber-400 ml-1 mr-0.5 hidden xs:inline" />
+            {[0.5, 1.0, 1.5, 2.0].map((s) => (
+              <button
+                key={s}
+                onClick={() => onChangeSpeed(s)}
+                className={`px-1.5 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-[11px] font-mono font-bold rounded transition-colors ${
+                  playbackSpeed === s
+                    ? 'bg-amber-500 text-slate-950 shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                {s}x
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </div>

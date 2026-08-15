@@ -5,9 +5,9 @@ export class Camera {
   public targetY: number = 0;
   public zoom: number = 1.0;
   public targetZoom: number = 1.0;
-  public minZoom: number = 0.5;
-  public maxZoom: number = 3.0;
-  public lerpSpeed: number = 0.08;
+  public minZoom: number = 0.3;
+  public maxZoom: number = 3.5;
+  public lerpSpeed: number = 0.1;
 
   public shakeTimer: number = 0;
   public shakeIntensity: number = 0;
@@ -57,6 +57,19 @@ export class Camera {
       this.zoom = zoom;
       this.targetZoom = zoom;
     }
+  }
+
+  public fitToViewport(
+    viewportW: number,
+    viewportH: number,
+    worldW: number,
+    worldH: number
+  ) {
+    const scaleX = (viewportW * 0.92) / worldW;
+    const scaleY = (viewportH * 0.92) / worldH;
+    const fitZoom = Math.max(this.minZoom, Math.min(1.4, Math.min(scaleX, scaleY)));
+
+    this.setTarget(worldW / 2, worldH / 2, fitZoom);
   }
 
   public screenToWorld(

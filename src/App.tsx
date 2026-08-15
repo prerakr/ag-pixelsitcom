@@ -41,6 +41,7 @@ export function App() {
   const [isCastDrawerOpen, setIsCastDrawerOpen] = useState<boolean>(false);
   const [isHelpOpen, setIsHelpOpen] = useState<boolean>(false);
   const [isMuted, setIsMuted] = useState<boolean>(false);
+  const [allowCameraJumps, setAllowCameraJumps] = useState<boolean>(true);
 
   // Create & maintain VisualizerEngine instance
   const engine = useMemo(() => {
@@ -168,7 +169,7 @@ export function App() {
   };
 
   return (
-    <div className="flex flex-col w-screen h-screen overflow-hidden bg-[#0c1017] text-white">
+    <div className="flex flex-col w-full h-[100dvh] overflow-hidden bg-[#0c1017] text-white">
       {/* Top Application Header */}
       <Header
         currentSettingId={settingId}
@@ -209,6 +210,12 @@ export function App() {
         currentBeat={currentBeat}
         isPlaying={isPlaying}
         playbackSpeed={playbackSpeed}
+        allowCameraJumps={allowCameraJumps}
+        onToggleCameraJumps={() => {
+          const next = !allowCameraJumps;
+          setAllowCameraJumps(next);
+          engine.setAllowCameraJumps(next);
+        }}
         onTogglePlay={() => engine.togglePlay()}
         onPrevBeat={() => engine.prevBeat()}
         onNextBeat={() => engine.nextBeat()}

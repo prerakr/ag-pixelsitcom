@@ -56,9 +56,15 @@ export class SpeechBubbleRenderer {
     const boxW = Math.max(maxLineWidth + paddingX * 2, 90);
     const boxH = lines.length * lineHeight + paddingY * 2 + headerHeight;
 
-    // Center bubble horizontally over character, position above head
-    const boxX = Math.round(x - boxW / 2);
-    const boxY = Math.round(y - boxH - 24);
+    // Center bubble horizontally over character, position above head with safe clamping
+    let boxX = Math.round(x - boxW / 2);
+    let boxY = Math.round(y - boxH - 24);
+
+    // If character is near top of map/room, place bubble below them so it's never cut off
+    const isAboveHead = boxY >= 12;
+    if (!isAboveHead) {
+      boxY = Math.round(y + 24);
+    }
 
     // Color theme based on emotion
     let bubbleBg = '#ffffff';
@@ -98,34 +104,61 @@ export class SpeechBubbleRenderer {
 
     // Bubble Tail pointing to speaker
     const tailX = Math.round(x);
-    const tailY = boxY + boxH;
+    if (isAboveHead) {
+      const tailY = boxY + boxH;
+      ctx.fillStyle = bubbleBg;
+      ctx.beginPath();
+      ctx.moveTo(tailX - 6, tailY);
+      ctx.lineTo(tailX, tailY + 8);
+      ctx.lineTo(tailX + 6, tailY);
+      ctx.closePath();
+      ctx.fill();
 
-    ctx.fillStyle = bubbleBg;
-    ctx.beginPath();
-    ctx.moveTo(tailX - 6, tailY);
-    ctx.lineTo(tailX, tailY + 8);
-    ctx.lineTo(tailX + 6, tailY);
-    ctx.closePath();
-    ctx.fill();
+      ctx.strokeStyle = borderColor;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(tailX - 6, tailY);
+      ctx.lineTo(tailX, tailY + 8);
+      ctx.lineTo(tailX + 6, tailY);
+      ctx.stroke();
+      // Overwrite border seam
+      ctx.fillStyle = bubbleBg;
+      ctx.fillRect(tailX - 5, tailY - 1, 10, 2);
+    } else {
+      // Tail pointing upward to character
+      const tailY = boxY;
+      ctx.fillStyle = bubbleBg;
+      ctx.beginPath();
+      ctx.moveTo(tailX - 6, tailY);
+      ctx.lineTo(tailX, tailY - 8);
+      ctx.lineTo(tailX + 6, tailY);
+      ctx.closePath();
+      ctx.fill();
 
-    ctx.strokeStyle = borderColor;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(tailX - 6, tailY);
-    ctx.lineTo(tailX, tailY + 8);
-    ctx.lineTo(tailX + 6, tailY);
-    ctx.stroke();
+      ctx.strokeStyle = borderColor;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(tailX - 6, tailY);
+      ctx.lineTo(tailX, tailY - 8);
+      ctx.lineTo(tailX + 6, tailY);
+      ctx.stroke();
+      ctx.fillStyle = bubbleBg;
+      ctx.fillRect(tailX - 5, tailY - 1, 10, 2);
+    }
 
-    // Speaker Name Header Pill
+    // Speaker Name Header Bar
     ctx.fillStyle = headerColor;
-    ctx.font = 'bold 9px "Press Start 2P", monospace';
-    ctx.fillText(speakerName.toUpperCase(), boxX + paddingX, boxY + 6);
+    ctx.fillRect(boxX + 2, boxY + 2, boxW - 4, headerHeight);
 
-    // Dialogue Text lines
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 8px "Press Start 2P", monospace';
+    ctx.fillText(speakerName.toUpperCase(), boxX + 6, boxY + 5);
+
+    // Render Typewriter Lines of Dialogue
     ctx.fillStyle = '#0f172a';
     ctx.font = `600 ${fontSize}px "VT323", monospace`;
-    lines.forEach((line, idx) => {
-      ctx.fillText(line, boxX + paddingX, boxY + headerHeight + paddingY + idx * lineHeight);
+    lines.forEach((line, index) => {
+      ctx.fillText(line, boxX + paddingX, boxY + headerHeight + paddingY + index * lineHeight);
     });
 
     ctx.restore();
