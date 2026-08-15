@@ -122,13 +122,30 @@ export class VisualizerEngine {
     this.characterStates.clear();
     const tileSize = this.setting.tileSize;
 
-    Object.values(this.charactersMap).forEach((char) => {
+    // Filter characters to ONLY those belonging to the active script or setting
+    const activeCharIds = new Set<string>();
+
+    if (this.script && Array.isArray(this.script.characters) && this.script.characters.length > 0) {
+      this.script.characters.forEach((id) => activeCharIds.add(id));
+    } else {
+      Object.keys(this.setting.spawnPoints).forEach((id) => activeCharIds.add(id));
+    }
+
+    activeCharIds.forEach((charId) => {
+      const char = this.charactersMap[charId];
+      if (!char) return;
+
       // Find spawn point or default waypoint
       const spawn = this.setting.spawnPoints[char.id] || this.setting.waypoints[char.defaultWaypoint];
       const startX = spawn ? spawn.x * tileSize : 10 * tileSize;
       const startY = spawn ? spawn.y * tileSize : 10 * tileSize;
 
-      const isAtDesk = char.defaultWaypoint?.includes('desk') || char.defaultWaypoint?.includes('seat');
+      const isAtDesk =
+        char.defaultWaypoint?.includes('desk') ||
+        char.defaultWaypoint?.includes('seat') ||
+        char.defaultWaypoint?.includes('couch') ||
+        char.defaultWaypoint?.includes('booth') ||
+        char.defaultWaypoint?.includes('armchair');
 
       this.characterStates.set(char.id, {
         id: char.id,
@@ -777,10 +794,17 @@ export class VisualizerEngine {
       }
     }
 
-    // 2. Draw Floor Liquid Puddles & Coffee Stains (Beneath characters & props)
+    // 2. Draw Floor Rugs & Carpets (Always on floor level, beneath all furniture & characters)
+    this.setting.props
+      .filter((prop) => prop.type === 'rug')
+      .forEach((prop) => {
+        TileRenderer.drawProp(ctx, prop, tileSize);
+      });
+
+    // 3. Draw Floor Liquid Puddles & Coffee Stains
     particleSystem.drawFloorPuddles(ctx);
 
-    // 3. Collect All Renderable Entities for Depth Y-Sorting
+    // 4. Collect All Renderable Entities (Props & Characters) for Depth Y-Sorting
     interface RenderEntity {
       yOrder: number;
       draw: () => void;
@@ -788,23 +812,40 @@ export class VisualizerEngine {
 
     const renderQueue: RenderEntity[] = [];
 
-    // Add Props to render queue
-    this.setting.props.forEach((prop) => {
-      const pState = this.propStates.get(prop.id);
-      const runtimeProp = pState ? { ...prop, state: pState } : prop;
-      const yOrder = (prop.y + (prop.height || 1) * 0.8) * tileSize + (prop.zIndexOffset || 0);
+    // Add standing/raised props to render queue with category-aware baseline sorting
+    this.setting.props
+      .filter((prop) => prop.type !== 'rug')
+      .forEach((prop) => {
+        const pState = this.propStates.get(prop.id);
+        const runtimeProp = pState ? { ...prop, state: pState } : prop;
+        const propH = prop.height || 1;
 
-      renderQueue.push({
-        yOrder,
-        draw: () => TileRenderer.drawProp(ctx, runtimeProp, tileSize),
+        // Base depth offset:
+        // - Couches and chairs: 0.2 (sort near backrest so sitting characters are drawn in front)
+        // - Flat low tables / coffee tables: 0.35
+        // - Tall desks / counters: 0.75
+        let baseFactor = 0.75;
+        if (prop.type === 'sofa_leather' || prop.type === 'chair_office' || prop.type === 'chair_conference') {
+          baseFactor = 0.2;
+        } else if (prop.type === 'desk_wood' && prop.name?.toLowerCase().includes('coffee')) {
+          baseFactor = 0.35;
+        } else if (prop.type === 'trash_can' || prop.type === 'potted_plant') {
+          baseFactor = 0.7;
+        }
+
+        const yOrder = (prop.y + propH * baseFactor) * tileSize + (prop.zIndexOffset || 0);
+
+        renderQueue.push({
+          yOrder,
+          draw: () => TileRenderer.drawProp(ctx, runtimeProp, tileSize),
+        });
       });
-    });
 
-    // Add Characters to render queue
+    // Add Characters to render queue (sorted by feet baseline)
     this.characterStates.forEach((state) => {
       const char = this.charactersMap[state.id];
       if (!char) return;
-      const yOrder = state.y + 10;
+      const yOrder = state.y + 8;
 
       renderQueue.push({
         yOrder,

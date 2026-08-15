@@ -102,13 +102,16 @@ export const Header: React.FC<HeaderProps> = ({
             value={currentEpisodeTitle}
             onChange={(e) => onSelectEpisode(Number(e.target.value))}
             aria-label="Select Episode"
-            className="bg-transparent text-[11px] sm:text-xs text-slate-200 outline-none cursor-pointer font-medium w-full sm:max-w-[170px] md:max-w-[210px] truncate"
+            className="bg-transparent text-[11px] sm:text-xs text-slate-200 outline-none cursor-pointer font-medium w-full sm:max-w-[190px] md:max-w-[240px] truncate"
           >
-            {PRESET_EPISODES.map((ep, idx) => (
-              <option key={idx} value={idx} className="bg-[#131b26] text-white">
-                {ep.title}
-              </option>
-            ))}
+            {PRESET_EPISODES.map((ep, idx) => {
+              const showName = ALL_SETTINGS[ep.settingId]?.showTitle || ep.showId || 'Sitcom';
+              return (
+                <option key={idx} value={idx} className="bg-[#131b26] text-white">
+                  [{showName}] {ep.title}
+                </option>
+              );
+            })}
           </select>
         </div>
       </div>

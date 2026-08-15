@@ -16,7 +16,6 @@ export class TileRenderer {
         // Scranton office carpet: neutral grey with micro-weave
         ctx.fillStyle = '#838e99';
         ctx.fillRect(x, y, size, size);
-        // Subtle pixel noise texture
         ctx.fillStyle = '#78828d';
         for (let i = 0; i < size; i += 4) {
           for (let j = 0; j < size; j += 4) {
@@ -25,7 +24,6 @@ export class TileRenderer {
             }
           }
         }
-        // Subtle carpet seam grid
         ctx.strokeStyle = 'rgba(0, 0, 0, 0.06)';
         ctx.lineWidth = 1;
         ctx.strokeRect(x, y, size, size);
@@ -65,7 +63,7 @@ export class TileRenderer {
       }
 
       case 'floor_wood': {
-        // Michael's hardwood floorboards
+        // Warm hardwood floorboards with wood grain
         ctx.fillStyle = '#8f633a';
         ctx.fillRect(x, y, size, size);
         ctx.fillStyle = '#7a512c';
@@ -80,13 +78,11 @@ export class TileRenderer {
       }
 
       case 'wall_office_top': {
-        // Beige drywall office wall with wooden baseboard
+        // Drywall office wall with wooden baseboard
         ctx.fillStyle = '#d3cbbe';
         ctx.fillRect(x, y, size, size - 8);
-        // Wall shadow/trim
         ctx.fillStyle = '#b5ac9b';
         ctx.fillRect(x, y, size, 4);
-        // Baseboard
         ctx.fillStyle = '#5c4028';
         ctx.fillRect(x, y + size - 8, size, 8);
         ctx.fillStyle = '#3d2b1a';
@@ -102,17 +98,39 @@ export class TileRenderer {
         break;
       }
 
-      case 'wall_glass': {
-        // Glass wall partition (Michael's office / Conference room)
-        ctx.fillStyle = 'rgba(160, 215, 245, 0.35)';
+      case 'wall_brick': {
+        // Greenwich Village exposed red brick texture
+        ctx.fillStyle = '#991b1b';
         ctx.fillRect(x, y, size, size);
-        // Metal frames
+        // Brick mortar lines
+        ctx.fillStyle = '#7f1d1d';
+        ctx.fillRect(x, y + 7, size, 1.5);
+        ctx.fillRect(x, y + 15, size, 1.5);
+        ctx.fillRect(x, y + 23, size, 1.5);
+        ctx.fillRect(x, y + 31, size, 1.5);
+        // Vertical mortar joints
+        ctx.fillRect(x + 8, y, 1.5, 7);
+        ctx.fillRect(x + 24, y, 1.5, 7);
+        ctx.fillRect(x + 16, y + 8, 1.5, 7);
+        ctx.fillRect(x + 8, y + 16, 1.5, 7);
+        ctx.fillRect(x + 24, y + 16, 1.5, 7);
+        ctx.fillRect(x + 16, y + 24, 1.5, 7);
+        // Mortar highlight
+        ctx.fillStyle = '#d6d3d1';
+        ctx.fillRect(x, y + 8, size, 0.8);
+        ctx.fillRect(x, y + 24, size, 0.8);
+        break;
+      }
+
+      case 'wall_glass': {
+        // Glass wall partitions with metallic frame
+        ctx.fillStyle = 'rgba(186, 230, 253, 0.45)';
+        ctx.fillRect(x, y, size, size);
         ctx.fillStyle = '#374151';
         ctx.fillRect(x, y, size, 3);
         ctx.fillRect(x, y + size - 3, size, 3);
         ctx.fillRect(x, y, 3, size);
         ctx.fillRect(x + size - 3, y, 3, size);
-        // Glass sheen diagonal reflection
         ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
         ctx.beginPath();
         ctx.moveTo(x + 4, y + size - 6);
@@ -125,14 +143,13 @@ export class TileRenderer {
       }
 
       case 'window_blinds': {
-        // Iconic office window with Venetian blinds
-        ctx.fillStyle = '#7dd3fc'; // Sky
+        // Large Street Window with Venetian blinds
+        ctx.fillStyle = '#38bdf8';
         ctx.fillRect(x, y, size, size);
-        ctx.fillStyle = '#f1f5f9'; // Blinds slats
+        ctx.fillStyle = '#f8fafc';
         for (let i = 2; i < size; i += 4) {
           ctx.fillRect(x + 2, y + i, size - 4, 2);
         }
-        // Blinds frame & center cord
         ctx.fillStyle = '#334155';
         ctx.strokeRect(x + 1, y + 1, size - 2, size - 2);
         ctx.fillStyle = '#64748b';
@@ -145,7 +162,6 @@ export class TileRenderer {
         ctx.fillRect(x, y, size, size);
         ctx.fillStyle = '#5c3818';
         ctx.strokeRect(x + 2, y + 2, size - 4, size - 4);
-        // Brass doorknob
         ctx.fillStyle = '#fbbf24';
         ctx.fillRect(x + size - 7, y + size / 2, 4, 4);
         break;
@@ -156,288 +172,593 @@ export class TileRenderer {
         ctx.fillRect(x, y, size, size);
         ctx.fillStyle = '#475569';
         ctx.strokeRect(x + 2, y + 2, size - 4, size - 4);
-        // Silver door handle
         ctx.fillStyle = '#e2e8f0';
         ctx.fillRect(x + size - 6, y + size / 2 - 4, 3, 8);
         break;
-      }
-
-      default: {
-        ctx.fillStyle = '#838e99';
-        ctx.fillRect(x, y, size, size);
       }
     }
 
     ctx.restore();
   }
 
-  // Draw Props with handcrafted pixel detail
-  public static drawProp(
-    ctx: CanvasRenderingContext2D,
-    prop: PropInstance,
-    tileSize: number
-  ) {
+  // Draw Props & Interactive Objects with Rich Details
+  public static drawProp(ctx: CanvasRenderingContext2D, prop: PropInstance, tileSize: number) {
     const px = prop.x * tileSize;
     const py = prop.y * tileSize;
     const w = (prop.width || 1) * tileSize;
     const h = (prop.height || 1) * tileSize;
     const now = Date.now();
+    const propName = prop.name?.toLowerCase() || '';
 
     ctx.save();
 
     switch (prop.type) {
       case 'desk_wood': {
-        // Office desk with drawers, computer, and props
+        // Check if it's a coffee table vs work desk
+        if (propName.includes('coffee') || propName.includes('booth')) {
+          // Low wood coffee table with ceramic mugs / glasses
+          ctx.fillStyle = '#5c3a1e';
+          ctx.fillRect(px, py + 4, w, h - 4);
+          ctx.fillStyle = '#7a4e28';
+          ctx.fillRect(px + 2, py + 6, w - 4, h - 8);
+
+          // Big ceramic mugs / glasses on table
+          ctx.fillStyle = '#f59e0b';
+          ctx.fillRect(px + 8, py + 10, 6, 6);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(px + 8, py + 10, 6, 1);
+          // Steam puff
+          const steam = Math.sin(now / 220) * 1.5;
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+          ctx.fillRect(px + 10 + steam, py + 5, 2, 3);
+
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillRect(px + w - 16, py + 10, 6, 6);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(px + w - 16, py + 10, 6, 1);
+
+          // Coasters & Napkins
+          ctx.fillStyle = '#fed7aa';
+          ctx.fillRect(px + w / 2 - 5, py + 12, 10, 6);
+          break;
+        }
+
+        // Standard wood desk with monitor and post-its
         ctx.fillStyle = '#8c5e34';
         ctx.fillRect(px, py + 8, w, h - 8);
-        // Surface highlight
         ctx.fillStyle = '#a67242';
         ctx.fillRect(px + 2, py + 10, w - 4, 6);
-        // Desk shadow
-        ctx.fillStyle = '#5c3b1e';
-        ctx.fillRect(px, py + h - 4, w, 4);
 
-        // Computer Monitor with subtle pixel screen glow
+        // Computer Monitor
         ctx.fillStyle = '#1e293b';
         ctx.fillRect(px + w / 2 - 9, py + 2, 18, 12);
-        // Glowing monitor screen (animated subtle blue flicker)
         ctx.fillStyle = (now % 2000 > 1000) ? '#38bdf8' : '#0284c7';
         ctx.fillRect(px + w / 2 - 7, py + 4, 14, 8);
-        // Screen text lines
         ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
         ctx.fillRect(px + w / 2 - 5, py + 6, 8, 1);
         ctx.fillRect(px + w / 2 - 5, py + 8, 10, 1);
 
-        // Monitor stand
         ctx.fillStyle = '#475569';
         ctx.fillRect(px + w / 2 - 3, py + 14, 6, 3);
-
-        // Keyboard & Mouse
         ctx.fillStyle = '#0f172a';
         ctx.fillRect(px + w / 2 - 8, py + 18, 16, 4);
-        ctx.fillStyle = '#334155';
-        ctx.fillRect(px + w / 2 + 10, py + 18, 3, 4); // Mouse
 
-        // Papers, folders & colorful Post-It notes
-        ctx.fillStyle = '#f8fafc';
-        ctx.fillRect(px + 4, py + 14, 8, 9);
-        ctx.fillStyle = '#fbbf24'; // Yellow post-it
+        // Post-it notes
+        ctx.fillStyle = '#fbbf24';
         ctx.fillRect(px + w - 12, py + 14, 6, 6);
-        ctx.fillStyle = '#f43f5e'; // Pink post-it
+        ctx.fillStyle = '#f43f5e';
         ctx.fillRect(px + w - 14, py + 21, 5, 5);
         break;
       }
 
-      case 'desk_michael': {
-        // Michael Scott's Executive Mahogany Desk
-        ctx.fillStyle = '#4a2c11';
-        ctx.fillRect(px, py + 6, w, h - 6);
-        ctx.fillStyle = '#6b401b';
-        ctx.fillRect(px + 2, py + 8, w - 4, 6);
-
-        // Laptop / Monitor
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(px + 10, py + 2, 18, 12);
-        ctx.fillStyle = '#38bdf8';
-        ctx.fillRect(px + 12, py + 4, 14, 8);
-
-        // "World's Best Boss" Mug
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(px + w - 16, py + 16, 7, 7);
-        ctx.fillStyle = '#0284c7'; // Blue rim
-        ctx.fillRect(px + w - 16, py + 16, 7, 1);
-        ctx.fillStyle = '#e2e8f0'; // Handle
-        ctx.fillRect(px + w - 9, py + 18, 2, 4);
-
-        // Golden Dundie Award Statue!
-        ctx.fillStyle = '#d97706';
-        ctx.fillRect(px + w - 26, py + 12, 4, 8);
-        ctx.fillStyle = '#fbbf24';
-        ctx.fillRect(px + w - 25, py + 10, 2, 2); // Head
-        ctx.fillStyle = '#0f172a'; // Marble base
-        ctx.fillRect(px + w - 28, py + 20, 8, 4);
-
-        // Nameplate: "Michael Scott - Regional Manager"
-        ctx.fillStyle = '#f59e0b';
-        ctx.fillRect(px + 6, py + h - 8, 22, 4);
-        ctx.fillStyle = '#000000';
-        ctx.fillRect(px + 8, py + h - 7, 18, 1);
-
-        // Seyko Certificate on desk corner
-        ctx.fillStyle = '#fef3c7';
-        ctx.fillRect(px + 32, py + 12, 8, 6);
-        break;
-      }
-
-      case 'desk_reception': {
-        // L-shaped Reception Desk (Pam's desk)
-        ctx.fillStyle = '#8c5e34';
-        ctx.fillRect(px, py, w, h);
-        // Counter top ledge
-        ctx.fillStyle = '#a67242';
-        ctx.fillRect(px, py, w, 8);
-        ctx.fillRect(px + w - 10, py, 10, h);
-
-        // Reception multi-line telephone with blinking light
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(px + 8, py + 14, 10, 8);
-        ctx.fillStyle = now % 1000 > 500 ? '#ef4444' : '#7f1d1d';
-        ctx.fillRect(px + 9, py + 15, 2, 2);
-
-        // Reception Service Bell
-        ctx.fillStyle = '#fbbf24';
-        ctx.fillRect(px + w - 8, py + 16, 5, 4);
-
-        // Candy bowl with colorful jellybeans!
-        ctx.fillStyle = '#06b6d4';
-        ctx.fillRect(px + 22, py + 14, 7, 6);
-        ctx.fillStyle = '#ef4444';
-        ctx.fillRect(px + 23, py + 15, 2, 2);
-        ctx.fillStyle = '#eab308';
-        ctx.fillRect(px + 26, py + 15, 2, 2);
-        break;
-      }
-
-      case 'jello_stapler': {
-        // Jim's lime jello stapler prank
-        ctx.fillStyle = 'rgba(34, 197, 94, 0.85)';
-        ctx.fillRect(px, py, 20, 18);
-        ctx.strokeStyle = '#15803d';
-        ctx.strokeRect(px, py, 20, 18);
-
-        // Encased black stapler
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(px + 4, py + 6, 12, 6);
-        ctx.fillStyle = '#64748b';
-        ctx.fillRect(px + 4, py + 10, 4, 2);
-
-        // Jello shimmer
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
-        ctx.fillRect(px + 2, py + 2, 4, 2);
-        ctx.fillRect(px + 2, py + 4, 2, 4);
-        break;
-      }
-
-      case 'dundie_trophy': {
-        ctx.fillStyle = '#d97706';
-        ctx.fillRect(px + 4, py + 4, 8, 14);
-        ctx.fillStyle = '#fbbf24';
-        ctx.fillRect(px + 6, py + 2, 4, 4);
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(px + 2, py + 18, 12, 6);
-        ctx.fillStyle = '#f59e0b';
-        ctx.fillRect(px + 4, py + 20, 8, 2);
-        break;
-      }
-
-      case 'water_cooler': {
-        // Water cooler with blue water bottle
-        ctx.fillStyle = '#cbd5e1';
-        ctx.fillRect(px + 4, py + 12, 16, 20);
-        ctx.fillStyle = '#94a3b8';
-        ctx.fillRect(px + 6, py + 16, 12, 8); // Tap recess
-        // Red & Blue taps
-        ctx.fillStyle = '#ef4444';
-        ctx.fillRect(px + 8, py + 18, 2, 4);
-        ctx.fillStyle = '#3b82f6';
-        ctx.fillRect(px + 14, py + 18, 2, 4);
-
-        // Inverted Blue Jug
-        ctx.fillStyle = '#38bdf8';
-        ctx.fillRect(px + 6, py + 2, 12, 12);
-        ctx.fillStyle = '#bae6fd';
-        ctx.fillRect(px + 8, py + 4, 4, 8); // Water shine
-        break;
-      }
-
-      case 'vending_machine': {
-        // Breakroom snack vending machine
-        ctx.fillStyle = '#1e293b';
-        ctx.fillRect(px, py, w, h);
-        // Glass display
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(px + 4, py + 4, w - 8, h - 22);
-
-        // Candy bars & chip bags
-        const colors = ['#ef4444', '#f59e0b', '#10b981', '#f97316', '#a855f7'];
-        for (let row = 0; row < 3; row++) {
-          const sy = py + 8 + row * 10;
-          ctx.fillStyle = '#334155';
-          ctx.fillRect(px + 6, sy + 7, w - 12, 2);
-          for (let item = 0; item < 4; item++) {
-            ctx.fillStyle = colors[(row + item) % colors.length];
-            ctx.fillRect(px + 8 + item * 8, sy, 5, 6);
-          }
-        }
-
-        // Dispenser slot & glowing keypad
+      case 'desk_modern': {
+        // Tech Startup Workstation with dual widescreen monitors
         ctx.fillStyle = '#334155';
-        ctx.fillRect(px + 6, py + h - 16, w - 12, 10);
-        ctx.fillStyle = '#000000';
-        ctx.fillRect(px + 8, py + h - 14, w - 16, 6);
+        ctx.fillRect(px, py + 6, w, h - 6);
+        ctx.fillStyle = '#475569';
+        ctx.fillRect(px + 2, py + 8, w - 4, 4);
+
+        // Widescreen monitor with glowing code IDE
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(px + w / 2 - 16, py + 2, 32, 15);
+        ctx.fillStyle = '#0284c7';
+        ctx.fillRect(px + w / 2 - 14, py + 4, 28, 11);
+        // Code lines (green & amber syntax highlighting)
+        ctx.fillStyle = '#4ade80';
+        ctx.fillRect(px + w / 2 - 12, py + 6, 14, 1);
+        ctx.fillRect(px + w / 2 - 12, py + 8, 18, 1);
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillRect(px + w / 2 - 12, py + 10, 12, 1);
+
+        // Keyboard & Energy drink can
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(px + w / 2 - 8, py + 20, 16, 4);
         ctx.fillStyle = '#10b981';
-        ctx.fillRect(px + w - 12, py + h - 14, 2, 2); // Coin light
+        ctx.fillRect(px + w - 10, py + 14, 4, 8);
+        break;
+      }
+
+      case 'coffee_maker': {
+        // Italian Espresso Machine with steaming spouts
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillRect(px + 4, py + 4, w - 8, h - 8);
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fillRect(px + 6, py + 6, w - 12, 6);
+        ctx.fillStyle = '#0284c7';
+        ctx.fillRect(px + w / 2 - 2, py + 8, 4, 4);
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(px + w / 2 - 4, py + 16, 8, 3);
+
+        const steamBob = Math.sin(now / 200) * 2;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.fillRect(px + w / 2 - 2, py - 2 + steamBob, 4, 4);
         break;
       }
 
       case 'sofa_leather': {
-        // Brown leather couch
+        // Check Show-Specific Couch Theme
+        if (propName.includes('orange') || propName.includes('velvet')) {
+          // 1. Friends Iconic Orange Velvet Couch
+          ctx.fillStyle = '#c2410c'; // Base orange
+          ctx.fillRect(px, py + 2, w, h - 2);
+
+          // Plush orange velvet cushions
+          ctx.fillStyle = '#ea580c';
+          const cushW = (w - 12) / 3;
+          for (let i = 0; i < 3; i++) {
+            ctx.fillRect(px + 6 + i * cushW, py + 8, cushW - 2, h - 14);
+            // Tufted buttons
+            ctx.fillStyle = '#9a3412';
+            ctx.fillRect(px + 10 + i * cushW, py + 14, 2, 2);
+            ctx.fillRect(px + 18 + i * cushW, py + 14, 2, 2);
+            ctx.fillStyle = '#ea580c';
+          }
+
+          // Gold Fringe Tassels along bottom edge!
+          ctx.fillStyle = '#eab308';
+          for (let i = 4; i < w - 4; i += 4) {
+            ctx.fillRect(px + i, py + h - 4, 2, 4);
+          }
+
+          // Rounded velvet armrests
+          ctx.fillStyle = '#9a3412';
+          ctx.fillRect(px, py + 4, 6, h - 6);
+          ctx.fillRect(px + w - 6, py + 4, 6, h - 6);
+          ctx.fillStyle = '#ea580c';
+          ctx.fillRect(px + 1, py + 6, 4, h - 10);
+          ctx.fillRect(px + w - 5, py + 6, 4, h - 10);
+          break;
+        }
+
+        if (propName.includes('red') || propName.includes('booth')) {
+          // 2. HIMYM MacLaren's Red Leather Corner Booth
+          ctx.fillStyle = '#451a03'; // Mahogany wood border frame
+          ctx.fillRect(px, py, w, h);
+
+          // Deep Red Leather Cushions
+          ctx.fillStyle = '#991b1b';
+          ctx.fillRect(px + 4, py + 6, w - 8, h - 8);
+
+          // Tufted diamond buttons & brass studs
+          ctx.fillStyle = '#7f1d1d';
+          for (let row = 0; row < 2; row++) {
+            for (let col = 0; col < 6; col++) {
+              ctx.fillRect(px + 10 + col * 18, py + 10 + row * 16, 3, 3);
+              ctx.fillStyle = '#fbbf24'; // Brass button
+              ctx.fillRect(px + 11 + col * 18, py + 11 + row * 16, 1, 1);
+              ctx.fillStyle = '#7f1d1d';
+            }
+          }
+
+          // Crimson backrest ledge
+          ctx.fillStyle = '#dc2626';
+          ctx.fillRect(px + 4, py + 2, w - 8, 4);
+          break;
+        }
+
+        if (propName.includes('erlich') || propName.includes('kimono')) {
+          // 3. Silicon Valley Erlich's Living Room Couch
+          ctx.fillStyle = '#57534e';
+          ctx.fillRect(px, py, w, h);
+          ctx.fillStyle = '#78716c';
+          ctx.fillRect(px + 4, py + 6, w - 8, h - 8);
+
+          // Patterned Throw Pillows (Yellow & Blue)
+          ctx.fillStyle = '#ca8a04';
+          ctx.fillRect(px + 6, py + 8, 12, 12);
+          ctx.fillStyle = '#0284c7';
+          ctx.fillRect(px + w - 18, py + 8, 12, 12);
+          break;
+        }
+
+        // Default brown office leather sofa
         ctx.fillStyle = '#4a2c11';
         ctx.fillRect(px, py, w, h);
-        // Leather cushions
         ctx.fillStyle = '#6b401b';
         ctx.fillRect(px + 4, py + 6, w / 2 - 5, h - 8);
         ctx.fillRect(px + w / 2 + 1, py + 6, w / 2 - 5, h - 8);
-        // Backrest
-        ctx.fillStyle = '#3d240e';
-        ctx.fillRect(px, py, w, 6);
         break;
       }
 
-      case 'conference_table': {
-        // Large mahogany conference table
+      case 'coffee_bar': {
+        // Check Show-Specific Bar Counter
+        if (propName.includes('espresso') || propName.includes('pastry') || propName.includes('gunther')) {
+          // Central Perk Barista Counter with Pastry Glass Display
+          ctx.fillStyle = '#5c3a1e';
+          ctx.fillRect(px, py, w, h);
+          ctx.fillStyle = '#f8fafc'; // Marble counter slab
+          ctx.fillRect(px, py, w, 6);
+
+          // Glass Pastry Display Case
+          ctx.fillStyle = 'rgba(186, 230, 253, 0.6)';
+          ctx.fillRect(px + 8, py + 8, 36, 18);
+          ctx.strokeStyle = '#64748b';
+          ctx.strokeRect(px + 8, py + 8, 36, 18);
+          // Croissants & Muffins inside
+          ctx.fillStyle = '#d97706';
+          ctx.fillRect(px + 12, py + 18, 8, 5); // Croissant
+          ctx.fillStyle = '#3b82f6';
+          ctx.fillRect(px + 24, py + 16, 6, 7); // Blueberry muffin
+
+          // Tip jar with dollar bills
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+          ctx.fillRect(px + w - 24, py + 8, 8, 12);
+          ctx.fillStyle = '#10b981';
+          ctx.fillRect(px + w - 22, py + 12, 4, 6);
+
+          // Gunther's register
+          ctx.fillStyle = '#334155';
+          ctx.fillRect(px + w - 44, py + 8, 14, 12);
+          ctx.fillStyle = '#22c55e';
+          ctx.fillRect(px + w - 42, py + 10, 4, 3);
+          break;
+        }
+
+        if (propName.includes('maclaren') || propName.includes('bar counter')) {
+          // MacLaren's Irish Pub Bar with Brass Footrail & Beer Taps
+          ctx.fillStyle = '#3b1c0a'; // Dark Irish pub mahogany
+          ctx.fillRect(px, py, w, h);
+          ctx.fillStyle = '#5c2b0e'; // Countertop shine
+          ctx.fillRect(px, py + 2, w, 8);
+
+          // Shiny Brass Footrail
+          ctx.fillStyle = '#fbbf24';
+          ctx.fillRect(px + 4, py + h - 4, w - 8, 3);
+
+          // 3 Chrome Draft Beer Taps with handles
+          for (let i = 0; i < 3; i++) {
+            const tapX = px + 24 + i * 22;
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillRect(tapX, py - 4, 4, 12);
+            ctx.fillStyle = '#b45309'; // Wood tap handle
+            ctx.fillRect(tapX + 1, py - 10, 2, 6);
+          }
+
+          // Foaming Pint Glasses on bar napkins
+          ctx.fillStyle = '#fed7aa'; // Napkin
+          ctx.fillRect(px + w - 36, py + 6, 12, 10);
+          ctx.fillStyle = '#f59e0b'; // Amber beer
+          ctx.fillRect(px + w - 34, py + 6, 8, 10);
+          ctx.fillStyle = '#ffffff'; // White foam head
+          ctx.fillRect(px + w - 34, py + 4, 8, 3);
+          break;
+        }
+
+        // Default kitchen counter
         ctx.fillStyle = '#5c3a1e';
         ctx.fillRect(px, py, w, h);
-        ctx.fillStyle = '#7a4e2a';
-        ctx.fillRect(px + 3, py + 3, w - 6, h - 6);
-        // Yellow legal notepads and pens
-        for (let i = 0; i < 3; i++) {
-          const nx = px + 16 + i * 36;
-          ctx.fillStyle = '#fef08a';
-          ctx.fillRect(nx, py + 6, 10, 14);
-          ctx.fillStyle = '#0f172a';
-          ctx.fillRect(nx + 12, py + 6, 2, 12);
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillRect(px + 4, py + 4, 20, 14);
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(px + 8, py + 8, 12, 8);
+        break;
+      }
 
-          ctx.fillStyle = '#fef08a';
-          ctx.fillRect(nx, py + h - 20, 10, 14);
-          ctx.fillStyle = '#0f172a';
-          ctx.fillRect(nx + 12, py + h - 18, 2, 12);
+      case 'server_rack': {
+        // Anton DIY Server Rack with animated status LEDs
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(px, py, w, h);
+        ctx.strokeStyle = '#334155';
+        ctx.strokeRect(px, py, w, h);
+
+        // Server blades with blinking LEDs
+        for (let row = 0; row < 5; row++) {
+          const sy = py + 6 + row * 12;
+          ctx.fillStyle = '#1e293b';
+          ctx.fillRect(px + 4, sy, w - 8, 8);
+
+          // Blinking LED status lights
+          const ledIndex = (row + Math.floor(now / 150)) % 4;
+          ctx.fillStyle = ledIndex === 0 ? '#22c55e' : ledIndex === 1 ? '#06b6d4' : '#f59e0b';
+          ctx.fillRect(px + 8, sy + 3, 3, 3);
+          ctx.fillRect(px + 14, sy + 3, 3, 3);
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillRect(px + 20, sy + 3, 3, 3);
+
+          // Blade handles
+          ctx.fillStyle = '#64748b';
+          ctx.fillRect(px + w - 12, sy + 2, 4, 4);
         }
         break;
       }
 
-      case 'chair_office': {
-        // Swivel black office chair with wheels
-        ctx.fillStyle = '#0f172a';
+      case 'rug': {
+        // Ornate Persian / Oriental Rug under Central Perk / Pub
+        ctx.fillStyle = '#881337'; // Deep burgundy
+        ctx.fillRect(px, py, w, h);
+
+        // Ornate navy border
+        ctx.strokeStyle = '#1e3a8a';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(px + 4, py + 4, w - 8, h - 8);
+
+        // Gold center floral medallion
+        ctx.fillStyle = '#d97706';
         ctx.beginPath();
-        ctx.arc(px + w / 2, py + h / 2, 9, 0, Math.PI * 2);
+        ctx.ellipse(px + w / 2, py + h / 2, w / 4, h / 4, 0, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = '#334155';
-        ctx.fillRect(px + w / 2 - 7, py + 2, 14, 5); // Backrest
+
+        // White / cream fringe edges
+        ctx.fillStyle = '#fef3c7';
+        for (let i = 2; i < w - 2; i += 3) {
+          ctx.fillRect(px + i, py - 2, 1.5, 3);
+          ctx.fillRect(px + i, py + h - 1, 1.5, 3);
+        }
         break;
       }
 
-      case 'chair_conference': {
-        // Blue conference chair
-        ctx.fillStyle = '#1e3a8a';
-        ctx.fillRect(px + 4, py + 4, w - 8, h - 8);
-        ctx.fillStyle = '#172554';
-        ctx.fillRect(px + 4, py + 2, w - 8, 4);
+      case 'french_horn': {
+        // The Blue French Horn Wall Trophy Mount
+        ctx.fillStyle = '#5c3a1e'; // Wood plaque
+        ctx.fillRect(px, py, w, h);
+        ctx.fillStyle = '#fbbf24'; // Brass plate
+        ctx.fillRect(px + 2, py + h - 4, w - 4, 3);
+
+        // Metallic Blue French Horn Coils & Bell
+        ctx.fillStyle = '#1d4ed8';
+        ctx.beginPath();
+        ctx.arc(px + w / 2 - 2, py + h / 2 - 2, 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#3b82f6'; // Flared horn bell
+        ctx.beginPath();
+        ctx.moveTo(px + w - 6, py + 4);
+        ctx.lineTo(px + w, py + h / 2 + 2);
+        ctx.lineTo(px + w - 4, py + h / 2 + 6);
+        ctx.closePath();
+        ctx.fill();
+        break;
+      }
+
+      case 'umbrella_stand': {
+        // Antique Brass Stand with The Yellow Umbrella
+        ctx.fillStyle = '#b45309'; // Brass stand
+        ctx.fillRect(px + 4, py + 8, w - 8, h - 8);
+        ctx.fillStyle = '#fbbf24';
+        ctx.strokeRect(px + 4, py + 8, w - 8, h - 8);
+
+        // The Bright Yellow Umbrella
+        ctx.fillStyle = '#facc15';
+        ctx.fillRect(px + 8, py - 4, 6, 16);
+        // Wooden curved handle
+        ctx.fillStyle = '#78350f';
+        ctx.fillRect(px + 8, py - 8, 3, 5);
+        ctx.fillRect(px + 5, py - 10, 6, 3);
+        break;
+      }
+
+      case 'jukebox': {
+        // Vintage Rock Jukebox with Glowing Neon Arches
+        ctx.fillStyle = '#451a03';
+        ctx.fillRect(px, py, w, h);
+
+        // Glowing Rainbow Neon Arch
+        const neonColors = ['#ef4444', '#facc15', '#22c55e', '#38bdf8', '#ec4899'];
+        const neonCol = neonColors[Math.floor(now / 200) % neonColors.length];
+        ctx.strokeStyle = neonCol;
+        ctx.lineWidth = 3;
+        ctx.strokeRect(px + 4, py + 4, w - 8, h - 12);
+
+        // Record selection window
+        ctx.fillStyle = '#fef08a';
+        ctx.fillRect(px + 8, py + 10, w - 16, 12);
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(px + 12, py + 14, 8, 4);
+        break;
+      }
+
+      case 'neon_sign': {
+        // Glowing Neon Wall Sign
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(px, py, w, h);
+        ctx.strokeStyle = '#22c55e';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(px, py, w, h);
+        ctx.fillStyle = '#4ade80';
+        ctx.font = 'bold 9px monospace';
+        ctx.fillText(prop.name || 'NEON', px + 4, py + h / 2 + 3);
+        break;
+      }
+
+      case 'swords_crossed': {
+        // Ted & Marshall's Apartment Crossed Broadswords Mount!
+        ctx.fillStyle = '#7f1d1d'; // Crimson velvet shield
+        ctx.beginPath();
+        ctx.moveTo(px + w / 2, py + 2);
+        ctx.lineTo(px + w - 4, py + 8);
+        ctx.lineTo(px + w - 6, py + h - 6);
+        ctx.lineTo(px + w / 2, py + h - 2);
+        ctx.lineTo(px + 6, py + h - 6);
+        ctx.lineTo(px + 4, py + 8);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#fbbf24'; // Gold trim
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // Diagonal Sword 1 (\)
+        ctx.strokeStyle = '#f1f5f9';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(px + 6, py + 6);
+        ctx.lineTo(px + w - 6, py + h - 6);
+        ctx.stroke();
+        // Crossguard & Pommel 1
+        ctx.fillStyle = '#d97706';
+        ctx.fillRect(px + 4, py + 9, 8, 3);
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillRect(px + 3, py + 3, 4, 4);
+
+        // Diagonal Sword 2 (/)
+        ctx.strokeStyle = '#f1f5f9';
+        ctx.beginPath();
+        ctx.moveTo(px + w - 6, py + 6);
+        ctx.lineTo(px + 6, py + h - 6);
+        ctx.stroke();
+        // Crossguard & Pommel 2
+        ctx.fillStyle = '#d97706';
+        ctx.fillRect(px + w - 12, py + 9, 8, 3);
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillRect(px + w - 7, py + 3, 4, 4);
+        break;
+      }
+
+      case 'dartboard': {
+        // Classic Cork Dartboard with concentric scoring rings
+        ctx.fillStyle = '#1c1917'; // Outer backboard
+        ctx.beginPath();
+        ctx.arc(px + w / 2, py + h / 2, Math.min(w, h) / 2 - 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Green & Red Double Rings
+        ctx.strokeStyle = '#15803d';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(px + w / 2, py + h / 2, Math.min(w, h) / 2 - 6, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.strokeStyle = '#dc2626';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(px + w / 2, py + h / 2, Math.min(w, h) / 2 - 10, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Center Red Bullseye
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.arc(px + w / 2, py + h / 2, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 3 Darts sticking in board
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillRect(px + w / 2 + 1, py + h / 2 - 4, 6, 1.5);
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(px + w / 2 - 5, py + h / 2 + 2, 5, 1.5);
+        break;
+      }
+
+      case 'high_top_table': {
+        // Round High-Top Pub Table with Candle Lamp & Beers
+        ctx.fillStyle = '#3b1c0a'; // Pedestal foot
+        ctx.fillRect(px + w / 2 - 3, py + h - 4, 6, 4);
+        ctx.fillStyle = '#1e293b'; // Pole
+        ctx.fillRect(px + w / 2 - 1.5, py + 8, 3, h - 12);
+
+        // Round Mahogany Tabletop
+        ctx.fillStyle = '#5c2b0e';
+        ctx.beginPath();
+        ctx.ellipse(px + w / 2, py + 8, w / 2 - 2, 6, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#271206';
+        ctx.stroke();
+
+        // Candle Lantern with flickering warm flame
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(px + w / 2 - 2, py + 2, 4, 5);
+        const candleFlicker = (Math.sin(now / 120) + 1) * 0.5;
+        ctx.fillStyle = candleFlicker > 0.4 ? '#f59e0b' : '#fbbf24';
+        ctx.fillRect(px + w / 2 - 1, py, 2, 3);
+        break;
+      }
+
+      case 'liquor_shelf': {
+        // Multi-Tiered Mirrored Liquor Shelves behind Bar
+        ctx.fillStyle = '#1e293b'; // Dark background
+        ctx.fillRect(px, py, w, h);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.15)'; // Mirror sheen
+        ctx.fillRect(px + 2, py + 2, w - 4, h - 4);
+
+        // 3 Glass Shelves with illuminated bottles
+        const bottleColors = ['#b45309', '#38bdf8', '#10b981', '#ef4444', '#ca8a04', '#ec4899', '#facc15'];
+        for (let shelf = 0; shelf < 3; shelf++) {
+          const sy = py + 6 + shelf * 12;
+          ctx.fillStyle = '#94a3b8'; // Glass shelf line
+          ctx.fillRect(px + 4, sy + 8, w - 8, 2);
+
+          // Bottles on shelf
+          for (let b = 0; b < 6; b++) {
+            const bx = px + 6 + b * 9;
+            ctx.fillStyle = bottleColors[(shelf * 2 + b) % bottleColors.length];
+            ctx.fillRect(bx, sy, 5, 8);
+            ctx.fillStyle = '#ffffff'; // Cork / neck
+            ctx.fillRect(bx + 1.5, sy - 2, 2, 2);
+          }
+        }
+        break;
+      }
+
+      case 'pub_fireplace': {
+        // MacLaren's / NYC Apartment Brick Fireplace
+        ctx.fillStyle = '#7f1d1d'; // Brick hearth
+        ctx.fillRect(px, py, w, h);
+        ctx.fillStyle = '#451a03'; // Heavy wood mantel
+        ctx.fillRect(px, py, w, 6);
+
+        // Cast-Iron Firebox
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(px + 6, py + 8, w - 12, h - 8);
+
+        // Glowing Embers & Animated Fire Flames
+        const flameBob = Math.sin(now / 150) * 2;
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(px + 10, py + h - 8, w - 20, 6);
+        ctx.fillStyle = '#f97316';
+        ctx.beginPath();
+        ctx.arc(px + w / 2 + flameBob, py + h - 6, 7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#fbbf24';
+        ctx.beginPath();
+        ctx.arc(px + w / 2 - flameBob, py + h - 4, 4, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      }
+
+      case 'framed_art': {
+        // Gold Framed Art / Ducky Tie Shadowbox
+        ctx.fillStyle = '#b45309'; // Gold frame
+        ctx.fillRect(px, py, w, h);
+        ctx.fillStyle = '#1e1b4b'; // Navy matting
+        ctx.fillRect(px + 2, py + 2, w - 4, h - 4);
+
+        if (propName.includes('ducky') || propName.includes('tie')) {
+          // Barney's Ducky Tie!
+          ctx.fillStyle = '#38bdf8'; // Blue tie body
+          ctx.fillRect(px + w / 2 - 2, py + 4, 4, h - 7);
+          ctx.fillStyle = '#facc15'; // Little Yellow Ducks!
+          ctx.fillRect(px + w / 2 - 1, py + 6, 2, 2);
+          ctx.fillRect(px + w / 2 - 1, py + 10, 2, 2);
+        } else {
+          // NYC Skyline sketch
+          ctx.fillStyle = '#e2e8f0';
+          ctx.fillRect(px + 4, py + 4, w - 8, h - 8);
+          ctx.fillStyle = '#334155';
+          ctx.fillRect(px + 6, py + 8, 4, 10);
+          ctx.fillRect(px + 12, py + 5, 5, 13);
+          ctx.fillRect(px + 19, py + 10, 4, 8);
+        }
         break;
       }
 
       case 'whiteboard': {
-        // Conference room whiteboard with colorful marker scribbles
+        // Scrum board with sprint burndown chart
         ctx.fillStyle = '#e2e8f0';
         ctx.fillRect(px, py, w, h);
         ctx.strokeStyle = '#94a3b8';
@@ -454,19 +775,17 @@ export class TileRenderer {
         ctx.lineTo(px + 40, py + 18);
         ctx.lineTo(px + 56, py + 7);
         ctx.stroke();
-        // Green pie chart
-        ctx.fillStyle = '#10b981';
-        ctx.beginPath();
-        ctx.arc(px + w - 18, py + 14, 7, 0, Math.PI * 2);
-        ctx.fill();
+        // Colorful Post-it notes
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillRect(px + w - 24, py + 6, 8, 8);
+        ctx.fillStyle = '#ec4899';
+        ctx.fillRect(px + w - 14, py + 6, 8, 8);
         break;
       }
 
       case 'potted_plant': {
-        // Terracotta pot with bushy leaves
         ctx.fillStyle = '#c2410c';
         ctx.fillRect(px + 6, py + h - 12, w - 12, 12);
-        // Green leaves
         ctx.fillStyle = '#15803d';
         ctx.beginPath();
         ctx.arc(px + w / 2, py + 10, 11, 0, Math.PI * 2);
@@ -479,84 +798,61 @@ export class TileRenderer {
         break;
       }
 
-      case 'filing_cabinet': {
-        // Grey metal 4-drawer filing cabinet
-        ctx.fillStyle = '#64748b';
-        ctx.fillRect(px, py, w, h);
-        for (let i = 0; i < 3; i++) {
-          const dy = py + 4 + i * 10;
-          ctx.strokeStyle = '#334155';
-          ctx.strokeRect(px + 2, dy, w - 4, 8);
-          ctx.fillStyle = '#cbd5e1';
-          ctx.fillRect(px + w / 2 - 3, dy + 3, 6, 2); // Handle
-        }
+      case 'chair_office': {
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.arc(px + w / 2, py + h / 2, 9, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(px + w / 2 - 7, py + 2, 14, 5);
         break;
       }
 
-      case 'photocopier': {
-        // Big office Xerox copier
-        ctx.fillStyle = '#e2e8f0';
-        ctx.fillRect(px, py, w, h);
-        ctx.fillStyle = '#1e293b';
-        ctx.fillRect(px + 4, py + 4, w - 14, 12); // Glass scanner bed
-        ctx.fillStyle = '#475569';
-        ctx.fillRect(px + w - 10, py + 4, 6, 12); // Control panel
-        ctx.fillStyle = '#22c55e';
-        ctx.fillRect(px + w - 8, py + 6, 2, 2); // Green copy button
-        // Paper exit tray
-        ctx.fillStyle = '#cbd5e1';
-        ctx.fillRect(px - 4, py + 14, 6, 10);
+      case 'chair_conference': {
+        ctx.fillStyle = '#1e3a8a';
+        ctx.fillRect(px + 4, py + 4, w - 8, h - 8);
+        ctx.fillStyle = '#172554';
+        ctx.fillRect(px + 4, py + 2, w - 8, 4);
         break;
       }
 
       case 'trash_can': {
-        if (prop.state?.ignited) {
-          // Animated Fire!
-          ctx.fillStyle = '#ef4444';
-          ctx.fillRect(px, py + 10, w, h - 10);
-          // Flames flickering
-          const flameOffset = Math.sin(now / 100) * 2;
-          ctx.fillStyle = '#f97316';
-          ctx.beginPath();
-          ctx.arc(px + w / 2 + flameOffset, py + 4, 9, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = '#fbbf24';
-          ctx.beginPath();
-          ctx.arc(px + w / 2 - flameOffset, py + 6, 6, 0, Math.PI * 2);
-          ctx.fill();
-          // Smoke puffs
-          ctx.fillStyle = 'rgba(148, 163, 184, 0.7)';
-          ctx.beginPath();
-          ctx.arc(px + w / 2 - 2, py - 6 + flameOffset, 7, 0, Math.PI * 2);
-          ctx.arc(px + w / 2 + 4, py - 12, 9, 0, Math.PI * 2);
-          ctx.fill();
-        } else {
-          ctx.fillStyle = '#94a3b8';
-          ctx.fillRect(px + 4, py + 6, w - 8, h - 6);
-          ctx.fillStyle = '#64748b';
-          ctx.fillRect(px + 2, py + 4, w - 4, 3);
-        }
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillRect(px + 4, py + 6, w - 8, h - 6);
+        ctx.fillStyle = '#64748b';
+        ctx.fillRect(px + 2, py + 4, w - 4, 3);
         break;
       }
 
-      case 'coffee_bar': {
-        // Kitchen counter & coffee maker with steam!
-        ctx.fillStyle = '#5c3a1e';
-        ctx.fillRect(px, py, w, h);
-        ctx.fillStyle = '#94a3b8';
-        ctx.fillRect(px + 4, py + 4, 20, 14); // Coffee machine
+      case 'dundie_trophy': {
+        ctx.fillStyle = '#d97706';
+        ctx.fillRect(px + 4, py + 4, 8, 14);
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillRect(px + 6, py + 2, 4, 4);
         ctx.fillStyle = '#0f172a';
-        ctx.fillRect(px + 8, py + 8, 12, 8); // Glass carafe (dark coffee)
-        // Steam puff
-        const steam = Math.sin(now / 200) * 2;
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-        ctx.fillRect(px + 13 + steam, py - 3, 2, 4);
+        ctx.fillRect(px + 2, py + 18, 12, 6);
+        break;
+      }
 
-        // Mugs on counter
-        ctx.fillStyle = '#3b82f6';
-        ctx.fillRect(px + 28, py + 8, 6, 6);
-        ctx.fillStyle = '#ef4444';
-        ctx.fillRect(px + 36, py + 8, 6, 6);
+      case 'vending_machine': {
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(px, py, w, h);
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(px + 4, py + 4, w - 8, h - 22);
+        const colors = ['#ef4444', '#f59e0b', '#10b981', '#f97316', '#a855f7'];
+        for (let row = 0; row < 3; row++) {
+          const sy = py + 8 + row * 10;
+          ctx.fillStyle = '#334155';
+          ctx.fillRect(px + 6, sy + 7, w - 12, 2);
+          for (let item = 0; item < 4; item++) {
+            ctx.fillStyle = colors[(row + item) % colors.length];
+            ctx.fillRect(px + 8 + item * 8, sy, 5, 6);
+          }
+        }
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(px + 6, py + h - 16, w - 12, 10);
+        ctx.fillStyle = '#10b981';
+        ctx.fillRect(px + w - 12, py + h - 14, 2, 2);
         break;
       }
 

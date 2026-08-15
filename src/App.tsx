@@ -20,7 +20,13 @@ export function App() {
 
   // Characters for active show
   const currentShowCharacters = useMemo(() => {
-    const showId = settingId === 'hacker_hostel' ? 'silicon_valley' : settingId === 'central_coffee' ? 'friends' : 'the_office';
+    const showIdMap: Record<string, string> = {
+      dunder_mifflin_scranton: 'the_office',
+      central_coffee: 'friends',
+      hacker_hostel: 'silicon_valley',
+      maclarens_pub: 'himym',
+    };
+    const showId = showIdMap[settingId] || 'the_office';
     return getCharactersForShow(showId);
   }, [settingId]);
 
@@ -122,17 +128,28 @@ export function App() {
     setSettingId(id);
     const newSetting = ALL_SETTINGS[id];
     if (newSetting) {
-      // If we switched setting, pick compatible episode or adapt script
-      const showId = id === 'hacker_hostel' ? 'silicon_valley' : id === 'central_coffee' ? 'friends' : 'the_office';
-      const showChars = getCharactersForShow(showId);
-      // Auto adapt current script or create starter
-      const adaptedScript: SitcomScript = {
-        ...activeScript,
-        settingId: id,
-        showId: showId,
-        characters: showChars.slice(0, 4).map((c) => c.id),
+      const showIdMap: Record<string, string> = {
+        dunder_mifflin_scranton: 'the_office',
+        central_coffee: 'friends',
+        hacker_hostel: 'silicon_valley',
+        maclarens_pub: 'himym',
       };
-      setActiveScript(adaptedScript);
+      const showId = showIdMap[id] || 'the_office';
+      const matchingEp = PRESET_EPISODES.find((ep) => ep.settingId === id || ep.showId === showId);
+      if (matchingEp) {
+        const epIdx = PRESET_EPISODES.indexOf(matchingEp);
+        if (epIdx >= 0) setCurrentEpisodeIndex(epIdx);
+        setActiveScript(matchingEp);
+      } else {
+        const showChars = getCharactersForShow(showId);
+        const adaptedScript: SitcomScript = {
+          ...activeScript,
+          settingId: id,
+          showId: showId,
+          characters: showChars.map((c) => c.id),
+        };
+        setActiveScript(adaptedScript);
+      }
     }
   };
 

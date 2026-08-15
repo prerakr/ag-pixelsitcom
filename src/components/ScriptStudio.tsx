@@ -28,13 +28,36 @@ interface ScriptStudioProps {
   onLoadScript: (script: SitcomScript) => void;
 }
 
-const INSPIRATION_IDEAS = [
-  'Michael brings a karaoke machine and forces everyone to audition for The Scrantones.',
-  'Dwight declares Schrute Farms sovereignty over the conference room and charges tolls.',
-  'Jim installs a motion sensor prank under Dwight’s chair that plays airhorns.',
-  'Kevin accidentally invests the entire branch budget into an artisan pretzel truck.',
-  'Angela brings five new rescue cats into accounting, triggering a full bullpen allergy crisis.',
-];
+const INSPIRATION_MAP: Record<string, string[]> = {
+  the_office: [
+    'Michael brings a karaoke machine and forces everyone to audition for The Scrantones.',
+    'Dwight declares Schrute Farms sovereignty over the conference room and charges tolls.',
+    'Jim installs a motion sensor prank under Dwight’s chair that plays airhorns.',
+    'Kevin accidentally invests the entire branch budget into an artisan pretzel truck.',
+    'Angela brings five new rescue cats into accounting, triggering a full bullpen allergy crisis.',
+  ],
+  friends: [
+    'Ross claims he achieved Level 5 Unagi and challenges Joey and Chandler to a surprise ninja duel.',
+    'Monica discovers a microscopic coffee stain on the orange couch and initiates DEFCON 1 cleaning.',
+    'Joey auditions for a high-concept commercial where he must eat 12 meatball subs in one take.',
+    'Phoebe writes a 14-verse acoustic ballad about Gunther’s mysterious hair bleached by the sun.',
+    'Chandler tries to prove his job is real by presenting statistical charts to Rachel.',
+  ],
+  silicon_valley: [
+    'Jian-Yang launches SeeFood 2.0 which detects whether Dinesh’s chain is fake gold.',
+    'Gilfoyle hacks the smart fridge to mine crypto whenever Erlich mentions Aviato.',
+    'Richard stresses over tabs vs spaces and rewrites the entire middle-out loop during 3 AM panic.',
+    'Big Head accidentally buys a majority stake in a company that sells organic air.',
+    'Jared pledges absolute allegiance to Richard by refusing to sleep until compression reaches 6.0.',
+  ],
+  himym: [
+    'Barney attempts The Scuba Diver play at the bar booth while Marshall prepares a Slap Bet sting.',
+    'Ted buys another pair of Red Cowboy Boots and claims they provide acoustic clarity for blueprints.',
+    'Robin receives a platinum cassette tape containing unreleased Robin Sparkles mall demos.',
+    'Lily applies Aldrin Justice to Barney by confiscating his favorite silk tie until he tells the truth.',
+    'Marshall searches MacLaren’s basement for evidence of the Loch Ness Monster.',
+  ],
+};
 
 export const ScriptStudio: React.FC<ScriptStudioProps> = ({
   isOpen,
@@ -47,10 +70,18 @@ export const ScriptStudio: React.FC<ScriptStudioProps> = ({
   // First tab is always Master Reusable Prompt
   const [activeTab, setActiveTab] = useState<'prompt' | 'editor'>('prompt');
 
+  const showKey = currentSetting.id === 'hacker_hostel'
+    ? 'silicon_valley'
+    : currentSetting.id === 'central_coffee'
+    ? 'friends'
+    : currentSetting.id === 'maclarens_pub'
+    ? 'himym'
+    : 'the_office';
+
+  const inspirationList = INSPIRATION_MAP[showKey] || INSPIRATION_MAP.the_office;
+
   // Prompt Builder State
-  const [userIdea, setUserIdea] = useState(
-    'Michael brings a karaoke machine to the office and forces everyone to audition for The Scrantones.'
-  );
+  const [userIdea, setUserIdea] = useState(() => inspirationList[0]);
   const [copied, setCopied] = useState(false);
 
   // Editor State
@@ -221,7 +252,7 @@ export const ScriptStudio: React.FC<ScriptStudioProps> = ({
               {/* Quick Inspiration Chips */}
               <div className="flex flex-wrap items-center gap-1.5 mt-2">
                 <span className="text-[10px] font-mono text-slate-400">Try Ideas:</span>
-                {INSPIRATION_IDEAS.map((idea, idx) => (
+                {inspirationList.map((idea, idx) => (
                   <button
                     key={idx}
                     onClick={() => setUserIdea(idea)}
