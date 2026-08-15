@@ -6,14 +6,21 @@ export class LightingEngine {
   public targetTime: TimeOfDay = 'day';
   public transitionProgress: number = 1.0;
 
-  public setTimeOfDay(time: TimeOfDay) {
-    this.currentTime = time;
+  public setTimeOfDay(time: TimeOfDay, instant = false) {
+    if (instant) {
+      this.currentTime = time;
+      this.targetTime = time;
+      this.transitionProgress = 1.0;
+      return;
+    }
+    if (this.currentTime === time && this.targetTime === time) return;
     this.targetTime = time;
+    this.transitionProgress = 0.0;
   }
 
   public update(dt: number) {
     if (this.currentTime !== this.targetTime) {
-      this.transitionProgress += dt * 1.5;
+      this.transitionProgress += dt * 1.25;
       if (this.transitionProgress >= 1.0) {
         this.currentTime = this.targetTime;
         this.transitionProgress = 1.0;
@@ -21,25 +28,25 @@ export class LightingEngine {
     }
   }
 
-  // Render ambient lighting overlay and light cones
-  public drawLighting(
+  private renderLightingMode(
     ctx: CanvasRenderingContext2D,
+    mode: TimeOfDay,
     setting: SettingDefinition,
     worldW: number,
-    worldH: number
+    worldH: number,
+    now: number
   ) {
-    const now = Date.now();
-    ctx.save();
-
-    switch (this.currentTime) {
+    switch (mode) {
       case 'day': {
-        // Subtle, elegant daylight gradient from west windows
-        const windowGrad = ctx.createLinearGradient(0, 0, 240, 180);
-        windowGrad.addColorStop(0, 'rgba(254, 240, 138, 0.05)');
-        windowGrad.addColorStop(0.5, 'rgba(254, 240, 138, 0.018)');
+        // Subtle daylight gradient from west windows, responsive to world size
+        const gradW = Math.max(280, Math.min(worldW * 0.4, 480));
+        const gradH = Math.max(220, Math.min(worldH * 0.4, 360));
+        const windowGrad = ctx.createLinearGradient(0, 0, gradW * 0.85, gradH * 0.75);
+        windowGrad.addColorStop(0, 'rgba(254, 240, 138, 0.06)');
+        windowGrad.addColorStop(0.5, 'rgba(254, 240, 138, 0.02)');
         windowGrad.addColorStop(1, 'rgba(254, 240, 138, 0)');
         ctx.fillStyle = windowGrad;
-        ctx.fillRect(0, 0, 280, 240);
+        ctx.fillRect(0, 0, gradW, gradH);
         break;
       }
 
@@ -50,7 +57,8 @@ export class LightingEngine {
 
         // Delicate, soft sunlight slats through blinds
         ctx.fillStyle = 'rgba(251, 191, 36, 0.055)';
-        for (let i = 0; i < 7; i++) {
+        const slatCount = Math.max(7, Math.floor(worldH / 45));
+        for (let i = 0; i < slatCount; i++) {
           const sy = 24 + i * 40;
           ctx.beginPath();
           ctx.moveTo(0, sy);
@@ -64,7 +72,7 @@ export class LightingEngine {
       }
 
       case 'night': {
-        // Scranton Overtime Night - Soft, comfortable late-night tint (not pitch black!)
+        // Scranton Overtime Night - Soft, comfortable late-night tint
         ctx.fillStyle = 'rgba(15, 23, 42, 0.32)';
         ctx.fillRect(0, 0, worldW, worldH);
 
@@ -124,8 +132,41 @@ export class LightingEngine {
         break;
       }
     }
+  }
 
-    ctx.restore();
+  // Render ambient lighting overlay and light cones with smooth crossfade support
+  public drawLighting(
+    ctx: CanvasRenderingContext2D,
+    setting: SettingDefinition,
+    worldW: number,
+    worldH: number,
+    gameTime?: number
+  ) {
+    const now = gameTime !== undefined ? gameTime : Date.now();
+
+    if (this.currentTime === this.targetTime || this.transitionProgress >= 1.0) {
+      ctx.save();
+      this.renderLightingMode(ctx, this.currentTime, setting, worldW, worldH, now);
+      ctx.restore();
+    } else {
+      // Cross-fade between current and target lighting moods
+      const outAlpha = 1.0 - this.transitionProgress;
+      const inAlpha = this.transitionProgress;
+
+      if (outAlpha > 0.01) {
+        ctx.save();
+        ctx.globalAlpha = outAlpha;
+        this.renderLightingMode(ctx, this.currentTime, setting, worldW, worldH, now);
+        ctx.restore();
+      }
+
+      if (inAlpha > 0.01) {
+        ctx.save();
+        ctx.globalAlpha = inAlpha;
+        this.renderLightingMode(ctx, this.targetTime, setting, worldW, worldH, now);
+        ctx.restore();
+      }
+    }
   }
 }
 

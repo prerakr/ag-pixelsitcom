@@ -12,3 +12,14 @@ export const ALL_SETTINGS: Record<string, SettingDefinition> = {
 };
 
 export const DEFAULT_SETTING_ID = 'dunder_mifflin_scranton';
+
+export const SETTING_TO_SHOW_MAP: Record<string, string> = {
+  dunder_mifflin_scranton: 'the_office',
+  central_coffee: 'friends',
+  hacker_hostel: 'silicon_valley',
+  maclarens_pub: 'himym',
+};
+
+export function getShowIdForSetting(settingId: string): string {
+  return SETTING_TO_SHOW_MAP[settingId] || 'the_office';
+}

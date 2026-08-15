@@ -10,7 +10,6 @@ import {
   Lightbulb,
   FileCode,
   AlertCircle,
-  Tv,
 } from 'lucide-react';
 import { SitcomScript } from '../types/script';
 import { SettingDefinition } from '../types/environment';
@@ -18,6 +17,7 @@ import { CharacterDefinition } from '../types/character';
 import { buildSitcomPrompt } from '../ai/promptTemplates';
 import { parseAndValidateScript } from '../ai/scriptValidator';
 import { PRESET_EPISODES } from '../data/episodes';
+import { getShowIdForSetting } from '../data/settings';
 
 interface ScriptStudioProps {
   isOpen: boolean;
@@ -70,14 +70,7 @@ export const ScriptStudio: React.FC<ScriptStudioProps> = ({
   // First tab is always Master Reusable Prompt
   const [activeTab, setActiveTab] = useState<'prompt' | 'editor'>('prompt');
 
-  const showKey = currentSetting.id === 'hacker_hostel'
-    ? 'silicon_valley'
-    : currentSetting.id === 'central_coffee'
-    ? 'friends'
-    : currentSetting.id === 'maclarens_pub'
-    ? 'himym'
-    : 'the_office';
-
+  const showKey = getShowIdForSetting(currentSetting.id);
   const inspirationList = INSPIRATION_MAP[showKey] || INSPIRATION_MAP.the_office;
 
   // Prompt Builder State

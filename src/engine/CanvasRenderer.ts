@@ -51,6 +51,7 @@ export class VisualizerEngine {
   public beatTimer: number = 0;
   public beatDuration: number = 3000;
   public activeTalkingHead: TalkingHeadBeat | null = null;
+  public gameTime: number = 0;
 
   // Camera tracking mode: 'auto' | 'free'
   public cameraMode: 'auto' | 'free' = 'auto';
@@ -171,9 +172,9 @@ export class VisualizerEngine {
     this.initCharacters();
 
     if (script.scenes[0]?.timeOfDay) {
-      lightingEngine.setTimeOfDay(script.scenes[0].timeOfDay);
+      lightingEngine.setTimeOfDay(script.scenes[0].timeOfDay, true);
     } else {
-      lightingEngine.setTimeOfDay('day');
+      lightingEngine.setTimeOfDay('day', true);
     }
 
     if (this.callbacks.onTalkingHead) {
@@ -528,9 +529,14 @@ export class VisualizerEngine {
 
       case 'group_action': {
         const grp = beat as GroupActionBeat;
+        let maxDur = 2500;
         grp.actions.forEach((subAction) => {
-          if (subAction.type === 'movement') this.startCharacterMovement(subAction);
-          if (subAction.type === 'emote') {
+          if ('durationMs' in subAction && subAction.durationMs && subAction.durationMs > maxDur) {
+            maxDur = subAction.durationMs;
+          }
+          if (subAction.type === 'movement') {
+            this.startCharacterMovement(subAction);
+          } else if (subAction.type === 'emote') {
             const st = this.characterStates.get(subAction.character);
             if (st) {
               st.currentEmote = {
@@ -538,16 +544,64 @@ export class VisualizerEngine {
                 timer: 0,
                 maxDuration: subAction.durationMs || 2500,
               };
+              if (subAction.soundEffect) soundEngine.playSfx(subAction.soundEffect);
             }
+          } else if (subAction.type === 'dialogue') {
+            const char = this.charactersMap[subAction.speaker];
+            const st = this.characterStates.get(subAction.speaker);
+            if (char && st) {
+              st.currentSpeech = {
+                text: subAction.text,
+                displayedText: subAction.text,
+                charIndex: subAction.text.length,
+                timer: 0,
+                emotion: subAction.emotion || 'neutral',
+                totalDuration: subAction.durationMs || 3500,
+                elapsed: 0,
+              };
+              if (subAction.emote) {
+                st.currentEmote = {
+                  icon: subAction.emote,
+                  timer: 0,
+                  maxDuration: 2500,
+                };
+              }
+              if (subAction.sfx) soundEngine.playSfx(subAction.sfx);
+            }
+          } else if (subAction.type === 'interaction') {
+            const st = this.characterStates.get(subAction.character);
+            if (st) {
+              if (subAction.facing) st.facing = subAction.facing;
+              if (subAction.action === 'sit') st.isSitting = true;
+              else if (subAction.action === 'stand') st.isSitting = false;
+              else if (subAction.action === 'drink_coffee') st.heldItem = 'coffee_mug';
+              else if (subAction.action === 'pickup') st.heldItem = 'clipboard';
+              else if (subAction.action === 'place') st.heldItem = undefined;
+              else if (subAction.action === 'ignite' && subAction.targetProp) {
+                this.propStates.set(subAction.targetProp, {
+                  ...(this.propStates.get(subAction.targetProp) || {}),
+                  ignited: true,
+                });
+              } else if (subAction.action === 'extinguish' && subAction.targetProp) {
+                this.propStates.set(subAction.targetProp, {
+                  ...(this.propStates.get(subAction.targetProp) || {}),
+                  ignited: false,
+                });
+              }
+              if (subAction.sfx) soundEngine.playSfx(subAction.sfx);
+            }
+          } else if (subAction.type === 'audio_cue') {
+            soundEngine.playSfx(subAction.sfx, subAction.volume || 1.0);
+          } else if (subAction.type === 'time_of_day') {
+            lightingEngine.setTimeOfDay(subAction.time);
           }
-          if (subAction.type === 'audio_cue') soundEngine.playSfx(subAction.sfx, subAction.volume || 1.0);
         });
-        this.beatDuration = 3000;
+        this.beatDuration = maxDur;
         break;
       }
 
       case 'wait': {
-        this.beatDuration = (beat as any).durationMs || 2000;
+        this.beatDuration = beat.durationMs || 2000;
         break;
       }
     }
@@ -647,6 +701,11 @@ export class VisualizerEngine {
 
   private updateSimulation(dt: number) {
     const scaledDt = dt * this.playbackSpeed;
+
+    // Update Simulation Time (game clock)
+    if (this.isPlaying) {
+      this.gameTime += scaledDt * 1000;
+    }
 
     // Update Camera
     this.camera.update(scaledDt);
@@ -837,7 +896,14 @@ export class VisualizerEngine {
 
         renderQueue.push({
           yOrder,
-          draw: () => TileRenderer.drawProp(ctx, runtimeProp, tileSize),
+          draw: () =>
+            TileRenderer.drawProp(
+              ctx,
+              runtimeProp,
+              tileSize,
+              this.propStates.get(prop.id),
+              this.gameTime
+            ),
         });
       });
 
@@ -849,7 +915,14 @@ export class VisualizerEngine {
 
       renderQueue.push({
         yOrder,
-        draw: () => CharacterRenderer.drawCharacter(ctx, char, state, this.showNameTags),
+        draw: () =>
+          CharacterRenderer.drawCharacter(
+            ctx,
+            char,
+            state,
+            this.showNameTags,
+            this.gameTime
+          ),
       });
     });
 
@@ -894,7 +967,7 @@ export class VisualizerEngine {
     });
 
     // 7. Dynamic Ambient Lighting & Light Rays
-    lightingEngine.drawLighting(ctx, this.setting, worldW, worldH);
+    lightingEngine.drawLighting(ctx, this.setting, worldW, worldH, this.gameTime);
 
     ctx.restore();
   }

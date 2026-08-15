@@ -182,12 +182,18 @@ export class TileRenderer {
   }
 
   // Draw Props & Interactive Objects with Rich Details
-  public static drawProp(ctx: CanvasRenderingContext2D, prop: PropInstance, tileSize: number) {
+  public static drawProp(
+    ctx: CanvasRenderingContext2D,
+    prop: PropInstance,
+    tileSize: number,
+    state?: Record<string, any>,
+    gameTime?: number
+  ) {
     const px = prop.x * tileSize;
     const py = prop.y * tileSize;
     const w = (prop.width || 1) * tileSize;
     const h = (prop.height || 1) * tileSize;
-    const now = Date.now();
+    const now = gameTime !== undefined ? gameTime : Date.now();
     const propName = prop.name?.toLowerCase() || '';
 
     ctx.save();
@@ -821,6 +827,16 @@ export class TileRenderer {
         ctx.fillRect(px + 4, py + 6, w - 8, h - 6);
         ctx.fillStyle = '#64748b';
         ctx.fillRect(px + 2, py + 4, w - 4, 3);
+        if (state?.ignited) {
+          // Animated flames rising from trash can
+          const fBob = Math.sin(now / 100) * 2;
+          ctx.fillStyle = '#ef4444';
+          ctx.fillRect(px + 4, py - 4 + fBob, w - 8, 8);
+          ctx.fillStyle = '#f59e0b';
+          ctx.fillRect(px + 6, py - 6 + fBob * 1.2, w - 12, 6);
+          ctx.fillStyle = '#fef08a';
+          ctx.fillRect(px + 8, py - 8 + fBob * 0.8, w - 16, 4);
+        }
         break;
       }
 

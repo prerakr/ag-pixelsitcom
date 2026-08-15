@@ -6,7 +6,8 @@ export class CharacterRenderer {
     ctx: CanvasRenderingContext2D,
     character: CharacterDefinition,
     state: CharacterRuntimeState,
-    showNameTag = true
+    showNameTag = true,
+    gameTime?: number
   ) {
     const { visual } = character;
     const { x, y, facing, isMoving, animFrame, isSitting, currentEmote } = state;
@@ -14,7 +15,7 @@ export class CharacterRenderer {
     ctx.save();
     ctx.translate(Math.round(x), Math.round(y));
 
-    const now = Date.now();
+    const now = gameTime !== undefined ? gameTime : Date.now();
     // Unique seed based on character name length to desynchronize animations
     const charHash = character.id.charCodeAt(0) * 137;
 
@@ -177,24 +178,94 @@ export class CharacterRenderer {
         ctx.fillRect(-headW / 2 - 1, headY, headW + 2, 4);
       }
 
-      // Eyes & Expressions
-      ctx.fillStyle = '#0f172a';
-      if (facing === 'down' || isJimGaze) {
-        if (!isBlinking) {
-          const eyeXOffset = isJimGaze ? 1 : 0;
-          ctx.fillRect(-4 + eyeXOffset, headY + 5, 2, 2);
-          ctx.fillRect(2 + eyeXOffset, headY + 5, 2, 2);
+      // Active emotion for facial expression
+      const emotion = state.currentSpeech?.emotion || 'neutral';
 
-          // Jim's raised eyebrow and subtle smirk
-          if (isJimGaze) {
-            ctx.fillStyle = '#334155';
-            ctx.fillRect(-4, headY + 3, 3, 1);
-            ctx.fillRect(2, headY + 4, 3, 1);
-            ctx.fillStyle = '#881337';
-            ctx.fillRect(1, headY + 9, 3, 1);
+      // Eyebrows based on emotion
+      if (facing === 'down' || isJimGaze) {
+        if (isJimGaze) {
+          ctx.fillStyle = '#334155';
+          ctx.fillRect(-4, headY + 3, 3, 1);
+          ctx.fillRect(2, headY + 4, 3, 1);
+        } else if (emotion === 'angry') {
+          // Sharp V-angled fierce eyebrows
+          ctx.fillStyle = '#0f172a';
+          ctx.fillRect(-5, headY + 3, 3, 1);
+          ctx.fillRect(-3, headY + 4, 1, 1);
+          ctx.fillRect(2, headY + 4, 1, 1);
+          ctx.fillRect(3, headY + 3, 3, 1);
+        } else if (emotion === 'panic' || emotion === 'shock') {
+          // High arched panic brows
+          ctx.fillStyle = '#0f172a';
+          ctx.fillRect(-5, headY + 2, 3, 1);
+          ctx.fillRect(2, headY + 2, 3, 1);
+        } else if (emotion === 'happy' || emotion === 'proud') {
+          // Uplifted cheerful brows
+          ctx.fillStyle = '#334155';
+          ctx.fillRect(-4, headY + 3, 2, 1);
+          ctx.fillRect(2, headY + 3, 2, 1);
+        } else if (emotion === 'smirk' || emotion === 'smug') {
+          // Asymmetric raised brow
+          ctx.fillStyle = '#334155';
+          ctx.fillRect(-4, headY + 4, 2, 1);
+          ctx.fillRect(2, headY + 3, 3, 1);
+        } else if (emotion === 'cry' || emotion === 'cringe') {
+          // Sad furrowed brows
+          ctx.fillStyle = '#334155';
+          ctx.fillRect(-5, headY + 4, 1, 1);
+          ctx.fillRect(-4, headY + 3, 2, 1);
+          ctx.fillRect(2, headY + 3, 2, 1);
+          ctx.fillRect(4, headY + 4, 1, 1);
+        } else if (emotion === 'confused') {
+          // One high, one low
+          ctx.fillStyle = '#334155';
+          ctx.fillRect(-4, headY + 2, 3, 1);
+          ctx.fillRect(2, headY + 4, 3, 1);
+        } else {
+          // Neutral/deadpan brows
+          ctx.fillStyle = '#475569';
+          ctx.fillRect(-4, headY + 4, 2, 1);
+          ctx.fillRect(2, headY + 4, 2, 1);
+        }
+
+        // Eyes based on blinking & emotion
+        if (!isBlinking) {
+          if (emotion === 'panic' || emotion === 'shock') {
+            // Wide open alarmed eyes with white sclera + black pupil
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(-5, headY + 4, 3, 3);
+            ctx.fillRect(2, headY + 4, 3, 3);
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(-4, headY + 5, 1, 1);
+            ctx.fillRect(3, headY + 5, 1, 1);
+          } else if (emotion === 'happy' || emotion === 'proud') {
+            // Cheerful squint eyes ^ ^
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(-4, headY + 5, 2, 1);
+            ctx.fillRect(-5, headY + 6, 1, 1);
+            ctx.fillRect(-2, headY + 6, 1, 1);
+            ctx.fillRect(2, headY + 5, 2, 1);
+            ctx.fillRect(1, headY + 6, 1, 1);
+            ctx.fillRect(4, headY + 6, 1, 1);
+          } else if (emotion === 'cry') {
+            // Closed weeping eyes with tears
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(-5, headY + 5, 3, 1);
+            ctx.fillRect(2, headY + 5, 3, 1);
+            // Blue tears
+            ctx.fillStyle = '#38bdf8';
+            ctx.fillRect(-5, headY + 7, 1, 2);
+            ctx.fillRect(4, headY + 7, 1, 2);
+          } else {
+            // Standard eyes
+            ctx.fillStyle = '#0f172a';
+            const eyeXOffset = isJimGaze ? 1 : 0;
+            ctx.fillRect(-4 + eyeXOffset, headY + 5, 2, 2);
+            ctx.fillRect(2 + eyeXOffset, headY + 5, 2, 2);
           }
         } else {
           // Blinking eyes (horizontal slit)
+          ctx.fillStyle = '#0f172a';
           ctx.fillRect(-4, headY + 6, 2, 1);
           ctx.fillRect(2, headY + 6, 2, 1);
         }
@@ -215,8 +286,21 @@ export class CharacterRenderer {
         }
       } else if (facing === 'left') {
         if (!isBlinking) {
-          ctx.fillRect(-4, headY + 5, 2, 2);
+          if (emotion === 'happy' || emotion === 'proud') {
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(-4, headY + 5, 2, 1);
+            ctx.fillRect(-5, headY + 6, 1, 1);
+          } else if (emotion === 'panic' || emotion === 'shock') {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(-5, headY + 4, 3, 3);
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(-4, headY + 5, 1, 1);
+          } else {
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(-4, headY + 5, 2, 2);
+          }
         } else {
+          ctx.fillStyle = '#0f172a';
           ctx.fillRect(-4, headY + 6, 2, 1);
         }
         if (visual.glasses) {
@@ -225,8 +309,21 @@ export class CharacterRenderer {
         }
       } else if (facing === 'right') {
         if (!isBlinking) {
-          ctx.fillRect(2, headY + 5, 2, 2);
+          if (emotion === 'happy' || emotion === 'proud') {
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(2, headY + 5, 2, 1);
+            ctx.fillRect(4, headY + 6, 1, 1);
+          } else if (emotion === 'panic' || emotion === 'shock') {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(2, headY + 4, 3, 3);
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(3, headY + 5, 1, 1);
+          } else {
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(2, headY + 5, 2, 2);
+          }
         } else {
+          ctx.fillStyle = '#0f172a';
           ctx.fillRect(2, headY + 6, 2, 1);
         }
         if (visual.glasses) {
@@ -235,23 +332,62 @@ export class CharacterRenderer {
         }
       }
 
-      // Talking mouth movement
+      // Mouth rendering (speaking animation or resting expression)
       if (state.currentSpeech && !isJimGaze) {
         const isMouthOpen = Math.floor(now / 140) % 2 === 0;
         ctx.fillStyle = '#881337';
         if (facing === 'down') {
-          ctx.fillRect(-2, headY + 9, 4, isMouthOpen ? 2 : 1);
+          if (emotion === 'angry') {
+            // Wide shouting mouth
+            ctx.fillRect(-3, headY + 9, 6, isMouthOpen ? 3 : 2);
+          } else if (emotion === 'happy' || emotion === 'proud') {
+            // Cheerful open smile
+            ctx.fillRect(-3, headY + 8, 6, 1);
+            ctx.fillRect(-2, headY + 9, 4, isMouthOpen ? 2 : 1);
+          } else if (emotion === 'panic' || emotion === 'shock') {
+            // O-shaped gasp mouth
+            ctx.fillRect(-2, headY + 8, 4, isMouthOpen ? 3 : 2);
+          } else if (emotion === 'smirk' || emotion === 'smug') {
+            // Sideways speaking
+            ctx.fillRect(0, headY + 9, 3, isMouthOpen ? 2 : 1);
+          } else if (emotion === 'cry' || emotion === 'cringe') {
+            // Downturned mouth
+            ctx.fillRect(-3, headY + 10, 6, 1);
+            ctx.fillRect(-3, headY + 9, 1, 1);
+            ctx.fillRect(2, headY + 9, 1, 1);
+          } else {
+            ctx.fillRect(-2, headY + 9, 4, isMouthOpen ? 2 : 1);
+          }
         } else if (facing === 'left') {
           ctx.fillRect(-4, headY + 9, 2, isMouthOpen ? 2 : 1);
         } else if (facing === 'right') {
           ctx.fillRect(2, headY + 9, 2, isMouthOpen ? 2 : 1);
+        }
+      } else if (isJimGaze) {
+        // Jim's raised smirk
+        ctx.fillStyle = '#881337';
+        ctx.fillRect(1, headY + 9, 3, 1);
+      } else if (facing === 'down') {
+        // Resting subtle mouth expression when not actively speaking
+        if (emotion === 'happy' || emotion === 'proud') {
+          ctx.fillStyle = '#881337';
+          ctx.fillRect(-2, headY + 9, 4, 1);
+          ctx.fillRect(-3, headY + 8, 1, 1);
+          ctx.fillRect(2, headY + 8, 1, 1);
+        } else if (emotion === 'smirk' || emotion === 'smug') {
+          ctx.fillStyle = '#881337';
+          ctx.fillRect(0, headY + 9, 3, 1);
+          ctx.fillRect(2, headY + 8, 1, 1);
+        } else if (emotion === 'deadpan') {
+          ctx.fillStyle = '#64748b';
+          ctx.fillRect(-2, headY + 9, 4, 1);
         }
       }
     }
 
     // 9. Floating Emote Bubble
     if (currentEmote) {
-      this.drawEmoteBubble(ctx, currentEmote.icon, 0, headY - 14);
+      this.drawEmoteBubble(ctx, currentEmote.icon, 0, headY - 14, now);
     }
 
     // 10. Name Tag
@@ -279,9 +415,10 @@ export class CharacterRenderer {
     ctx: CanvasRenderingContext2D,
     emote: EmoteIconType,
     x: number,
-    y: number
+    y: number,
+    now: number = Date.now()
   ) {
-    const bounce = Math.sin(Date.now() / 120) * 2.5;
+    const bounce = Math.sin(now / 120) * 2.5;
     const ey = y + bounce;
 
     ctx.save();

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import confetti from 'canvas-confetti';
 import { VisualizerEngine } from './engine/CanvasRenderer';
-import { ALL_SETTINGS, DEFAULT_SETTING_ID } from './data/settings';
+import { ALL_SETTINGS, DEFAULT_SETTING_ID, getShowIdForSetting } from './data/settings';
 import { ALL_CHARACTERS, getCharactersForShow } from './data/characters';
 import { PRESET_EPISODES } from './data/episodes';
 import { SitcomScript, ScriptBeat, TalkingHeadBeat } from './types/script';
@@ -20,13 +20,7 @@ export function App() {
 
   // Characters for active show
   const currentShowCharacters = useMemo(() => {
-    const showIdMap: Record<string, string> = {
-      dunder_mifflin_scranton: 'the_office',
-      central_coffee: 'friends',
-      hacker_hostel: 'silicon_valley',
-      maclarens_pub: 'himym',
-    };
-    const showId = showIdMap[settingId] || 'the_office';
+    const showId = getShowIdForSetting(settingId);
     return getCharactersForShow(showId);
   }, [settingId]);
 
@@ -58,7 +52,11 @@ export function App() {
         setCurrentBeat(beat);
 
         // Dundie Confetti trigger!
-        if (beat && (beat.type === 'emote' && (beat as any).emote === 'dundie')) {
+        if (
+          beat &&
+          ((beat.type === 'emote' && beat.emote === 'dundie') ||
+            (beat.type === 'dialogue' && beat.emote === 'dundie'))
+        ) {
           confetti({
             particleCount: 60,
             spread: 70,
@@ -128,13 +126,7 @@ export function App() {
     setSettingId(id);
     const newSetting = ALL_SETTINGS[id];
     if (newSetting) {
-      const showIdMap: Record<string, string> = {
-        dunder_mifflin_scranton: 'the_office',
-        central_coffee: 'friends',
-        hacker_hostel: 'silicon_valley',
-        maclarens_pub: 'himym',
-      };
-      const showId = showIdMap[id] || 'the_office';
+      const showId = getShowIdForSetting(id);
       const matchingEp = PRESET_EPISODES.find((ep) => ep.settingId === id || ep.showId === showId);
       if (matchingEp) {
         const epIdx = PRESET_EPISODES.indexOf(matchingEp);

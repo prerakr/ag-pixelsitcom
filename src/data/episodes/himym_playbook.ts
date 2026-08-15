@@ -199,7 +199,7 @@ export const HIMYM_PLAYBOOK_EPISODE: SitcomScript = {
         {
           type: 'movement',
           character: 'robin',
-          target: 'bar_center',
+          target: 'pub_floor_center',
           speed: 1.2,
           facing: 'down',
         },

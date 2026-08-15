@@ -222,4 +222,31 @@ export const OFFICE_CAST: Record<string, CharacterDefinition> = {
     defaultWaypoint: 'annex_toby',
     defaultFacing: 'down',
   },
+
+  phyllis: {
+    id: 'phyllis',
+    name: 'Phyllis Vance',
+    nickname: 'Phyllis',
+    role: 'Sales Representative',
+    showId: 'the_office',
+    visual: {
+      skinColor: '#f7cfb2',
+      hairColor: '#785428',
+      hairStyle: 'curls',
+      shirtColor: '#9333ea', // Purple knit sweater/cardigan
+      pantsColor: '#475569',
+      shoesColor: '#1e293b',
+      accessory: 'cardigan',
+      bodyType: 'large',
+      heightScale: 0.98,
+    },
+    signatureQuotes: [
+      "Bob Vance, Vance Refrigeration.",
+      "Close your mouth, sweetie, you look like a trout.",
+      "As a person who buys a lot of erotic cakes, it feels good to be represented.",
+    ],
+    personalityTraits: ['Sweet yet passive-aggressive', 'Married to Bob Vance', 'Knitting expert', 'Party planning veteran'],
+    defaultWaypoint: 'phyllis_desk',
+    defaultFacing: 'up',
+  },
 };

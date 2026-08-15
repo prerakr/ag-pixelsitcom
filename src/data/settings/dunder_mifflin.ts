@@ -368,6 +368,7 @@ export const DUNDER_MIFFLIN_SCRANTON: SettingDefinition = {
     trash_can: { id: 'trash_can', name: 'Trash Can (Safety Drill)', x: 28, y: 8.5, facing: 'up', zone: 'breakroom' },
     main_entrance: { id: 'main_entrance', name: 'Front Office Entrance', x: 6, y: 19, facing: 'up', zone: 'reception' },
     annex_toby: { id: 'annex_toby', name: "Toby's Annex Corner", x: 31, y: 14.5, facing: 'down', zone: 'annex' },
+    phyllis_desk: { id: 'phyllis_desk', name: "Phyllis's Desk", x: 16.5, y: 17.2, facing: 'up', zone: 'sales_bullpen' },
   },
   spawnPoints: {
     michael: { id: 'michael', name: 'Michael Spawn', x: 4.5, y: 5.5, facing: 'down' },
@@ -378,5 +379,6 @@ export const DUNDER_MIFFLIN_SCRANTON: SettingDefinition = {
     kevin: { id: 'kevin', name: 'Kevin Spawn', x: 23.5, y: 17.2, facing: 'up' },
     stanley: { id: 'stanley', name: 'Stanley Spawn', x: 16.5, y: 12.2, facing: 'down' },
     toby: { id: 'toby', name: 'Toby Spawn', x: 31, y: 14.5, facing: 'down' },
+    phyllis: { id: 'phyllis', name: 'Phyllis Spawn', x: 16.5, y: 17.2, facing: 'up' },
   },
 };

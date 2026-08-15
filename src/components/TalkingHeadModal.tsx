@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { TalkingHeadBeat } from '../types/script';
-import { CharacterDefinition } from '../types/character';
+import { CharacterDefinition, CharacterRuntimeState } from '../types/character';
 import { CharacterRenderer } from '../engine/CharacterRenderer';
 import { soundEngine } from '../engine/SoundEngine';
 import { ArrowRight, Video } from 'lucide-react';
@@ -24,27 +24,30 @@ export const TalkingHeadModal: React.FC<TalkingHeadModalProps> = ({
 
   // Typewriter effect for interview monologue
   useEffect(() => {
+    let index = 0;
     setDisplayedText('');
-    let idx = 0;
+
     const interval = setInterval(() => {
-      if (idx < fullText.length) {
-        idx++;
-        setDisplayedText(fullText.slice(0, idx));
-        if (idx % 3 === 0) {
-          soundEngine.playSfx('typewriter', 0.25);
-        }
-      } else {
+      index++;
+      setDisplayedText(fullText.slice(0, index));
+
+      // Play soft typewriter SFX periodically
+      if (index % 3 === 0) {
+        soundEngine.playSfx('typewriter', 0.25);
+      }
+
+      if (index >= fullText.length) {
         clearInterval(interval);
       }
     }, 32);
 
     return () => clearInterval(interval);
-  }, [talkingHead, fullText]);
+  }, [fullText]);
 
-  // Draw high-resolution portrait on canvas
+  // Render high-res zoomed character portrait on Canvas
   useEffect(() => {
-    if (!canvasRef.current || !character) return;
     const canvas = canvasRef.current;
+    if (!canvas || !character) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
@@ -59,7 +62,7 @@ export const TalkingHeadModal: React.FC<TalkingHeadModalProps> = ({
       ctx.scale(4.5, 4.5);
       ctx.translate(28, 38);
 
-      const state: any = {
+      const state: CharacterRuntimeState = {
         id: character.id,
         x: 0,
         y: 0,
@@ -67,6 +70,7 @@ export const TalkingHeadModal: React.FC<TalkingHeadModalProps> = ({
         isMoving: false,
         speed: 1,
         animFrame: 0,
+        animTimer: 0,
         currentAction: talkingHead.cameraLook ? 'jim_stare' : undefined,
         currentSpeech: {
           text: fullText,

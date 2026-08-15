@@ -117,6 +117,131 @@ class SoundEngine {
         noise.connect(filter);
         filter.connect(gain);
         noise.start(now);
+        noise.stop(now + duration + 0.05);
+        break;
+      }
+
+      case 'gasp': {
+        // Sudden sharp inhalation / shock gasp
+        const duration = 0.35;
+        const bufferSize = Math.floor(this.ctx.sampleRate * duration);
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          const env = Math.sin((i / bufferSize) * Math.PI * 0.85);
+          data[i] = (Math.random() * 2 - 1) * env;
+        }
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(450, now);
+        filter.frequency.exponentialRampToValueAtTime(1600, now + duration * 0.8);
+        filter.Q.value = 3.0;
+
+        gain.gain.setValueAtTime(0.01, now);
+        gain.gain.linearRampToValueAtTime(finalVol * 0.45, now + duration * 0.7);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+        noise.connect(filter);
+        filter.connect(gain);
+        noise.start(now);
+        noise.stop(now + duration + 0.05);
+        break;
+      }
+
+      case 'glass_shatter': {
+        // High-frequency crash + high metallic clinks
+        const duration = 0.45;
+        const bufferSize = Math.floor(this.ctx.sampleRate * duration);
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.2));
+        }
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'highpass';
+        filter.frequency.value = 3500;
+
+        const nGain = this.ctx.createGain();
+        nGain.gain.setValueAtTime(finalVol * 0.5, now);
+        nGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+        noise.connect(filter);
+        filter.connect(nGain);
+        nGain.connect(gain);
+        noise.start(now);
+        noise.stop(now + duration + 0.05);
+
+        // High metallic chime ringtones
+        [2600, 3900, 5200].forEach((freq, idx) => {
+          const osc = this.ctx!.createOscillator();
+          const oGain = this.ctx!.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.03);
+          osc.frequency.exponentialRampToValueAtTime(freq * 0.7, now + idx * 0.03 + 0.3);
+
+          oGain.gain.setValueAtTime(finalVol * 0.2, now + idx * 0.03);
+          oGain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.03 + 0.3);
+
+          osc.connect(oGain);
+          oGain.connect(gain);
+          osc.start(now + idx * 0.03);
+          osc.stop(now + idx * 0.03 + 0.3);
+        });
+        break;
+      }
+
+      case 'coffee_pour': {
+        // Liquid trickling & bubbling
+        const duration = 0.7;
+        const bufferSize = Math.floor(this.ctx.sampleRate * duration);
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = (Math.random() * 2 - 1) * 0.5;
+        }
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(550, now);
+        filter.frequency.linearRampToValueAtTime(850, now + duration);
+        filter.Q.value = 5.0;
+
+        const pGain = this.ctx.createGain();
+        pGain.gain.setValueAtTime(finalVol * 0.35, now);
+        pGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+        noise.connect(filter);
+        filter.connect(pGain);
+        pGain.connect(gain);
+        noise.start(now);
+        noise.stop(now + duration + 0.05);
+
+        // Gentle bubble droplets
+        for (let b = 0; b < 4; b++) {
+          const bDelay = b * 0.14 + Math.random() * 0.04;
+          const osc = this.ctx.createOscillator();
+          const bGain = this.ctx.createGain();
+          osc.type = 'sine';
+          const bFreq = 600 + Math.random() * 400;
+          osc.frequency.setValueAtTime(bFreq, now + bDelay);
+          osc.frequency.exponentialRampToValueAtTime(bFreq * 1.5, now + bDelay + 0.05);
+
+          bGain.gain.setValueAtTime(finalVol * 0.15, now + bDelay);
+          bGain.gain.exponentialRampToValueAtTime(0.001, now + bDelay + 0.05);
+
+          osc.connect(bGain);
+          bGain.connect(gain);
+          osc.start(now + bDelay);
+          osc.stop(now + bDelay + 0.06);
+        }
         break;
       }
 
