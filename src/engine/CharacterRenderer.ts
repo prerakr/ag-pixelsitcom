@@ -14,17 +14,25 @@ export class CharacterRenderer {
     ctx.save();
     ctx.translate(Math.round(x), Math.round(y));
 
-    // Walk bobbing offset
-    const walkBob = isMoving ? (animFrame % 2 === 0 ? 0 : -2) : 0;
+    const now = Date.now();
+    // Unique seed based on character name length to desynchronize animations
+    const charHash = character.id.charCodeAt(0) * 137;
+
+    // 1. Idle Breathing & Walking Bob
+    const idleBreathing = !isMoving ? Math.sin((now + charHash) / 380) * 0.8 : 0;
+    const walkBob = isMoving ? (animFrame % 2 === 0 ? 0 : -2) : idleBreathing;
     const isJimGaze = state.currentAction === 'jim_stare';
 
-    // 1. Shadow beneath character
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+    // 2. Eye Blinking (blink every ~3.5s for 140ms)
+    const isBlinking = !isJimGaze && ((now + charHash) % 3600 < 140);
+
+    // 3. Shadow beneath character
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
     ctx.beginPath();
     ctx.ellipse(0, 14, 10, 4, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // 2. Legs & Shoes
+    // 4. Legs & Shoes
     if (!isSitting) {
       const legOffset = isMoving ? (animFrame === 1 ? 3 : animFrame === 3 ? -3 : 0) : 0;
       ctx.fillStyle = visual.pantsColor;
@@ -47,14 +55,14 @@ export class CharacterRenderer {
         ctx.fillRect(shoeDir + legOffset, 11 + walkBob, 6, 3);
       }
     } else {
-      // Sitting legs
+      // Sitting legs (tucked seated posture)
       ctx.fillStyle = visual.pantsColor;
       ctx.fillRect(-5, 6, 10, 5);
       ctx.fillStyle = visual.shoesColor;
       ctx.fillRect(-6, 10, 12, 3);
     }
 
-    // 3. Torso & Clothes
+    // 5. Torso & Clothes
     const torsoY = -6 + walkBob;
     const bodyW = visual.bodyType === 'large' ? 16 : visual.bodyType === 'petite' ? 10 : 13;
     const bodyHalf = bodyW / 2;
@@ -63,9 +71,9 @@ export class CharacterRenderer {
     ctx.fillStyle = visual.shirtColor;
     ctx.fillRect(-bodyHalf, torsoY, bodyW, 11);
 
-    // Collar / Cardigan details
+    // Collar / Cardigan / Tie details
     if (visual.accessory === 'cardigan') {
-      ctx.fillStyle = '#f7fafc'; // Inner blouse
+      ctx.fillStyle = '#f8fafc'; // Inner blouse
       ctx.fillRect(-2, torsoY, 4, 6);
       ctx.fillStyle = visual.shirtColor; // Cardigan lapels
       ctx.fillRect(-bodyHalf, torsoY, 3, 10);
@@ -77,7 +85,7 @@ export class CharacterRenderer {
       ctx.fillRect(-1, torsoY + 10, 2, 2);
     }
 
-    // 4. Arms
+    // 6. Arms & Hand Accessories
     const armY = torsoY + 1;
     ctx.fillStyle = visual.shirtColor;
     if (facing === 'down' || facing === 'up') {
@@ -90,6 +98,14 @@ export class CharacterRenderer {
       ctx.fillStyle = visual.skinColor;
       ctx.fillRect(-bodyHalf - 3, armY + 7 + leftArmSwing, 3, 3);
       ctx.fillRect(bodyHalf, armY + 7 + rightArmSwing, 3, 3);
+
+      // Michael holding his coffee mug when idle
+      if (character.id === 'michael' && !isMoving && facing === 'down') {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(bodyHalf + 1, armY + 5, 4, 4);
+        ctx.fillStyle = '#0284c7';
+        ctx.fillRect(bodyHalf + 1, armY + 5, 4, 1);
+      }
     } else {
       // Side arm
       const armSwing = isMoving ? (animFrame % 2 === 1 ? 2 : -2) : 0;
@@ -98,7 +114,7 @@ export class CharacterRenderer {
       ctx.fillRect(-2 + armSwing, armY + 7, 4, 3);
     }
 
-    // 5. Head
+    // 7. Head
     const headY = -19 + walkBob;
     const headW = 12;
     const headH = 13;
@@ -107,7 +123,7 @@ export class CharacterRenderer {
     ctx.fillStyle = visual.skinColor;
     ctx.fillRect(-headW / 2, headY, headW, headH);
 
-    // 6. Hair & Facial Features based on Direction & Style
+    // 8. Hair & Facial Features
     ctx.fillStyle = visual.hairColor;
 
     if (facing === 'up') {
@@ -124,7 +140,7 @@ export class CharacterRenderer {
       ctx.fillRect(-headW / 2 - 1, headY - 2, headW + 2, 4);
 
       if (visual.hairStyle === 'middle_part') {
-        // Dwight's iconic middle part
+        // Dwight's center part
         ctx.fillRect(-headW / 2 - 1, headY, 5, 7);
         ctx.fillRect(headW / 2 - 4, headY, 5, 7);
       } else if (visual.hairStyle === 'floppy') {
@@ -145,60 +161,71 @@ export class CharacterRenderer {
         ctx.fillRect(-headW / 2 - 1, headY + 3, 3, 5);
         ctx.fillRect(headW / 2 - 2, headY + 3, 3, 5);
       } else {
-        // Default short / slicked
         ctx.fillRect(-headW / 2 - 1, headY, headW + 2, 4);
       }
 
-      // Eyes & Expression
-      ctx.fillStyle = '#1a202c';
+      // Eyes & Expressions
+      ctx.fillStyle = '#0f172a';
       if (facing === 'down' || isJimGaze) {
-        // Facing camera (or Jim doing his camera stare)
-        const eyeXOffset = isJimGaze ? 1 : 0;
-        ctx.fillRect(-4 + eyeXOffset, headY + 5, 2, 2);
-        ctx.fillRect(2 + eyeXOffset, headY + 5, 2, 2);
+        if (!isBlinking) {
+          const eyeXOffset = isJimGaze ? 1 : 0;
+          ctx.fillRect(-4 + eyeXOffset, headY + 5, 2, 2);
+          ctx.fillRect(2 + eyeXOffset, headY + 5, 2, 2);
 
-        // Eyebrows / Smirk if Jim
-        if (isJimGaze) {
-          ctx.fillStyle = '#4a5568';
-          ctx.fillRect(-4, headY + 3, 3, 1); // Raised eyebrow
-          ctx.fillRect(2, headY + 4, 3, 1);
-          // Subtle smirk
-          ctx.fillStyle = '#9b2c2c';
-          ctx.fillRect(1, headY + 9, 3, 1);
+          // Jim's raised eyebrow and subtle smirk
+          if (isJimGaze) {
+            ctx.fillStyle = '#334155';
+            ctx.fillRect(-4, headY + 3, 3, 1);
+            ctx.fillRect(2, headY + 4, 3, 1);
+            ctx.fillStyle = '#881337';
+            ctx.fillRect(1, headY + 9, 3, 1);
+          }
+        } else {
+          // Blinking eyes (horizontal slit)
+          ctx.fillRect(-4, headY + 6, 2, 1);
+          ctx.fillRect(2, headY + 6, 2, 1);
         }
 
         // Glasses for Dwight
         if (visual.glasses) {
-          ctx.strokeStyle = visual.glassesColor || '#4a5568';
+          ctx.strokeStyle = visual.glassesColor || '#475569';
           ctx.lineWidth = 1;
           ctx.strokeRect(-5, headY + 4, 4, 4);
           ctx.strokeRect(1, headY + 4, 4, 4);
-          ctx.fillRect(-1, headY + 5, 2, 1); // Bridge
+          ctx.fillRect(-1, headY + 5, 2, 1);
         }
 
         // Stanley's Mustache
         if (visual.facialHair === 'mustache') {
-          ctx.fillStyle = '#1a202c';
+          ctx.fillStyle = '#0f172a';
           ctx.fillRect(-4, headY + 8, 8, 2);
         }
       } else if (facing === 'left') {
-        ctx.fillRect(-4, headY + 5, 2, 2);
+        if (!isBlinking) {
+          ctx.fillRect(-4, headY + 5, 2, 2);
+        } else {
+          ctx.fillRect(-4, headY + 6, 2, 1);
+        }
         if (visual.glasses) {
-          ctx.strokeStyle = '#4a5568';
+          ctx.strokeStyle = '#475569';
           ctx.strokeRect(-5, headY + 4, 3, 4);
         }
       } else if (facing === 'right') {
-        ctx.fillRect(2, headY + 5, 2, 2);
+        if (!isBlinking) {
+          ctx.fillRect(2, headY + 5, 2, 2);
+        } else {
+          ctx.fillRect(2, headY + 6, 2, 1);
+        }
         if (visual.glasses) {
-          ctx.strokeStyle = '#4a5568';
+          ctx.strokeStyle = '#475569';
           ctx.strokeRect(2, headY + 4, 3, 4);
         }
       }
 
-      // Mouth (speaking animation toggle)
+      // Talking mouth movement
       if (state.currentSpeech && !isJimGaze) {
-        const isMouthOpen = Math.floor(Date.now() / 150) % 2 === 0;
-        ctx.fillStyle = '#742a2a';
+        const isMouthOpen = Math.floor(now / 140) % 2 === 0;
+        ctx.fillStyle = '#881337';
         if (facing === 'down') {
           ctx.fillRect(-2, headY + 9, 4, isMouthOpen ? 2 : 1);
         } else if (facing === 'left') {
@@ -209,12 +236,12 @@ export class CharacterRenderer {
       }
     }
 
-    // 7. Floating Emote Icon
+    // 9. Floating Emote Bubble
     if (currentEmote) {
       this.drawEmoteBubble(ctx, currentEmote.icon, 0, headY - 14);
     }
 
-    // 8. Name Tag
+    // 10. Name Tag
     if (showNameTag) {
       ctx.font = '7px "Press Start 2P", monospace';
       ctx.textAlign = 'center';
@@ -222,7 +249,7 @@ export class CharacterRenderer {
       const tagW = textMetrics.width + 6;
       const tagY = headY - 8;
 
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
       ctx.fillRect(-tagW / 2, tagY - 8, tagW, 10);
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
       ctx.strokeRect(-tagW / 2, tagY - 8, tagW, 10);
@@ -234,38 +261,36 @@ export class CharacterRenderer {
     ctx.restore();
   }
 
-  // Draw floating animated emote bubble
+  // Draw floating animated emote bubble with smooth bounce
   private static drawEmoteBubble(
     ctx: CanvasRenderingContext2D,
     emote: EmoteIconType,
     x: number,
     y: number
   ) {
-    const bounce = Math.sin(Date.now() / 120) * 2;
+    const bounce = Math.sin(Date.now() / 120) * 2.5;
     const ey = y + bounce;
 
     ctx.save();
-    // Bubble background
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
-    ctx.arc(x, ey, 9, 0, Math.PI * 2);
+    ctx.arc(x, ey, 9.5, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = '#1e293b';
+    ctx.strokeStyle = '#0f172a';
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    // Emote icon
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
     switch (emote) {
       case 'exclamation':
-        ctx.fillStyle = '#e53e3e';
+        ctx.fillStyle = '#dc2626';
         ctx.font = 'bold 11px monospace';
         ctx.fillText('!', x, ey);
         break;
       case 'question':
-        ctx.fillStyle = '#3182ce';
+        ctx.fillStyle = '#2563eb';
         ctx.font = 'bold 11px monospace';
         ctx.fillText('?', x, ey);
         break;

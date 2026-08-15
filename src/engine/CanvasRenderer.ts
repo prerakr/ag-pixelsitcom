@@ -96,6 +96,8 @@ export class VisualizerEngine {
       const startX = spawn ? spawn.x * tileSize : 10 * tileSize;
       const startY = spawn ? spawn.y * tileSize : 10 * tileSize;
 
+      const isAtDesk = char.defaultWaypoint?.includes('desk') || char.defaultWaypoint?.includes('seat');
+
       this.characterStates.set(char.id, {
         id: char.id,
         x: startX,
@@ -105,6 +107,7 @@ export class VisualizerEngine {
         speed: 1.0,
         animFrame: 0,
         animTimer: 0,
+        isSitting: isAtDesk,
       });
     });
   }
