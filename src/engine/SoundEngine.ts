@@ -4,6 +4,7 @@ class SoundEngine {
   private ctx: AudioContext | null = null;
   private isMuted: boolean = false;
   private masterVolume: number = 0.7;
+  private cachedBuffers: Map<string, AudioBuffer> = new Map();
 
   constructor() {
     // Lazy initialize on first user interaction
@@ -19,6 +20,60 @@ class SoundEngine {
     if (this.ctx && this.ctx.state === 'suspended') {
       this.ctx.resume();
     }
+    if (this.ctx && this.cachedBuffers.size === 0) {
+      this.precomputeBuffers();
+    }
+  }
+
+  private precomputeBuffers() {
+    if (!this.ctx) return;
+    const sampleRate = this.ctx.sampleRate;
+
+    // 1. Cheer buffer (1.2s decaying noise)
+    const cheerLen = Math.floor(sampleRate * 1.2);
+    const cheerBuf = this.ctx.createBuffer(1, cheerLen, sampleRate);
+    const cheerData = cheerBuf.getChannelData(0);
+    for (let i = 0; i < cheerLen; i++) {
+      cheerData[i] = (Math.random() * 2 - 1) * Math.exp(-i / (cheerLen * 0.6));
+    }
+    this.cachedBuffers.set('cheer', cheerBuf);
+
+    // 2. Gasp buffer (0.35s envelope shaped noise)
+    const gaspLen = Math.floor(sampleRate * 0.35);
+    const gaspBuf = this.ctx.createBuffer(1, gaspLen, sampleRate);
+    const gaspData = gaspBuf.getChannelData(0);
+    for (let i = 0; i < gaspLen; i++) {
+      const env = Math.sin((i / gaspLen) * Math.PI * 0.85);
+      gaspData[i] = (Math.random() * 2 - 1) * env;
+    }
+    this.cachedBuffers.set('gasp', gaspBuf);
+
+    // 3. Glass shatter buffer (0.45s sharp crash burst)
+    const shatterLen = Math.floor(sampleRate * 0.45);
+    const shatterBuf = this.ctx.createBuffer(1, shatterLen, sampleRate);
+    const shatterData = shatterBuf.getChannelData(0);
+    for (let i = 0; i < shatterLen; i++) {
+      shatterData[i] = (Math.random() * 2 - 1) * Math.exp(-i / (shatterLen * 0.2));
+    }
+    this.cachedBuffers.set('glass_shatter', shatterBuf);
+
+    // 4. Coffee pour buffer (0.7s trickle noise)
+    const pourLen = Math.floor(sampleRate * 0.7);
+    const pourBuf = this.ctx.createBuffer(1, pourLen, sampleRate);
+    const pourData = pourBuf.getChannelData(0);
+    for (let i = 0; i < pourLen; i++) {
+      pourData[i] = (Math.random() * 2 - 1) * 0.5;
+    }
+    this.cachedBuffers.set('coffee_pour', pourBuf);
+
+    // 5. Rimshot cymbal buffer (0.4s tss decay)
+    const cymbalLen = Math.floor(sampleRate * 0.4);
+    const cymbalBuf = this.ctx.createBuffer(1, cymbalLen, sampleRate);
+    const cymbalData = cymbalBuf.getChannelData(0);
+    for (let i = 0; i < cymbalLen; i++) {
+      cymbalData[i] = (Math.random() * 2 - 1) * Math.exp(-i / (cymbalLen * 0.3));
+    }
+    this.cachedBuffers.set('rimshot_cymbal', cymbalBuf);
   }
 
   public setMuted(muted: boolean) {
@@ -35,6 +90,11 @@ class SoundEngine {
 
   public getVolume(): number {
     return this.masterVolume;
+  }
+
+  public getAudioContext(): AudioContext | null {
+    this.initCtx();
+    return this.ctx;
   }
 
   public playSfx(type: SfxType, customVolume = 1.0) {
@@ -95,14 +155,11 @@ class SoundEngine {
       }
 
       case 'cheer': {
-        // Audience cheer / applause sound
+        // Audience cheer / applause sound using cached buffer
+        const buffer = this.cachedBuffers.get('cheer');
+        if (!buffer) break;
         const duration = 1.2;
-        const bufferSize = this.ctx.sampleRate * duration;
-        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) {
-          data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.6));
-        }
+
         const noise = this.ctx.createBufferSource();
         noise.buffer = buffer;
 
@@ -117,6 +174,121 @@ class SoundEngine {
         noise.connect(filter);
         filter.connect(gain);
         noise.start(now);
+        noise.stop(now + duration + 0.05);
+        break;
+      }
+
+      case 'gasp': {
+        // Sudden sharp inhalation / shock gasp using cached buffer
+        const buffer = this.cachedBuffers.get('gasp');
+        if (!buffer) break;
+        const duration = 0.35;
+
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(450, now);
+        filter.frequency.exponentialRampToValueAtTime(1600, now + duration * 0.8);
+        filter.Q.value = 3.0;
+
+        gain.gain.setValueAtTime(0.01, now);
+        gain.gain.linearRampToValueAtTime(finalVol * 0.45, now + duration * 0.7);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+        noise.connect(filter);
+        filter.connect(gain);
+        noise.start(now);
+        noise.stop(now + duration + 0.05);
+        break;
+      }
+
+      case 'glass_shatter': {
+        // High-frequency crash + metallic clinks using cached buffer
+        const buffer = this.cachedBuffers.get('glass_shatter');
+        if (!buffer) break;
+        const duration = 0.45;
+
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'highpass';
+        filter.frequency.value = 3500;
+
+        const nGain = this.ctx.createGain();
+        nGain.gain.setValueAtTime(finalVol * 0.5, now);
+        nGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+        noise.connect(filter);
+        filter.connect(nGain);
+        nGain.connect(gain);
+        noise.start(now);
+        noise.stop(now + duration + 0.05);
+
+        // High metallic chime ringtones
+        [2600, 3900, 5200].forEach((freq, idx) => {
+          const osc = this.ctx!.createOscillator();
+          const oGain = this.ctx!.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.03);
+          osc.frequency.exponentialRampToValueAtTime(freq * 0.7, now + idx * 0.03 + 0.3);
+
+          oGain.gain.setValueAtTime(finalVol * 0.2, now + idx * 0.03);
+          oGain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.03 + 0.3);
+
+          osc.connect(oGain);
+          oGain.connect(gain);
+          osc.start(now + idx * 0.03);
+          osc.stop(now + idx * 0.03 + 0.3);
+        });
+        break;
+      }
+
+      case 'coffee_pour': {
+        // Liquid trickling & bubbling using cached buffer
+        const buffer = this.cachedBuffers.get('coffee_pour');
+        if (!buffer) break;
+        const duration = 0.7;
+
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(550, now);
+        filter.frequency.linearRampToValueAtTime(850, now + duration);
+        filter.Q.value = 5.0;
+
+        const pGain = this.ctx.createGain();
+        pGain.gain.setValueAtTime(finalVol * 0.35, now);
+        pGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+        noise.connect(filter);
+        filter.connect(pGain);
+        pGain.connect(gain);
+        noise.start(now);
+        noise.stop(now + duration + 0.05);
+
+        // Gentle bubble droplets
+        for (let b = 0; b < 4; b++) {
+          const bDelay = b * 0.14 + Math.random() * 0.04;
+          const osc = this.ctx.createOscillator();
+          const bGain = this.ctx.createGain();
+          osc.type = 'sine';
+          const bFreq = 600 + Math.random() * 400;
+          osc.frequency.setValueAtTime(bFreq, now + bDelay);
+          osc.frequency.exponentialRampToValueAtTime(bFreq * 1.5, now + bDelay + 0.05);
+
+          bGain.gain.setValueAtTime(finalVol * 0.15, now + bDelay);
+          bGain.gain.exponentialRampToValueAtTime(0.001, now + bDelay + 0.05);
+
+          osc.connect(bGain);
+          bGain.connect(gain);
+          osc.start(now + bDelay);
+          osc.stop(now + bDelay + 0.06);
+        }
         break;
       }
 
@@ -201,26 +373,23 @@ class SoundEngine {
         osc2.start(now + 0.12);
         osc2.stop(now + 0.22);
 
-        // Hit 3: Tss (Cymbal)
-        const duration = 0.4;
-        const bufferSize = this.ctx.sampleRate * duration;
-        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) {
-          data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.3));
+        // Hit 3: Tss (Cymbal) using cached buffer
+        const buffer = this.cachedBuffers.get('rimshot_cymbal');
+        if (buffer) {
+          const duration = 0.4;
+          const cymbal = this.ctx.createBufferSource();
+          cymbal.buffer = buffer;
+          const filter = this.ctx.createBiquadFilter();
+          filter.type = 'highpass';
+          filter.frequency.value = 6000;
+          const g3 = this.ctx.createGain();
+          g3.gain.setValueAtTime(finalVol * 0.35, now + 0.24);
+          g3.gain.exponentialRampToValueAtTime(0.001, now + 0.24 + duration);
+          cymbal.connect(filter);
+          filter.connect(g3);
+          g3.connect(gain);
+          cymbal.start(now + 0.24);
         }
-        const cymbal = this.ctx.createBufferSource();
-        cymbal.buffer = buffer;
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = 'highpass';
-        filter.frequency.value = 6000;
-        const g3 = this.ctx.createGain();
-        g3.gain.setValueAtTime(finalVol * 0.35, now + 0.24);
-        g3.gain.exponentialRampToValueAtTime(0.001, now + 0.24 + duration);
-        cymbal.connect(filter);
-        filter.connect(g3);
-        g3.connect(gain);
-        cymbal.start(now + 0.24);
         break;
       }
 
@@ -327,8 +496,12 @@ class SoundEngine {
     this.initCtx();
     if (!this.ctx) return;
 
+    // Master node for jingle
+    const masterJingleGain = this.ctx.createGain();
+    masterJingleGain.gain.value = this.masterVolume;
+    masterJingleGain.connect(this.ctx.destination);
+
     // Upbeat 8-bit retro melody (inspired by The Office jaunty piano / melodrama theme chords)
-    // G4 - B4 - D5 - E5 - D5 - B4 - G4 ...
     const melody: [number, number, number][] = [
       // [freq, duration, delay]
       [392.00, 0.16, 0.00], // G4
@@ -351,11 +524,11 @@ class SoundEngine {
       osc.frequency.setValueAtTime(freq, now + delay);
 
       gain.gain.setValueAtTime(0, now + delay);
-      gain.gain.linearRampToValueAtTime(this.masterVolume * 0.15, now + delay + 0.02);
+      gain.gain.linearRampToValueAtTime(0.15, now + delay + 0.02);
       gain.gain.exponentialRampToValueAtTime(0.001, now + delay + dur);
 
       osc.connect(gain);
-      gain.connect(this.ctx!.destination);
+      gain.connect(masterJingleGain);
 
       osc.start(now + delay);
       osc.stop(now + delay + dur + 0.05);

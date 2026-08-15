@@ -56,21 +56,37 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
     if (!currentBeat) return 'Ready to play';
     switch (currentBeat.type) {
       case 'dialogue':
-        return `💬 ${(currentBeat as any).speaker.toUpperCase()}: "${(currentBeat as any).text}"`;
-      case 'movement':
-        return `🚶 ${(currentBeat as any).character.toUpperCase()} to ${(currentBeat as any).target}`;
+        return `💬 ${currentBeat.speaker.toUpperCase()}: "${currentBeat.text}"`;
+      case 'movement': {
+        const targetStr =
+          typeof currentBeat.target === 'string'
+            ? currentBeat.target
+            : `(${currentBeat.target.x}, ${currentBeat.target.y})`;
+        return `🚶 ${currentBeat.character.toUpperCase()} to ${targetStr}`;
+      }
       case 'interaction':
-        return `⚡ ${(currentBeat as any).character.toUpperCase()} ${(currentBeat as any).action}`;
+        return `⚡ ${currentBeat.character.toUpperCase()} ${currentBeat.action}`;
       case 'talking_head':
-        return `🎬 CONFESSIONAL: ${(currentBeat as any).speaker.toUpperCase()}`;
-      case 'camera_cue':
-        return `🎥 Camera: ${(currentBeat as any).target}`;
+        return `🎬 CONFESSIONAL: ${currentBeat.speaker.toUpperCase()}`;
+      case 'camera_cue': {
+        const targetStr =
+          typeof currentBeat.target === 'string'
+            ? currentBeat.target
+            : typeof currentBeat.target === 'object' && currentBeat.target !== null
+            ? `(${currentBeat.target.x}, ${currentBeat.target.y})`
+            : 'overview';
+        return `🎥 Camera: ${targetStr}`;
+      }
       case 'emote':
-        return `✨ ${(currentBeat as any).character.toUpperCase()}: ${(currentBeat as any).emote}`;
+        return `✨ ${currentBeat.character.toUpperCase()}: ${currentBeat.emote}`;
       case 'audio_cue':
-        return `🔊 SFX: ${(currentBeat as any).sfx}`;
+        return `🔊 SFX: ${currentBeat.sfx}`;
       case 'group_action':
-        return `👥 Group commotion (${(currentBeat as any).actions.length} actions)`;
+        return `👥 Group commotion (${currentBeat.actions.length} actions)`;
+      case 'time_of_day':
+        return `🌅 Lighting: ${currentBeat.time.toUpperCase()}`;
+      case 'wait':
+        return `⏳ Wait ${currentBeat.durationMs}ms`;
       default:
         return `🎬 Beat ${currentBeatIdx + 1}`;
     }
@@ -92,9 +108,31 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
           <span className="pixel-font text-[9px] sm:text-[10px] text-amber-300 font-bold truncate">
             {script.title}
           </span>
-          <span className="text-[10px] sm:text-[11px] text-slate-400 font-mono hidden md:inline">
-            • {currentScene?.name || 'Scene 1'}
-          </span>
+          {script.scenes.length > 1 ? (
+            <div className="flex items-center gap-1 ml-1 shrink-0">
+              {script.scenes.map((scene, sIdx) => (
+                <button
+                  key={scene.id || sIdx}
+                  onClick={() => onJumpToBeat(sIdx, 0)}
+                  className={`px-1.5 py-0.5 rounded text-[8px] sm:text-[9px] font-mono transition-colors ${
+                    sIdx === currentSceneIdx
+                      ? 'bg-amber-500 text-black font-bold shadow-sm'
+                      : 'bg-[#1b2636] text-slate-300 hover:bg-[#2a374a] hover:text-white'
+                  }`}
+                  title={`Jump to Scene ${sIdx + 1}: ${scene.name}`}
+                >
+                  S{sIdx + 1}
+                </button>
+              ))}
+              <span className="text-[10px] sm:text-[11px] text-slate-400 font-mono hidden md:inline truncate max-w-[140px]">
+                {currentScene?.name}
+              </span>
+            </div>
+          ) : (
+            <span className="text-[10px] sm:text-[11px] text-slate-400 font-mono hidden md:inline">
+              • {currentScene?.name || 'Scene 1'}
+            </span>
+          )}
         </div>
 
         {/* Current Beat Info Pill */}
@@ -168,7 +206,8 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
 
           <button
             onClick={onNextBeat}
-            className="pixel-btn text-[8px] sm:text-[9px] px-2 sm:px-2.5 py-1.5 sm:py-2"
+            disabled={currentSceneIdx === script.scenes.length - 1 && currentBeatIdx === totalBeats - 1}
+            className="pixel-btn text-[8px] sm:text-[9px] px-2 sm:px-2.5 py-1.5 sm:py-2 disabled:opacity-40 disabled:cursor-not-allowed"
             title="Next Beat"
           >
             <span className="hidden sm:inline">NEXT</span>

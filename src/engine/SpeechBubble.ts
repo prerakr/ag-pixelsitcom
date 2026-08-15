@@ -11,6 +11,8 @@ export interface SpeechBubbleProps {
 }
 
 export class SpeechBubbleRenderer {
+  private static layoutCache: Map<string, { lines: string[]; maxLineWidth: number }> = new Map();
+
   public static drawBubble(ctx: CanvasRenderingContext2D, props: SpeechBubbleProps) {
     const { displayedText, speakerName, x, y, emotion = 'neutral', maxWidth = 220 } = props;
     if (!displayedText || displayedText.length === 0) return;
@@ -23,33 +25,49 @@ export class SpeechBubbleRenderer {
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
 
-    // Word wrap text into lines
-    const words = displayedText.split(' ');
-    const lines: string[] = [];
-    let currentLine = '';
+    // Check layout cache
+    const cacheKey = `${displayedText}|${maxWidth}`;
+    let layout = SpeechBubbleRenderer.layoutCache.get(cacheKey);
 
-    for (let i = 0; i < words.length; i++) {
-      const testLine = currentLine.length === 0 ? words[i] : `${currentLine} ${words[i]}`;
-      const metrics = ctx.measureText(testLine);
-      if (metrics.width > maxWidth && currentLine.length > 0) {
-        lines.push(currentLine);
-        currentLine = words[i];
-      } else {
-        currentLine = testLine;
+    if (!layout) {
+      // Word wrap text into lines
+      const words = displayedText.split(' ');
+      const lines: string[] = [];
+      let currentLine = '';
+
+      for (let i = 0; i < words.length; i++) {
+        const testLine = currentLine.length === 0 ? words[i] : `${currentLine} ${words[i]}`;
+        const metrics = ctx.measureText(testLine);
+        if (metrics.width > maxWidth && currentLine.length > 0) {
+          lines.push(currentLine);
+          currentLine = words[i];
+        } else {
+          currentLine = testLine;
+        }
       }
+      if (currentLine.length > 0) {
+        lines.push(currentLine);
+      }
+
+      let maxLineWidth = 0;
+      lines.forEach((line) => {
+        const w = ctx.measureText(line).width;
+        if (w > maxLineWidth) maxLineWidth = w;
+      });
+
+      layout = { lines, maxLineWidth };
+
+      // Limit cache size to prevent memory leaks
+      if (SpeechBubbleRenderer.layoutCache.size > 250) {
+        SpeechBubbleRenderer.layoutCache.clear();
+      }
+      SpeechBubbleRenderer.layoutCache.set(cacheKey, layout);
     }
-    if (currentLine.length > 0) {
-      lines.push(currentLine);
-    }
+
+    const { lines, maxLineWidth } = layout;
 
     // Measure bounding box
     const lineHeight = 16;
-    let maxLineWidth = 0;
-    lines.forEach((line) => {
-      const w = ctx.measureText(line).width;
-      if (w > maxLineWidth) maxLineWidth = w;
-    });
-
     const paddingX = 10;
     const paddingY = 8;
     const headerHeight = 14;
@@ -57,7 +75,7 @@ export class SpeechBubbleRenderer {
     const boxH = lines.length * lineHeight + paddingY * 2 + headerHeight;
 
     // Center bubble horizontally over character, position above head with safe clamping
-    let boxX = Math.round(x - boxW / 2);
+    let boxX = Math.max(12, Math.round(x - boxW / 2));
     let boxY = Math.round(y - boxH - 24);
 
     // If character is near top of map/room, place bubble below them so it's never cut off
@@ -75,6 +93,10 @@ export class SpeechBubbleRenderer {
       borderColor = '#dc2626';
       headerColor = '#ef4444';
       bubbleBg = '#fff5f5';
+    } else if (emotion === 'happy' || emotion === 'proud') {
+      borderColor = '#d97706';
+      headerColor = '#f59e0b';
+      bubbleBg = '#fefce8';
     } else if (emotion === 'smirk' || emotion === 'smug') {
       borderColor = '#059669';
       headerColor = '#10b981';
@@ -84,9 +106,13 @@ export class SpeechBubbleRenderer {
       headerColor = '#8b5cf6';
       bubbleBg = '#faf5ff';
     } else if (emotion === 'shock' || emotion === 'confused') {
-      borderColor = '#d97706';
-      headerColor = '#f59e0b';
-      bubbleBg = '#fffbeb';
+      borderColor = '#ea580c';
+      headerColor = '#f97316';
+      bubbleBg = '#fff7ed';
+    } else if (emotion === 'deadpan') {
+      borderColor = '#475569';
+      headerColor = '#64748b';
+      bubbleBg = '#f8fafc';
     }
 
     // Shadow

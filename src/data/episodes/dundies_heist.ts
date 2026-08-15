@@ -14,11 +14,16 @@ export const DUNDIES_HEIST_EPISODE: SitcomScript = {
       id: 'scene_1',
       name: 'Act I: Megadesk & Morning Briefing',
       synopsis: 'Dwight claims the bullpen walkway for Megadesk as Michael emerges from his office.',
+      timeOfDay: 'day',
       beats: [
+        {
+          type: 'time_of_day',
+          time: 'day',
+        },
         {
           type: 'camera_cue',
           target: 'michael',
-          zoom: 1.6,
+          zoom: 1.3,
           style: 'smooth_pan',
         },
         {
@@ -40,7 +45,7 @@ export const DUNDIES_HEIST_EPISODE: SitcomScript = {
         {
           type: 'camera_cue',
           target: 'dwight',
-          zoom: 1.7,
+          zoom: 1.3,
           style: 'smooth_pan',
         },
         {
@@ -62,17 +67,33 @@ export const DUNDIES_HEIST_EPISODE: SitcomScript = {
         {
           type: 'camera_cue',
           target: 'jim',
-          zoom: 2.1,
+          zoom: 1.4,
           style: 'jim_stare',
+        },
+        {
+          type: 'interaction',
+          character: 'jim',
+          targetProp: 'dwight',
+          action: 'throw_plane',
+          sfx: 'stapler_click',
+          durationMs: 1200,
         },
         {
           type: 'dialogue',
           speaker: 'jim',
-          text: 'Yeah, Dwight... except all your pens are currently frozen in a block of lime gelatin in my bottom drawer.',
+          text: 'Yeah, Dwight... sending you a tactical air delivery notice: all your pens are encased in lime gelatin in my drawer.',
           emotion: 'smirk',
           sfx: 'laugh_giggle',
           emote: 'jello',
           durationMs: 4200,
+        },
+        {
+          type: 'interaction',
+          character: 'dwight',
+          action: 'pickup',
+          item: 'jello_stapler',
+          sfx: 'slapstick_boing',
+          durationMs: 1000,
         },
         {
           type: 'talking_head',
@@ -87,7 +108,7 @@ export const DUNDIES_HEIST_EPISODE: SitcomScript = {
         {
           type: 'camera_cue',
           target: 'pam',
-          zoom: 1.5,
+          zoom: 1.3,
           style: 'smooth_pan',
         },
         {
@@ -103,12 +124,18 @@ export const DUNDIES_HEIST_EPISODE: SitcomScript = {
     {
       id: 'scene_2',
       name: 'Act II: The Pretzel Day Rush',
-      synopsis: 'The scent of warm cinnamon sugar pretzels triggers a frantic bullpen stampede.',
+      synopsis: 'The scent of warm cinnamon sugar pretzels triggers a frantic bullpen stampede under golden hour sun.',
+      timeOfDay: 'golden_hour',
       beats: [
+        {
+          type: 'time_of_day',
+          time: 'golden_hour',
+          durationMs: 1200,
+        },
         {
           type: 'camera_cue',
           target: 'stanley',
-          zoom: 1.6,
+          zoom: 1.3,
           style: 'smooth_pan',
         },
         {
@@ -138,21 +165,19 @@ export const DUNDIES_HEIST_EPISODE: SitcomScript = {
         {
           type: 'camera_cue',
           target: 'kevin',
-          zoom: 1.8,
+          zoom: 1.3,
           style: 'smooth_pan',
         },
         {
           type: 'interaction',
           character: 'kevin',
-          targetProp: 'prop_vending_machine',
-          action: 'kick',
-          sfx: 'glass_shatter',
+          action: 'eat_pretzel',
           durationMs: 1200,
         },
         {
           type: 'dialogue',
           speaker: 'kevin',
-          text: 'Pretzel Day is good. But secondary chocolate backup is critical strategic protocol!',
+          text: 'Pretzel Day is good. But sweet glaze, chocolate drizzle, and secondary pretzels are critical protocol!',
           emotion: 'happy',
           emote: 'laugh',
           durationMs: 3800,
@@ -174,9 +199,16 @@ export const DUNDIES_HEIST_EPISODE: SitcomScript = {
           facing: 'right',
         },
         {
+          type: 'interaction',
+          character: 'michael',
+          action: 'spill_coffee',
+          sfx: 'glass_shatter',
+          durationMs: 1400,
+        },
+        {
           type: 'dialogue',
           speaker: 'michael',
-          text: 'PARKOUR! Vaulting over the reception counter to secure the chocolate glaze pretzels!',
+          text: 'PARKOUR! Vaulting over the reception counter... oh god, my coffee mug!',
           emotion: 'panic',
           sfx: 'parkour_leap',
           emote: 'skull',
@@ -220,12 +252,18 @@ export const DUNDIES_HEIST_EPISODE: SitcomScript = {
     {
       id: 'scene_3',
       name: 'Act III: The 2026 Dundie Awards',
-      synopsis: 'Michael convenes the Scranton branch in the Conference Room for the highest honors in paper sales.',
+      synopsis: 'Scranton night overtime sets in as Michael convenes the branch for the highest honors in paper sales.',
+      timeOfDay: 'night',
       beats: [
+        {
+          type: 'time_of_day',
+          time: 'night',
+          durationMs: 1500,
+        },
         {
           type: 'camera_cue',
           target: 'conference_table_head',
-          zoom: 1.5,
+          zoom: 1.25,
           style: 'smooth_pan',
         },
         {
@@ -238,9 +276,16 @@ export const DUNDIES_HEIST_EPISODE: SitcomScript = {
           ],
         },
         {
+          type: 'interaction',
+          character: 'michael',
+          action: 'pickup',
+          item: 'dundie_trophy',
+          durationMs: 1000,
+        },
+        {
           type: 'dialogue',
           speaker: 'michael',
-          text: 'Welcome to the 19th Annual Dundie Awards! Where excellence is recognized, and dreams are forged in golden plastic!',
+          text: 'Welcome to the Scranton Night Dundie Awards! Where excellence is recognized, and dreams are forged in golden plastic!',
           emotion: 'proud',
           sfx: 'theme_jingle',
           emote: 'dundie',
@@ -263,6 +308,13 @@ export const DUNDIES_HEIST_EPISODE: SitcomScript = {
           durationMs: 4200,
         },
         {
+          type: 'interaction',
+          character: 'kevin',
+          action: 'pickup',
+          item: 'dundie_trophy',
+          durationMs: 1000,
+        },
+        {
           type: 'dialogue',
           speaker: 'kevin',
           text: 'I would like to thank the Scranton grocery store, the onions, and my giant pot. It is an honor!',
@@ -279,6 +331,13 @@ export const DUNDIES_HEIST_EPISODE: SitcomScript = {
           sfx: 'cheer',
           emote: 'dundie',
           durationMs: 4000,
+        },
+        {
+          type: 'interaction',
+          character: 'dwight',
+          action: 'pickup',
+          item: 'dundie_trophy',
+          durationMs: 1000,
         },
         {
           type: 'dialogue',
@@ -302,7 +361,7 @@ export const DUNDIES_HEIST_EPISODE: SitcomScript = {
         {
           type: 'camera_cue',
           target: 'overview',
-          zoom: 1.15,
+          zoom: 1.1,
           style: 'smooth_pan',
         },
         {

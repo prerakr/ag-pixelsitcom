@@ -5,6 +5,7 @@
 export type CharacterId = string;
 export type PropId = string;
 export type WaypointId = string;
+export type TimeOfDay = 'day' | 'golden_hour' | 'night' | 'emergency';
 
 export type EmotionType =
   | 'neutral'
@@ -82,21 +83,29 @@ export interface MovementBeat extends BaseBeat {
   speed?: number; // 1 = normal, 2 = fast, 0.5 = slow
   facing?: Direction;
   animationState?: 'walk' | 'run' | 'tiptoe' | 'sneak';
+  durationMs?: number;
 }
 
 export interface InteractionBeat extends BaseBeat {
   type: 'interaction';
   character: CharacterId;
-  targetProp: PropId;
+  targetProp?: PropId;
+  item?: string;
   action:
     | 'sit'
     | 'stand'
-    | 'type_pc'
+    | 'pickup'
+    | 'place'
+    | 'throw_plane'
+    | 'spill_coffee'
     | 'drink_coffee'
+    | 'eat_snack'
+    | 'eat_pretzel'
+    | 'type_pc'
     | 'use_photocopier'
     | 'ignite'
+    | 'extinguish'
     | 'inspect'
-    | 'eat_snack'
     | 'kick'
     | 'slam_desk'
     | 'give_dundie';
@@ -138,6 +147,12 @@ export interface EmoteBeat extends BaseBeat {
   soundEffect?: SfxType;
 }
 
+export interface TimeOfDayBeat extends BaseBeat {
+  type: 'time_of_day';
+  time: TimeOfDay;
+  durationMs?: number;
+}
+
 export interface GroupActionBeat extends BaseBeat {
   type: 'group_action';
   actions: Array<
@@ -146,6 +161,7 @@ export interface GroupActionBeat extends BaseBeat {
     | InteractionBeat
     | EmoteBeat
     | AudioCueBeat
+    | TimeOfDayBeat
   >;
 }
 
@@ -162,16 +178,19 @@ export type ScriptBeat =
   | CameraCueBeat
   | AudioCueBeat
   | EmoteBeat
+  | TimeOfDayBeat
   | GroupActionBeat
   | WaitBeat;
 
-export interface Scene {
+export interface ScriptScene {
   id: string;
   name: string;
-  location?: string;
   synopsis?: string;
+  timeOfDay?: TimeOfDay;
   beats: ScriptBeat[];
 }
+
+export type Scene = ScriptScene;
 
 export interface SitcomScript {
   version: '1.0';
@@ -181,5 +200,5 @@ export interface SitcomScript {
   synopsis: string;
   author?: string;
   characters: CharacterId[];
-  scenes: Scene[];
+  scenes: ScriptScene[];
 }

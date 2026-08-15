@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import confetti from 'canvas-confetti';
 import { VisualizerEngine } from './engine/CanvasRenderer';
-import { ALL_SETTINGS, DEFAULT_SETTING_ID } from './data/settings';
+import { ALL_SETTINGS, DEFAULT_SETTING_ID, getShowIdForSetting } from './data/settings';
 import { ALL_CHARACTERS, getCharactersForShow } from './data/characters';
 import { PRESET_EPISODES } from './data/episodes';
 import { SitcomScript, ScriptBeat, TalkingHeadBeat } from './types/script';
@@ -13,6 +13,7 @@ import { ScriptStudio } from './components/ScriptStudio';
 import { CharacterRoster } from './components/CharacterRoster';
 import { HelpModal } from './components/HelpModal';
 import { soundEngine } from './engine/SoundEngine';
+import { musicEngine } from './engine/MusicEngine';
 
 export function App() {
   const [settingId, setSettingId] = useState<string>(DEFAULT_SETTING_ID);
@@ -20,7 +21,7 @@ export function App() {
 
   // Characters for active show
   const currentShowCharacters = useMemo(() => {
-    const showId = settingId === 'hacker_hostel' ? 'silicon_valley' : settingId === 'central_coffee' ? 'friends' : 'the_office';
+    const showId = getShowIdForSetting(settingId);
     return getCharactersForShow(showId);
   }, [settingId]);
 
@@ -41,6 +42,7 @@ export function App() {
   const [isCastDrawerOpen, setIsCastDrawerOpen] = useState<boolean>(false);
   const [isHelpOpen, setIsHelpOpen] = useState<boolean>(false);
   const [isMuted, setIsMuted] = useState<boolean>(false);
+  const [isBgmMuted, setIsBgmMuted] = useState<boolean>(musicEngine.getMuted());
   const [allowCameraJumps, setAllowCameraJumps] = useState<boolean>(true);
 
   // Create & maintain VisualizerEngine instance
@@ -52,7 +54,11 @@ export function App() {
         setCurrentBeat(beat);
 
         // Dundie Confetti trigger!
-        if (beat && (beat.type === 'emote' && (beat as any).emote === 'dundie')) {
+        if (
+          beat &&
+          ((beat.type === 'emote' && beat.emote === 'dundie') ||
+            (beat.type === 'dialogue' && beat.emote === 'dundie'))
+        ) {
           confetti({
             particleCount: 60,
             spread: 70,
@@ -109,7 +115,10 @@ export function App() {
         setIsScriptStudioOpen(false);
         setIsCastDrawerOpen(false);
         setIsHelpOpen(false);
-        if (talkingHead) setTalkingHead(null);
+        if (talkingHead) {
+          setTalkingHead(null);
+          engine.nextBeat();
+        }
       }
     };
 
@@ -122,17 +131,22 @@ export function App() {
     setSettingId(id);
     const newSetting = ALL_SETTINGS[id];
     if (newSetting) {
-      // If we switched setting, pick compatible episode or adapt script
-      const showId = id === 'hacker_hostel' ? 'silicon_valley' : id === 'central_coffee' ? 'friends' : 'the_office';
-      const showChars = getCharactersForShow(showId);
-      // Auto adapt current script or create starter
-      const adaptedScript: SitcomScript = {
-        ...activeScript,
-        settingId: id,
-        showId: showId,
-        characters: showChars.slice(0, 4).map((c) => c.id),
-      };
-      setActiveScript(adaptedScript);
+      const showId = getShowIdForSetting(id);
+      const matchingEp = PRESET_EPISODES.find((ep) => ep.settingId === id || ep.showId === showId);
+      if (matchingEp) {
+        const epIdx = PRESET_EPISODES.indexOf(matchingEp);
+        if (epIdx >= 0) setCurrentEpisodeIndex(epIdx);
+        setActiveScript(matchingEp);
+      } else {
+        const showChars = getCharactersForShow(showId);
+        const adaptedScript: SitcomScript = {
+          ...activeScript,
+          settingId: id,
+          showId: showId,
+          characters: showChars.map((c) => c.id),
+        };
+        setActiveScript(adaptedScript);
+      }
     }
   };
 
@@ -160,6 +174,12 @@ export function App() {
     soundEngine.setMuted(next);
   };
 
+  const handleToggleBgmMute = () => {
+    const next = !isBgmMuted;
+    setIsBgmMuted(next);
+    musicEngine.setMuted(next);
+  };
+
   const handleFocusCharacter = (charId: string) => {
     const state = engine.characterStates.get(charId);
     if (state) {
@@ -182,6 +202,8 @@ export function App() {
         isCastDrawerOpen={isCastDrawerOpen}
         isMuted={isMuted}
         onToggleMute={handleToggleMute}
+        isBgmMuted={isBgmMuted}
+        onToggleBgmMute={handleToggleBgmMute}
       />
 
       {/* Main Top-Down Canvas Viewport */}

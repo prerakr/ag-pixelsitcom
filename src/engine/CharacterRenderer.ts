@@ -1,4 +1,4 @@
-import { CharacterDefinition, CharacterRuntimeState } from '../types/character';
+import { CharacterDefinition, CharacterRuntimeState, HoldableItemType } from '../types/character';
 import { Direction, EmoteIconType } from '../types/script';
 
 export class CharacterRenderer {
@@ -6,15 +6,19 @@ export class CharacterRenderer {
     ctx: CanvasRenderingContext2D,
     character: CharacterDefinition,
     state: CharacterRuntimeState,
-    showNameTag = true
+    showNameTag = true,
+    gameTime?: number
   ) {
     const { visual } = character;
     const { x, y, facing, isMoving, animFrame, isSitting, currentEmote } = state;
 
     ctx.save();
     ctx.translate(Math.round(x), Math.round(y));
+    if (visual.heightScale && visual.heightScale > 0) {
+      ctx.scale(1, Math.max(0.85, Math.min(1.15, visual.heightScale)));
+    }
 
-    const now = Date.now();
+    const now = gameTime !== undefined ? gameTime : Date.now();
     // Unique seed based on character name length to desynchronize animations
     const charHash = character.id.charCodeAt(0) * 137;
 
@@ -71,18 +75,33 @@ export class CharacterRenderer {
     ctx.fillStyle = visual.shirtColor;
     ctx.fillRect(-bodyHalf, torsoY, bodyW, 11);
 
-    // Collar / Cardigan / Tie details
+    // Collar / Cardigan / Sweater / ID Badge / Tie details
     if (visual.accessory === 'cardigan') {
       ctx.fillStyle = '#f8fafc'; // Inner blouse
       ctx.fillRect(-2, torsoY, 4, 6);
       ctx.fillStyle = visual.shirtColor; // Cardigan lapels
       ctx.fillRect(-bodyHalf, torsoY, 3, 10);
       ctx.fillRect(bodyHalf - 3, torsoY, 3, 10);
+    } else if (visual.accessory === 'sweater') {
+      // Knit ribbed sweater texture
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
+      ctx.fillRect(-bodyHalf, torsoY, bodyW, 2);
+      ctx.fillRect(-bodyHalf, torsoY + 9, bodyW, 2);
     } else if (visual.tieColor && (facing === 'down' || facing === 'left' || facing === 'right')) {
       // Tie
       ctx.fillStyle = visual.tieColor;
       ctx.fillRect(-1.5, torsoY + 2, 3, 8);
       ctx.fillRect(-1, torsoY + 10, 2, 2);
+    }
+
+    // ID Badge accessory overlay
+    if (visual.accessory === 'id_badge' && (facing === 'down' || facing === 'left' || facing === 'right')) {
+      ctx.fillStyle = '#0284c7';
+      ctx.fillRect(-1, torsoY, 2, 5); // Lanyard
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(-2, torsoY + 4, 4, 5); // Badge card
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(-1.5, torsoY + 5, 3, 2); // Photo
     }
 
     // 6. Arms & Hand Accessories
@@ -99,12 +118,19 @@ export class CharacterRenderer {
       ctx.fillRect(-bodyHalf - 3, armY + 7 + leftArmSwing, 3, 3);
       ctx.fillRect(bodyHalf, armY + 7 + rightArmSwing, 3, 3);
 
-      // Michael holding his coffee mug when idle
-      if (character.id === 'michael' && !isMoving && facing === 'down') {
+      // Michael holding his coffee mug when idle (if no other heldItem)
+      if (character.id === 'michael' && !isMoving && facing === 'down' && !state.heldItem) {
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(bodyHalf + 1, armY + 5, 4, 4);
         ctx.fillStyle = '#0284c7';
         ctx.fillRect(bodyHalf + 1, armY + 5, 4, 1);
+      }
+
+      // Render Dynamic Inventory Held Item
+      if (state.heldItem) {
+        const itemX = facing === 'down' ? bodyHalf + 1 : -bodyHalf - 4;
+        const itemY = armY + 6 + rightArmSwing;
+        CharacterRenderer.drawHeldItem(ctx, state.heldItem, itemX, itemY, facing);
       }
     } else {
       // Side arm
@@ -112,6 +138,12 @@ export class CharacterRenderer {
       ctx.fillRect(-2 + armSwing, armY, 4, 8);
       ctx.fillStyle = visual.skinColor;
       ctx.fillRect(-2 + armSwing, armY + 7, 4, 3);
+
+      if (state.heldItem) {
+        const itemX = facing === 'right' ? 3 : -6;
+        const itemY = armY + 7 + armSwing;
+        CharacterRenderer.drawHeldItem(ctx, state.heldItem, itemX, itemY, facing);
+      }
     }
 
     // 7. Head
@@ -134,6 +166,12 @@ export class CharacterRenderer {
       }
       if (visual.hairStyle === 'tight_bun') {
         ctx.fillRect(-3, headY - 6, 6, 5); // Angela's tight blonde bun
+      }
+      if (visual.hairStyle === 'slicked') {
+        ctx.fillRect(-headW / 2 - 1, headY - 2, headW + 2, headH);
+      }
+      if (visual.hairStyle === 'wild') {
+        ctx.fillRect(-headW / 2 - 3, headY - 4, headW + 6, headH + 2);
       }
     } else {
       // Hair top
@@ -160,28 +198,114 @@ export class CharacterRenderer {
         ctx.fillStyle = visual.hairColor;
         ctx.fillRect(-headW / 2 - 1, headY + 3, 3, 5);
         ctx.fillRect(headW / 2 - 2, headY + 3, 3, 5);
+      } else if (visual.hairStyle === 'slicked') {
+        // Gavin Belson / Don Draper slicked back hair
+        ctx.fillRect(-headW / 2 - 1, headY - 3, headW + 2, 5);
+        ctx.fillRect(-headW / 2 - 1, headY + 1, 3, 6);
+        ctx.fillRect(headW / 2 - 2, headY + 1, 3, 6);
+        // Glossy shine highlight line
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+        ctx.fillRect(-headW / 2 + 2, headY - 2, headW - 4, 1);
+        ctx.fillStyle = visual.hairColor;
+      } else if (visual.hairStyle === 'wild') {
+        // Kramer / Erlich Bachman wild voluminous hair
+        ctx.fillRect(-headW / 2 - 3, headY - 5, headW + 6, 6);
+        ctx.fillRect(-headW / 2 - 3, headY - 1, 4, 8);
+        ctx.fillRect(headW / 2 - 1, headY - 1, 4, 8);
+        ctx.fillRect(-headW / 2 - 1, headY - 6, 5, 3);
+        ctx.fillRect(headW / 2 - 4, headY - 6, 5, 3);
       } else {
         ctx.fillRect(-headW / 2 - 1, headY, headW + 2, 4);
       }
 
-      // Eyes & Expressions
-      ctx.fillStyle = '#0f172a';
-      if (facing === 'down' || isJimGaze) {
-        if (!isBlinking) {
-          const eyeXOffset = isJimGaze ? 1 : 0;
-          ctx.fillRect(-4 + eyeXOffset, headY + 5, 2, 2);
-          ctx.fillRect(2 + eyeXOffset, headY + 5, 2, 2);
+      // Active emotion for facial expression
+      const emotion = state.currentSpeech?.emotion || 'neutral';
 
-          // Jim's raised eyebrow and subtle smirk
-          if (isJimGaze) {
-            ctx.fillStyle = '#334155';
-            ctx.fillRect(-4, headY + 3, 3, 1);
-            ctx.fillRect(2, headY + 4, 3, 1);
-            ctx.fillStyle = '#881337';
-            ctx.fillRect(1, headY + 9, 3, 1);
+      // Eyebrows based on emotion
+      if (facing === 'down' || isJimGaze) {
+        if (isJimGaze) {
+          ctx.fillStyle = '#334155';
+          ctx.fillRect(-4, headY + 3, 3, 1);
+          ctx.fillRect(2, headY + 4, 3, 1);
+        } else if (emotion === 'angry') {
+          // Sharp V-angled fierce eyebrows
+          ctx.fillStyle = '#0f172a';
+          ctx.fillRect(-5, headY + 3, 3, 1);
+          ctx.fillRect(-3, headY + 4, 1, 1);
+          ctx.fillRect(2, headY + 4, 1, 1);
+          ctx.fillRect(3, headY + 3, 3, 1);
+        } else if (emotion === 'panic' || emotion === 'shock') {
+          // High arched panic brows
+          ctx.fillStyle = '#0f172a';
+          ctx.fillRect(-5, headY + 2, 3, 1);
+          ctx.fillRect(2, headY + 2, 3, 1);
+        } else if (emotion === 'happy' || emotion === 'proud') {
+          // Uplifted cheerful brows
+          ctx.fillStyle = '#334155';
+          ctx.fillRect(-4, headY + 3, 2, 1);
+          ctx.fillRect(2, headY + 3, 2, 1);
+        } else if (emotion === 'smirk' || emotion === 'smug') {
+          // Asymmetric raised brow
+          ctx.fillStyle = '#334155';
+          ctx.fillRect(-4, headY + 4, 2, 1);
+          ctx.fillRect(2, headY + 3, 3, 1);
+        } else if (emotion === 'cry' || emotion === 'cringe') {
+          // Sad furrowed brows
+          ctx.fillStyle = '#334155';
+          ctx.fillRect(-5, headY + 4, 1, 1);
+          ctx.fillRect(-4, headY + 3, 2, 1);
+          ctx.fillRect(2, headY + 3, 2, 1);
+          ctx.fillRect(4, headY + 4, 1, 1);
+        } else if (emotion === 'confused') {
+          // One high, one low
+          ctx.fillStyle = '#334155';
+          ctx.fillRect(-4, headY + 2, 3, 1);
+          ctx.fillRect(2, headY + 4, 3, 1);
+        } else {
+          // Neutral/deadpan brows
+          ctx.fillStyle = '#475569';
+          ctx.fillRect(-4, headY + 4, 2, 1);
+          ctx.fillRect(2, headY + 4, 2, 1);
+        }
+
+        // Eyes based on blinking & emotion
+        if (!isBlinking) {
+          if (emotion === 'panic' || emotion === 'shock') {
+            // Wide open alarmed eyes with white sclera + black pupil
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(-5, headY + 4, 3, 3);
+            ctx.fillRect(2, headY + 4, 3, 3);
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(-4, headY + 5, 1, 1);
+            ctx.fillRect(3, headY + 5, 1, 1);
+          } else if (emotion === 'happy' || emotion === 'proud') {
+            // Cheerful squint eyes ^ ^
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(-4, headY + 5, 2, 1);
+            ctx.fillRect(-5, headY + 6, 1, 1);
+            ctx.fillRect(-2, headY + 6, 1, 1);
+            ctx.fillRect(2, headY + 5, 2, 1);
+            ctx.fillRect(1, headY + 6, 1, 1);
+            ctx.fillRect(4, headY + 6, 1, 1);
+          } else if (emotion === 'cry') {
+            // Closed weeping eyes with tears
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(-5, headY + 5, 3, 1);
+            ctx.fillRect(2, headY + 5, 3, 1);
+            // Blue tears
+            ctx.fillStyle = '#38bdf8';
+            ctx.fillRect(-5, headY + 7, 1, 2);
+            ctx.fillRect(4, headY + 7, 1, 2);
+          } else {
+            // Standard eyes
+            ctx.fillStyle = '#0f172a';
+            const eyeXOffset = isJimGaze ? 1 : 0;
+            ctx.fillRect(-4 + eyeXOffset, headY + 5, 2, 2);
+            ctx.fillRect(2 + eyeXOffset, headY + 5, 2, 2);
           }
         } else {
           // Blinking eyes (horizontal slit)
+          ctx.fillStyle = '#0f172a';
           ctx.fillRect(-4, headY + 6, 2, 1);
           ctx.fillRect(2, headY + 6, 2, 1);
         }
@@ -195,57 +319,156 @@ export class CharacterRenderer {
           ctx.fillRect(-1, headY + 5, 2, 1);
         }
 
-        // Stanley's Mustache
+        // Facial Hair
         if (visual.facialHair === 'mustache') {
-          ctx.fillStyle = '#0f172a';
+          ctx.fillStyle = visual.hairColor || '#0f172a';
           ctx.fillRect(-4, headY + 8, 8, 2);
+        } else if (visual.facialHair === 'stubble') {
+          // 5 o'clock shadow
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.45)';
+          ctx.fillRect(-5, headY + 8, 10, 4);
+          ctx.fillStyle = visual.skinColor;
+          ctx.fillRect(-2, headY + 8, 4, 2); // clear mouth opening
+        } else if (visual.facialHair === 'beard') {
+          // Full thick beard
+          ctx.fillStyle = visual.hairColor || '#0f172a';
+          ctx.fillRect(-5, headY + 8, 10, 5);
+          ctx.fillRect(-4, headY + 13, 8, 2);
+          ctx.fillRect(-5, headY + 5, 2, 4);
+          ctx.fillRect(3, headY + 5, 2, 4);
         }
       } else if (facing === 'left') {
         if (!isBlinking) {
-          ctx.fillRect(-4, headY + 5, 2, 2);
+          if (emotion === 'happy' || emotion === 'proud') {
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(-4, headY + 5, 2, 1);
+            ctx.fillRect(-5, headY + 6, 1, 1);
+          } else if (emotion === 'panic' || emotion === 'shock') {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(-5, headY + 4, 3, 3);
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(-4, headY + 5, 1, 1);
+          } else {
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(-4, headY + 5, 2, 2);
+          }
         } else {
+          ctx.fillStyle = '#0f172a';
           ctx.fillRect(-4, headY + 6, 2, 1);
         }
         if (visual.glasses) {
           ctx.strokeStyle = '#475569';
           ctx.strokeRect(-5, headY + 4, 3, 4);
         }
+        if (visual.facialHair === 'mustache') {
+          ctx.fillStyle = visual.hairColor || '#0f172a';
+          ctx.fillRect(-5, headY + 8, 4, 2);
+        } else if (visual.facialHair === 'stubble') {
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.45)';
+          ctx.fillRect(-5, headY + 8, 5, 4);
+        } else if (visual.facialHair === 'beard') {
+          ctx.fillStyle = visual.hairColor || '#0f172a';
+          ctx.fillRect(-5, headY + 7, 5, 6);
+        }
       } else if (facing === 'right') {
         if (!isBlinking) {
-          ctx.fillRect(2, headY + 5, 2, 2);
+          if (emotion === 'happy' || emotion === 'proud') {
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(2, headY + 5, 2, 1);
+            ctx.fillRect(4, headY + 6, 1, 1);
+          } else if (emotion === 'panic' || emotion === 'shock') {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(2, headY + 4, 3, 3);
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(3, headY + 5, 1, 1);
+          } else {
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(2, headY + 5, 2, 2);
+          }
         } else {
+          ctx.fillStyle = '#0f172a';
           ctx.fillRect(2, headY + 6, 2, 1);
         }
         if (visual.glasses) {
           ctx.strokeStyle = '#475569';
           ctx.strokeRect(2, headY + 4, 3, 4);
         }
+        if (visual.facialHair === 'mustache') {
+          ctx.fillStyle = visual.hairColor || '#0f172a';
+          ctx.fillRect(1, headY + 8, 4, 2);
+        } else if (visual.facialHair === 'stubble') {
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.45)';
+          ctx.fillRect(0, headY + 8, 5, 4);
+        } else if (visual.facialHair === 'beard') {
+          ctx.fillStyle = visual.hairColor || '#0f172a';
+          ctx.fillRect(0, headY + 7, 5, 6);
+        }
       }
 
-      // Talking mouth movement
+      // Mouth rendering (speaking animation or resting expression)
       if (state.currentSpeech && !isJimGaze) {
         const isMouthOpen = Math.floor(now / 140) % 2 === 0;
         ctx.fillStyle = '#881337';
         if (facing === 'down') {
-          ctx.fillRect(-2, headY + 9, 4, isMouthOpen ? 2 : 1);
+          if (emotion === 'angry') {
+            // Wide shouting mouth
+            ctx.fillRect(-3, headY + 9, 6, isMouthOpen ? 3 : 2);
+          } else if (emotion === 'happy' || emotion === 'proud') {
+            // Cheerful open smile
+            ctx.fillRect(-3, headY + 8, 6, 1);
+            ctx.fillRect(-2, headY + 9, 4, isMouthOpen ? 2 : 1);
+          } else if (emotion === 'panic' || emotion === 'shock') {
+            // O-shaped gasp mouth
+            ctx.fillRect(-2, headY + 8, 4, isMouthOpen ? 3 : 2);
+          } else if (emotion === 'smirk' || emotion === 'smug') {
+            // Sideways speaking
+            ctx.fillRect(0, headY + 9, 3, isMouthOpen ? 2 : 1);
+          } else if (emotion === 'cry' || emotion === 'cringe') {
+            // Downturned mouth
+            ctx.fillRect(-3, headY + 10, 6, 1);
+            ctx.fillRect(-3, headY + 9, 1, 1);
+            ctx.fillRect(2, headY + 9, 1, 1);
+          } else {
+            ctx.fillRect(-2, headY + 9, 4, isMouthOpen ? 2 : 1);
+          }
         } else if (facing === 'left') {
           ctx.fillRect(-4, headY + 9, 2, isMouthOpen ? 2 : 1);
         } else if (facing === 'right') {
           ctx.fillRect(2, headY + 9, 2, isMouthOpen ? 2 : 1);
+        }
+      } else if (isJimGaze) {
+        // Jim's raised smirk
+        ctx.fillStyle = '#881337';
+        ctx.fillRect(1, headY + 9, 3, 1);
+      } else if (facing === 'down') {
+        // Resting subtle mouth expression when not actively speaking
+        if (emotion === 'happy' || emotion === 'proud') {
+          ctx.fillStyle = '#881337';
+          ctx.fillRect(-2, headY + 9, 4, 1);
+          ctx.fillRect(-3, headY + 8, 1, 1);
+          ctx.fillRect(2, headY + 8, 1, 1);
+        } else if (emotion === 'smirk' || emotion === 'smug') {
+          ctx.fillStyle = '#881337';
+          ctx.fillRect(0, headY + 9, 3, 1);
+          ctx.fillRect(2, headY + 8, 1, 1);
+        } else if (emotion === 'deadpan') {
+          ctx.fillStyle = '#64748b';
+          ctx.fillRect(-2, headY + 9, 4, 1);
         }
       }
     }
 
     // 9. Floating Emote Bubble
     if (currentEmote) {
-      this.drawEmoteBubble(ctx, currentEmote.icon, 0, headY - 14);
+      this.drawEmoteBubble(ctx, currentEmote.icon, 0, headY - 14, now);
     }
 
     // 10. Name Tag
     if (showNameTag) {
       ctx.font = '7px "Press Start 2P", monospace';
       ctx.textAlign = 'center';
-      const textMetrics = ctx.measureText(character.nickname || character.name.split(' ')[0]);
+      const displayName = character.nickname || character.name.split(' ')[0];
+      const textMetrics = ctx.measureText(displayName);
       const tagW = textMetrics.width + 6;
       const tagY = headY - 8;
 
@@ -255,7 +478,7 @@ export class CharacterRenderer {
       ctx.strokeRect(-tagW / 2, tagY - 8, tagW, 10);
 
       ctx.fillStyle = '#ffffff';
-      ctx.fillText(character.nickname || character.name.split(' ')[0], 0, tagY);
+      ctx.fillText(displayName, 0, tagY);
     }
 
     ctx.restore();
@@ -266,9 +489,10 @@ export class CharacterRenderer {
     ctx: CanvasRenderingContext2D,
     emote: EmoteIconType,
     x: number,
-    y: number
+    y: number,
+    now: number = Date.now()
   ) {
-    const bounce = Math.sin(Date.now() / 120) * 2.5;
+    const bounce = Math.sin(now / 120) * 2.5;
     const ey = y + bounce;
 
     ctx.save();
@@ -335,9 +559,109 @@ export class CharacterRenderer {
         ctx.font = '10px serif';
         ctx.fillText('👀', x, ey);
         break;
+      case 'money':
+        ctx.font = '10px serif';
+        ctx.fillText('💰', x, ey);
+        break;
+      case 'lightbulb':
+        ctx.font = '10px serif';
+        ctx.fillText('💡', x, ey);
+        break;
       default:
         ctx.font = '10px serif';
         ctx.fillText('✨', x, ey);
+    }
+
+    ctx.restore();
+  }
+
+  // Draw Held Inventory Items
+  public static drawHeldItem(
+    ctx: CanvasRenderingContext2D,
+    item: HoldableItemType,
+    hx: number,
+    hy: number,
+    facing: Direction
+  ) {
+    ctx.save();
+
+    switch (item) {
+      case 'dundie_trophy': {
+        // Golden Dundie Trophy held high!
+        ctx.fillStyle = '#f59e0b';
+        ctx.fillRect(hx - 1, hy - 8, 3, 7);
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillRect(hx - 2, hy - 11, 5, 3); // Figure
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(hx - 3, hy - 1, 7, 3); // Marble base
+        break;
+      }
+
+      case 'coffee_mug': {
+        // Ceramic Coffee Mug with steam
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(hx - 2, hy - 3, 5, 5);
+        ctx.fillStyle = '#0284c7';
+        ctx.fillRect(hx - 2, hy - 3, 5, 1);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.fillRect(hx - 1, hy - 6, 2, 2);
+        break;
+      }
+
+      case 'jello_stapler': {
+        // Jello Mold with Stapler
+        ctx.fillStyle = 'rgba(34, 197, 94, 0.85)';
+        ctx.fillRect(hx - 3, hy - 5, 8, 7);
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(hx - 1, hy - 3, 4, 3);
+        break;
+      }
+
+      case 'pizza_box': {
+        // Pizza Box
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(hx - 7, hy - 2, 14, 4);
+        ctx.fillStyle = '#dc2626';
+        ctx.fillRect(hx - 5, hy - 1, 10, 2);
+        break;
+      }
+
+      case 'clipboard': {
+        // Clipboard
+        ctx.fillStyle = '#78350f';
+        ctx.fillRect(hx - 3, hy - 6, 7, 9);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(hx - 2, hy - 4, 5, 6);
+        break;
+      }
+
+      case 'fire_extinguisher': {
+        // Red Extinguisher
+        ctx.fillStyle = '#dc2626';
+        ctx.fillRect(hx - 2, hy - 6, 5, 9);
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(hx - 1, hy - 8, 3, 2);
+        break;
+      }
+
+      case 'pretzel': {
+        // Soft Pretzel
+        ctx.fillStyle = '#b45309';
+        ctx.fillRect(hx - 3, hy - 4, 6, 5);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(hx - 2, hy - 3, 1, 1);
+        ctx.fillRect(hx + 1, hy - 2, 1, 1);
+        break;
+      }
+
+      case 'paper_sheet': {
+        // Paper Document
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(hx - 3, hy - 5, 6, 7);
+        ctx.fillStyle = '#3b82f6';
+        ctx.fillRect(hx - 2, hy - 4, 4, 1);
+        break;
+      }
     }
 
     ctx.restore();

@@ -1,5 +1,15 @@
 import { Direction, EmotionType, EmoteIconType } from './script';
 
+export type HoldableItemType =
+  | 'dundie_trophy'
+  | 'coffee_mug'
+  | 'jello_stapler'
+  | 'pizza_box'
+  | 'clipboard'
+  | 'fire_extinguisher'
+  | 'pretzel'
+  | 'paper_sheet';
+
 export interface CharacterVisualProfile {
   skinColor: string;
   hairColor: string;
@@ -41,8 +51,10 @@ export interface CharacterRuntimeState {
   speed: number;
   animFrame: number;
   animTimer: number;
+  animSpeed?: number;
   currentAction?: string;
   isSitting?: boolean;
+  heldItem?: HoldableItemType;
   currentSpeech?: {
     text: string;
     displayedText: string;
@@ -51,6 +63,7 @@ export interface CharacterRuntimeState {
     emotion: EmotionType;
     totalDuration: number;
     elapsed: number;
+    speedMultiplier?: number;
   };
   currentEmote?: {
     icon: EmoteIconType;

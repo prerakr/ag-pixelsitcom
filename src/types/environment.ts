@@ -15,6 +15,7 @@ export type TileType =
 
 export type PropType =
   | 'desk_wood'
+  | 'desk_modern'
   | 'desk_reception'
   | 'desk_michael'
   | 'chair_office'
@@ -35,6 +36,18 @@ export type PropType =
   | 'jello_stapler'
   | 'server_rack'
   | 'coffee_bar'
+  | 'coffee_maker'
+  | 'neon_sign'
+  | 'french_horn'
+  | 'umbrella_stand'
+  | 'jukebox'
+  | 'rug'
+  | 'swords_crossed'
+  | 'dartboard'
+  | 'high_top_table'
+  | 'liquor_shelf'
+  | 'pub_fireplace'
+  | 'framed_art'
   | 'fire_hazard';
 
 export interface PropInstance {
@@ -74,11 +87,12 @@ export interface SettingDefinition {
   id: string;
   name: string;
   showTitle: string;
+  description?: string;
   gridWidth: number; // e.g. 36 cells
   gridHeight: number; // e.g. 24 cells
   tileSize: number; // e.g. 32px
   backgroundColor: string;
-  zones: RoomZone[];
+  zones?: RoomZone[];
   tiles: { [key: string]: TileType }; // "x,y" => TileType
   props: PropInstance[];
   waypoints: Record<string, Waypoint>;

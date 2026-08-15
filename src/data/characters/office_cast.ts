@@ -222,4 +222,161 @@ export const OFFICE_CAST: Record<string, CharacterDefinition> = {
     defaultWaypoint: 'annex_toby',
     defaultFacing: 'down',
   },
+
+  phyllis: {
+    id: 'phyllis',
+    name: 'Phyllis Vance',
+    nickname: 'Phyllis',
+    role: 'Sales Representative',
+    showId: 'the_office',
+    visual: {
+      skinColor: '#f7cfb2',
+      hairColor: '#785428',
+      hairStyle: 'curls',
+      shirtColor: '#9333ea', // Purple knit sweater/cardigan
+      pantsColor: '#475569',
+      shoesColor: '#1e293b',
+      accessory: 'cardigan',
+      bodyType: 'large',
+      heightScale: 0.98,
+    },
+    signatureQuotes: [
+      "Bob Vance, Vance Refrigeration.",
+      "Close your mouth, sweetie, you look like a trout.",
+      "As a person who buys a lot of erotic cakes, it feels good to be represented.",
+    ],
+    personalityTraits: ['Sweet yet passive-aggressive', 'Married to Bob Vance', 'Knitting expert', 'Party planning veteran'],
+    defaultWaypoint: 'phyllis_desk',
+    defaultFacing: 'up',
+  },
+
+  ryan: {
+    id: 'ryan',
+    name: 'Ryan Howard',
+    nickname: 'Ryan',
+    role: 'The Temp / Trend Chaser',
+    showId: 'the_office',
+    visual: {
+      skinColor: '#fce7d2',
+      hairColor: '#1e293b',
+      hairStyle: 'slicked',
+      shirtColor: '#0f172a', // Sleek black shirt / suspenders
+      tieColor: '#94a3b8',
+      pantsColor: '#334155',
+      shoesColor: '#020617',
+      facialHair: 'stubble',
+      heightScale: 0.98,
+    },
+    signatureQuotes: [
+      "Ryan started the fire!",
+      "I'd like to make a toast. To the troops. Both sides.",
+      "WUPHF.com is the future of communication.",
+    ],
+    personalityTraits: ['Fire Guy', 'WUPHF founder', 'Unearned confidence', 'Trend obsessed'],
+    defaultWaypoint: 'ryan_desk',
+    defaultFacing: 'down',
+  },
+
+  kelly: {
+    id: 'kelly',
+    name: 'Kelly Kapoor',
+    nickname: 'Kelly',
+    role: 'Customer Service Representative',
+    showId: 'the_office',
+    visual: {
+      skinColor: '#8d5b4c',
+      hairColor: '#09090b',
+      hairStyle: 'curls',
+      shirtColor: '#ec4899', // Bright hot pink top
+      pantsColor: '#1e293b',
+      shoesColor: '#f43f5e',
+      bodyType: 'petite',
+      heightScale: 0.92,
+    },
+    signatureQuotes: [
+      "I have a lot of questions. Number one: How dare you?",
+      "Yeah, I'm doing great. Except I'm dying inside.",
+      "Basically, I'm a genius.",
+    ],
+    personalityTraits: ['Celebrity gossip expert', 'Dramatic romantic', 'Talks at 200 wpm', 'Annex neighbor'],
+    defaultWaypoint: 'annex_kelly',
+    defaultFacing: 'left',
+  },
+
+  oscar: {
+    id: 'oscar',
+    name: 'Oscar Martinez',
+    nickname: 'Oscar',
+    role: 'Senior Accountant',
+    showId: 'the_office',
+    visual: {
+      skinColor: '#d4a373',
+      hairColor: '#18181b',
+      hairStyle: 'short',
+      shirtColor: '#3b82f6', // Crisp royal blue dress shirt
+      tieColor: '#1e3a8a',
+      pantsColor: '#1e293b',
+      shoesColor: '#0f172a',
+      heightScale: 1.0,
+    },
+    signatureQuotes: [
+      "Actually...",
+      "Your problem is that you don't know what you don't know.",
+      "I consider myself a pretty good judge of people, but that's because I have no faith in them.",
+    ],
+    personalityTraits: ['The "Actually" guy', 'Logical anchor', 'Accounting genius', 'Cultured critic'],
+    defaultWaypoint: 'oscar_desk',
+    defaultFacing: 'down',
+  },
+
+  creed: {
+    id: 'creed',
+    name: 'Creed Bratton',
+    nickname: 'Creed',
+    role: 'Quality Assurance (Allegedly)',
+    showId: 'the_office',
+    visual: {
+      skinColor: '#f5d0b5',
+      hairColor: '#e2e8f0', // Silver white hair
+      hairStyle: 'short',
+      shirtColor: '#64748b', // Faded grey shirt
+      tieColor: '#334155',
+      pantsColor: '#1e293b',
+      shoesColor: '#0f172a',
+      heightScale: 0.99,
+    },
+    signatureQuotes: [
+      "Nobody steals from Creed Bratton and gets away with it. The last person to do this was Creed Bratton.",
+      "Just pretend like we're talking until a cop leaves.",
+      "I've been involved in a number of cults, both as a leader and a follower.",
+    ],
+    personalityTraits: ['Mysterious past', 'Quabity Assuance', 'Scuba philosopher', 'Mung bean farmer'],
+    defaultWaypoint: 'creed_desk',
+    defaultFacing: 'down',
+  },
+
+  meredith: {
+    id: 'meredith',
+    name: 'Meredith Palmer',
+    nickname: 'Meredith',
+    role: 'Supplier Relations',
+    showId: 'the_office',
+    visual: {
+      skinColor: '#fed7aa',
+      hairColor: '#ef4444', // Fiery red hair
+      hairStyle: 'floppy',
+      shirtColor: '#10b981', // Emerald green casual top
+      pantsColor: '#334155',
+      shoesColor: '#1e293b',
+      heightScale: 0.96,
+    },
+    signatureQuotes: [
+      "I have a degree in school psychology!",
+      "Tell him to call me. I like redheads.",
+      "It's Casual Friday!",
+    ],
+    personalityTraits: ['Party animal', 'Rabies survivor', 'Unfiltered honesty', 'Casual Friday enthusiast'],
+    defaultWaypoint: 'meredith_desk',
+    defaultFacing: 'down',
+  },
 };

@@ -1,11 +1,27 @@
 import { SettingDefinition, PropInstance, Waypoint } from '../types/environment';
-import { CharacterDefinition, CharacterRuntimeState } from '../types/character';
-import { SitcomScript, ScriptBeat, DialogueBeat, MovementBeat, InteractionBeat, TalkingHeadBeat, CameraCueBeat, AudioCueBeat, EmoteBeat, GroupActionBeat } from '../types/script';
+import { CharacterDefinition, CharacterRuntimeState, HoldableItemType } from '../types/character';
+import {
+  SitcomScript,
+  ScriptBeat,
+  DialogueBeat,
+  MovementBeat,
+  InteractionBeat,
+  TalkingHeadBeat,
+  CameraCueBeat,
+  AudioCueBeat,
+  EmoteBeat,
+  TimeOfDayBeat,
+  GroupActionBeat,
+  TimeOfDay,
+} from '../types/script';
 import { TileRenderer } from './TileRenderer';
 import { CharacterRenderer } from './CharacterRenderer';
 import { SpeechBubbleRenderer } from './SpeechBubble';
 import { Camera } from './Camera';
 import { soundEngine } from './SoundEngine';
+import { musicEngine } from './MusicEngine';
+import { particleSystem } from './ParticleSystem';
+import { lightingEngine } from './LightingEngine';
 
 export interface VisualizerCallbacks {
   onBeatChange?: (sceneIndex: number, beatIndex: number, currentBeat: ScriptBeat | null) => void;
@@ -36,6 +52,7 @@ export class VisualizerEngine {
   public beatTimer: number = 0;
   public beatDuration: number = 3000;
   public activeTalkingHead: TalkingHeadBeat | null = null;
+  public gameTime: number = 0;
 
   // Camera tracking mode: 'auto' | 'free'
   public cameraMode: 'auto' | 'free' = 'auto';
@@ -48,6 +65,15 @@ export class VisualizerEngine {
 
   // Callbacks
   private callbacks: VisualizerCallbacks = {};
+
+  // Offscreen static tilemap cache to eliminate per-frame grid redraw overhead
+  private tileCanvas: HTMLCanvasElement | null = null;
+  private tileCtx: CanvasRenderingContext2D | null = null;
+  private isTileMapDirty: boolean = true;
+
+  // Cached render queue & character array to eliminate per-frame GC allocations
+  private renderQueue: Array<{ yOrder: number; draw: () => void }> = [];
+  private cachedCharStates: CharacterRuntimeState[] = [];
 
   constructor(
     setting: SettingDefinition,
@@ -95,25 +121,44 @@ export class VisualizerEngine {
 
   public setSetting(setting: SettingDefinition) {
     this.setting = setting;
+    this.isTileMapDirty = true;
     this.camera.snapTo(
       setting.defaultCamera.x,
       setting.defaultCamera.y,
       setting.defaultCamera.zoom
     );
     this.initCharacters();
+    musicEngine.playTheme(setting.id);
   }
 
   public initCharacters() {
     this.characterStates.clear();
     const tileSize = this.setting.tileSize;
 
-    Object.values(this.charactersMap).forEach((char) => {
+    // Filter characters to ONLY those belonging to the active script or setting
+    const activeCharIds = new Set<string>();
+
+    if (this.script && Array.isArray(this.script.characters) && this.script.characters.length > 0) {
+      this.script.characters.forEach((id) => activeCharIds.add(id));
+    } else {
+      Object.keys(this.setting.spawnPoints).forEach((id) => activeCharIds.add(id));
+    }
+
+    activeCharIds.forEach((charId) => {
+      const char = this.charactersMap[charId];
+      if (!char) return;
+
       // Find spawn point or default waypoint
       const spawn = this.setting.spawnPoints[char.id] || this.setting.waypoints[char.defaultWaypoint];
       const startX = spawn ? spawn.x * tileSize : 10 * tileSize;
       const startY = spawn ? spawn.y * tileSize : 10 * tileSize;
 
-      const isAtDesk = char.defaultWaypoint?.includes('desk') || char.defaultWaypoint?.includes('seat');
+      const isAtDesk =
+        char.defaultWaypoint?.includes('desk') ||
+        char.defaultWaypoint?.includes('seat') ||
+        char.defaultWaypoint?.includes('couch') ||
+        char.defaultWaypoint?.includes('booth') ||
+        char.defaultWaypoint?.includes('armchair');
 
       this.characterStates.set(char.id, {
         id: char.id,
@@ -127,6 +172,9 @@ export class VisualizerEngine {
         isSitting: isAtDesk,
       });
     });
+
+    this.cachedCharStates = Array.from(this.characterStates.values());
+    this.isTileMapDirty = true;
   }
 
   public loadScript(script: SitcomScript) {
@@ -137,6 +185,14 @@ export class VisualizerEngine {
     this.activeTalkingHead = null;
     this.propStates.clear();
     this.initCharacters();
+    this.isTileMapDirty = true;
+    musicEngine.playTheme(script.settingId || this.setting.id);
+
+    if (script.scenes[0]?.timeOfDay) {
+      lightingEngine.setTimeOfDay(script.scenes[0].timeOfDay, true);
+    } else {
+      lightingEngine.setTimeOfDay('day', true);
+    }
 
     if (this.callbacks.onTalkingHead) {
       this.callbacks.onTalkingHead(null);
@@ -257,6 +313,7 @@ export class VisualizerEngine {
 
     if (beat.type !== 'talking_head' && this.activeTalkingHead !== null) {
       this.activeTalkingHead = null;
+      musicEngine.duckAudio(false);
       if (this.callbacks.onTalkingHead) {
         this.callbacks.onTalkingHead(null);
       }
@@ -268,10 +325,10 @@ export class VisualizerEngine {
     switch (beat.type) {
       case 'dialogue': {
         const d = beat as DialogueBeat;
-        const char = this.charactersMap[d.speaker];
         const state = this.characterStates.get(d.speaker);
         if (state) {
-          const readingTime = Math.max(2500, d.text.length * 75);
+          const speedMultiplier = d.speed === 'slow' ? 0.6 : d.speed === 'fast' ? 1.8 : 1.0;
+          const readingTime = Math.max(2000, Math.floor((d.text.length * 75) / speedMultiplier));
           this.beatDuration = d.durationMs || readingTime;
           state.currentSpeech = {
             text: d.text,
@@ -281,6 +338,7 @@ export class VisualizerEngine {
             emotion: d.emotion || 'neutral',
             totalDuration: this.beatDuration,
             elapsed: 0,
+            speedMultiplier,
           };
           if (d.emote) {
             state.currentEmote = {
@@ -295,7 +353,6 @@ export class VisualizerEngine {
           // Only move camera if allowed and in auto director mode
           if (this.cameraMode === 'auto' && this.allowCameraJumps && d.cameraFocus !== false) {
             const zoom = this.getSafeTargetZoom(1.15);
-            // Center directly on speaker's body coordinate (state.x, state.y - 8)
             this.camera.setTarget(state.x, state.y - 8, zoom);
           }
         }
@@ -305,7 +362,6 @@ export class VisualizerEngine {
       case 'movement': {
         const m = beat as MovementBeat;
         this.startCharacterMovement(m);
-        this.beatDuration = 2500;
         break;
       }
 
@@ -316,15 +372,132 @@ export class VisualizerEngine {
           state.currentAction = inter.action;
           if (inter.action === 'sit') state.isSitting = true;
           if (inter.action === 'stand') state.isSitting = false;
-          if (inter.action === 'ignite') {
-            const pState = this.propStates.get(inter.targetProp) || {};
-            pState.ignited = true;
-            this.propStates.set(inter.targetProp, pState);
-            this.camera.shake(0.4, 8);
+
+          // Pickup Item
+          if (inter.action === 'pickup') {
+            state.heldItem = (inter.item as HoldableItemType) || 'dundie_trophy';
+            if (inter.targetProp) {
+              const pState = this.propStates.get(inter.targetProp) || {};
+              pState.pickedUp = true;
+              this.propStates.set(inter.targetProp, pState);
+            }
           }
+
+          // Place Item
+          if (inter.action === 'place') {
+            state.heldItem = undefined;
+            if (inter.targetProp) {
+              const pState = this.propStates.get(inter.targetProp) || {};
+              pState.pickedUp = false;
+              this.propStates.set(inter.targetProp, pState);
+            }
+          }
+
+          // Throw Paper Airplane
+          if (inter.action === 'throw_plane') {
+            let tx = state.x + (state.facing === 'left' ? -130 : 130);
+            let ty = state.y;
+            if (inter.targetProp) {
+              const targetChar = this.characterStates.get(inter.targetProp);
+              const targetWp = this.setting.waypoints[inter.targetProp];
+              if (targetChar) {
+                tx = targetChar.x;
+                ty = targetChar.y;
+              } else if (targetWp) {
+                tx = targetWp.x * this.setting.tileSize;
+                ty = targetWp.y * this.setting.tileSize;
+              }
+            }
+            particleSystem.throwPaperAirplane(state.x, state.y, tx, ty);
+            state.heldItem = undefined;
+          }
+
+          // Spill Coffee
+          if (inter.action === 'spill_coffee') {
+            particleSystem.spillCoffee(state.x, state.y + 8);
+            state.heldItem = undefined;
+            this.camera.shake(0.25, 5);
+          }
+
+          // Drink / Eat
+          if (inter.action === 'drink_coffee') {
+            state.heldItem = 'coffee_mug';
+          }
+          if (inter.action === 'eat_pretzel') {
+            state.heldItem = 'pretzel';
+          }
+          if (inter.action === 'eat_snack') {
+            state.heldItem = 'pretzel';
+          }
+
+          // PC Typing
+          if (inter.action === 'type_pc') {
+            state.isSitting = true;
+            state.heldItem = undefined;
+            if (inter.sfx) soundEngine.playSfx(inter.sfx);
+            else soundEngine.playSfx('typewriter', 0.4);
+          }
+
+          // Photocopier
+          if (inter.action === 'use_photocopier') {
+            state.heldItem = 'paper_sheet';
+            if (inter.sfx) soundEngine.playSfx(inter.sfx);
+            else soundEngine.playSfx('typewriter', 0.5);
+          }
+
+          // Fire Extinguisher Foam
+          if (inter.action === 'extinguish') {
+            const facingAngles: Record<string, number> = {
+              down: Math.PI / 2,
+              up: -Math.PI / 2,
+              left: Math.PI,
+              right: 0,
+            };
+            particleSystem.shootExtinguisherFoam(state.x, state.y, facingAngles[state.facing] || 0);
+            if (inter.targetProp) {
+              const pState = this.propStates.get(inter.targetProp) || {};
+              pState.ignited = false;
+              this.propStates.set(inter.targetProp, pState);
+            }
+          }
+
+          // Ignite Fire
+          if (inter.action === 'ignite') {
+            if (inter.targetProp) {
+              const pState = this.propStates.get(inter.targetProp) || {};
+              pState.ignited = true;
+              this.propStates.set(inter.targetProp, pState);
+              this.camera.shake(0.4, 8);
+            }
+          }
+
+          // Slam Desk & Kick
+          if (inter.action === 'slam_desk') {
+            this.camera.shake(0.35, 7);
+            if (inter.sfx) soundEngine.playSfx(inter.sfx);
+            else soundEngine.playSfx('dramatic_boom', 0.5);
+          }
+          if (inter.action === 'kick') {
+            this.camera.shake(0.2, 4);
+          }
+
+          // Give Dundie
+          if (inter.action === 'give_dundie') {
+            state.heldItem = 'dundie_trophy';
+            if (inter.sfx) soundEngine.playSfx(inter.sfx);
+            else soundEngine.playSfx('theme_jingle');
+          }
+
           if (inter.sfx) soundEngine.playSfx(inter.sfx);
         }
         this.beatDuration = inter.durationMs || 2000;
+        break;
+      }
+
+      case 'time_of_day': {
+        const tod = beat as TimeOfDayBeat;
+        lightingEngine.setTimeOfDay(tod.time, false, tod.durationMs);
+        this.beatDuration = tod.durationMs || 1500;
         break;
       }
 
@@ -332,6 +505,7 @@ export class VisualizerEngine {
         const th = beat as TalkingHeadBeat;
         this.activeTalkingHead = th;
         this.beatDuration = th.durationMs || Math.max(4500, th.monologueText.length * 80);
+        musicEngine.duckAudio(true);
         if (th.sfx) soundEngine.playSfx(th.sfx);
         if (this.callbacks.onTalkingHead) {
           this.callbacks.onTalkingHead(th);
@@ -352,7 +526,12 @@ export class VisualizerEngine {
               const rectH = this.canvas.height / dpr;
               const worldW = this.setting.gridWidth * this.setting.tileSize;
               const worldH = this.setting.gridHeight * this.setting.tileSize;
-              this.camera.fitToViewport(rectW, rectH, worldW, worldH);
+              if (cam.style === 'cut') {
+                const fitZoom = Math.max(this.camera.minZoom, Math.min(1.4, Math.min((rectW * 0.92) / worldW, (rectH * 0.92) / worldH)));
+                this.camera.snapTo(worldW / 2, worldH / 2, fitZoom);
+              } else {
+                this.camera.fitToViewport(rectW, rectH, worldW, worldH);
+              }
             } else {
               this.camera.setTarget(
                 this.setting.defaultCamera.x,
@@ -363,21 +542,30 @@ export class VisualizerEngine {
           } else if (typeof cam.target === 'string') {
             const charState = this.characterStates.get(cam.target);
             const waypoint = this.setting.waypoints[cam.target];
-            if (charState) {
-              if (cam.style === 'jim_stare') {
+            const targetX = charState ? charState.x : waypoint ? waypoint.x * this.setting.tileSize : undefined;
+            const targetY = charState ? charState.y - 8 : waypoint ? waypoint.y * this.setting.tileSize : undefined;
+
+            if (targetX !== undefined && targetY !== undefined) {
+              if (cam.style === 'jim_stare' && charState) {
                 charState.currentAction = 'jim_stare';
                 this.camera.shake(0.2, 4);
               }
-              this.camera.setTarget(charState.x, charState.y - 8, zoom);
-            } else if (waypoint) {
-              this.camera.setTarget(
-                waypoint.x * this.setting.tileSize,
-                waypoint.y * this.setting.tileSize,
-                zoom
-              );
+
+              if (cam.style === 'cut') {
+                this.camera.snapTo(targetX, targetY, zoom);
+              } else if (cam.style === 'dramatic_zoom') {
+                const dramaticZoom = Math.min(this.camera.maxZoom, zoom * 1.35);
+                this.camera.setTarget(targetX, targetY, dramaticZoom);
+              } else {
+                this.camera.setTarget(targetX, targetY, zoom);
+              }
             }
           } else if (typeof cam.target === 'object') {
-            this.camera.setTarget(cam.target.x, cam.target.y, zoom);
+            if (cam.style === 'cut') {
+              this.camera.snapTo(cam.target.x, cam.target.y, zoom);
+            } else {
+              this.camera.setTarget(cam.target.x, cam.target.y, zoom);
+            }
           }
         }
         this.beatDuration = cam.durationMs || 1800;
@@ -408,9 +596,14 @@ export class VisualizerEngine {
 
       case 'group_action': {
         const grp = beat as GroupActionBeat;
+        let maxDur = 2500;
         grp.actions.forEach((subAction) => {
-          if (subAction.type === 'movement') this.startCharacterMovement(subAction);
-          if (subAction.type === 'emote') {
+          if ('durationMs' in subAction && subAction.durationMs && subAction.durationMs > maxDur) {
+            maxDur = subAction.durationMs;
+          }
+          if (subAction.type === 'movement') {
+            this.startCharacterMovement(subAction);
+          } else if (subAction.type === 'emote') {
             const st = this.characterStates.get(subAction.character);
             if (st) {
               st.currentEmote = {
@@ -418,16 +611,65 @@ export class VisualizerEngine {
                 timer: 0,
                 maxDuration: subAction.durationMs || 2500,
               };
+              if (subAction.soundEffect) soundEngine.playSfx(subAction.soundEffect);
             }
+          } else if (subAction.type === 'dialogue') {
+            const char = this.charactersMap[subAction.speaker];
+            const st = this.characterStates.get(subAction.speaker);
+            if (char && st) {
+              st.currentSpeech = {
+                text: subAction.text,
+                displayedText: subAction.text,
+                charIndex: subAction.text.length,
+                timer: 0,
+                emotion: subAction.emotion || 'neutral',
+                totalDuration: subAction.durationMs || 3500,
+                elapsed: 0,
+              };
+              if (subAction.emote) {
+                st.currentEmote = {
+                  icon: subAction.emote,
+                  timer: 0,
+                  maxDuration: 2500,
+                };
+              }
+              if (subAction.sfx) soundEngine.playSfx(subAction.sfx);
+            }
+          } else if (subAction.type === 'interaction') {
+            const st = this.characterStates.get(subAction.character);
+            if (st) {
+              if (subAction.facing) st.facing = subAction.facing;
+              if (subAction.action === 'sit') st.isSitting = true;
+              else if (subAction.action === 'stand') st.isSitting = false;
+              else if (subAction.action === 'drink_coffee') st.heldItem = 'coffee_mug';
+              else if (subAction.action === 'pickup') st.heldItem = 'clipboard';
+              else if (subAction.action === 'place') st.heldItem = undefined;
+              else if (subAction.action === 'type_pc') { st.isSitting = true; st.heldItem = undefined; }
+              else if (subAction.action === 'ignite' && subAction.targetProp) {
+                this.propStates.set(subAction.targetProp, {
+                  ...(this.propStates.get(subAction.targetProp) || {}),
+                  ignited: true,
+                });
+              } else if (subAction.action === 'extinguish' && subAction.targetProp) {
+                this.propStates.set(subAction.targetProp, {
+                  ...(this.propStates.get(subAction.targetProp) || {}),
+                  ignited: false,
+                });
+              }
+              if (subAction.sfx) soundEngine.playSfx(subAction.sfx);
+            }
+          } else if (subAction.type === 'audio_cue') {
+            soundEngine.playSfx(subAction.sfx, subAction.volume || 1.0);
+          } else if (subAction.type === 'time_of_day') {
+            lightingEngine.setTimeOfDay(subAction.time);
           }
-          if (subAction.type === 'audio_cue') soundEngine.playSfx(subAction.sfx, subAction.volume || 1.0);
         });
-        this.beatDuration = 3000;
+        this.beatDuration = maxDur;
         break;
       }
 
       case 'wait': {
-        this.beatDuration = (beat as any).durationMs || 2000;
+        this.beatDuration = beat.durationMs || 2000;
         break;
       }
     }
@@ -521,18 +763,46 @@ export class VisualizerEngine {
     state.targetY = vacantSpot.y;
     state.isMoving = true;
     state.isSitting = false;
-    state.speed = m.speed || 1.0;
+
+    // Movement animation state multipliers
+    let animSpeedMultiplier = 1.0;
+    if (m.animationState === 'run') {
+      animSpeedMultiplier = 1.8;
+      state.animSpeed = 0.09;
+    } else if (m.animationState === 'tiptoe') {
+      animSpeedMultiplier = 0.55;
+      state.animSpeed = 0.25;
+    } else if (m.animationState === 'sneak') {
+      animSpeedMultiplier = 0.65;
+      state.animSpeed = 0.22;
+    } else {
+      animSpeedMultiplier = 1.0;
+      state.animSpeed = 0.16;
+    }
+
+    state.speed = (m.speed || 1.0) * animSpeedMultiplier;
     if (m.facing) state.facing = m.facing;
+
+    // Dynamic duration computed from Euclidean travel distance
+    const dist = Math.hypot(vacantSpot.x - state.x, vacantSpot.y - state.y);
+    const speedPx = 110 * state.speed;
+    const calcDuration = Math.max(1200, Math.min(5500, (dist / Math.max(20, speedPx)) * 1000 + 400));
+    this.beatDuration = m.durationMs || calcDuration;
   }
 
   private updateSimulation(dt: number) {
     const scaledDt = dt * this.playbackSpeed;
 
+    // Update Simulation Time (game clock)
+    if (this.isPlaying) {
+      this.gameTime += scaledDt * 1000;
+    }
+
     // Update Camera
     this.camera.update(scaledDt);
 
     // Soft separation between standing characters so they never directly overlap
-    const charArray = Array.from(this.characterStates.values());
+    const charArray = this.cachedCharStates;
     for (let i = 0; i < charArray.length; i++) {
       for (let j = i + 1; j < charArray.length; j++) {
         const c1 = charArray[i];
@@ -557,8 +827,9 @@ export class VisualizerEngine {
     }
 
     // Update Characters movement & typewriter speech
-    const tileSize = this.setting.tileSize;
-    this.characterStates.forEach((state) => {
+    for (let i = 0; i < this.cachedCharStates.length; i++) {
+      const state = this.cachedCharStates[i];
+
       // Movement interpolation
       if (state.isMoving && state.targetX !== undefined && state.targetY !== undefined) {
         const dx = state.targetX - state.x;
@@ -586,9 +857,10 @@ export class VisualizerEngine {
           state.x += (dx / dist) * moveSpeed;
           state.y += (dy / dist) * moveSpeed;
 
-          // Walk cycle animation
+          // Walk cycle animation with custom animSpeed interval
           state.animTimer += scaledDt;
-          if (state.animTimer > 0.16) {
+          const stepInterval = state.animSpeed || 0.16;
+          if (state.animTimer > stepInterval) {
             state.animTimer = 0;
             state.animFrame = (state.animFrame + 1) % 4;
           }
@@ -608,7 +880,8 @@ export class VisualizerEngine {
         const sp = state.currentSpeech;
         sp.elapsed += scaledDt * 1000;
         const totalChars = sp.text.length;
-        const charsPerMs = totalChars / (sp.totalDuration * 0.7); // Reveal in first 70% of beat duration
+        const mult = sp.speedMultiplier || 1.0;
+        const charsPerMs = (totalChars / (sp.totalDuration * 0.7)) * mult;
         const targetChars = Math.min(totalChars, Math.floor(sp.elapsed * charsPerMs));
 
         if (targetChars > sp.charIndex) {
@@ -620,7 +893,19 @@ export class VisualizerEngine {
           }
         }
       }
-    });
+    }
+
+    // Update Particle System & Lighting
+    particleSystem.update(scaledDt);
+    lightingEngine.update(scaledDt);
+
+    const worldW = this.setting.gridWidth * this.setting.tileSize;
+    const worldH = this.setting.gridHeight * this.setting.tileSize;
+
+    // Spawn subtle dust motes in sunbeams
+    if (lightingEngine.currentTime === 'day' || lightingEngine.currentTime === 'golden_hour') {
+      particleSystem.spawnDustMotes(worldW, worldH, 1);
+    }
 
     // Advance beat timeline if playing
     if (this.isPlaying && !this.activeTalkingHead) {
@@ -629,6 +914,43 @@ export class VisualizerEngine {
         this.nextBeat();
       }
     }
+  }
+
+  // Pre-render static tile grid & floor rugs to offscreen canvas
+  private renderTileMapToCache() {
+    const tileSize = this.setting.tileSize;
+    const worldW = this.setting.gridWidth * tileSize;
+    const worldH = this.setting.gridHeight * tileSize;
+
+    if (!this.tileCanvas) {
+      this.tileCanvas = document.createElement('canvas');
+    }
+    if (this.tileCanvas.width !== worldW || this.tileCanvas.height !== worldH) {
+      this.tileCanvas.width = worldW;
+      this.tileCanvas.height = worldH;
+      this.tileCtx = this.tileCanvas.getContext('2d');
+    }
+
+    if (!this.tileCtx) return;
+    const ctx = this.tileCtx;
+    ctx.imageSmoothingEnabled = false;
+
+    // 1. Draw floor and wall tiles
+    for (let gx = 0; gx < this.setting.gridWidth; gx++) {
+      for (let gy = 0; gy < this.setting.gridHeight; gy++) {
+        const type = this.setting.tiles[`${gx},${gy}`] || 'floor_carpet_grey';
+        TileRenderer.drawTile(ctx, type, gx * tileSize, gy * tileSize, tileSize);
+      }
+    }
+
+    // 2. Draw static floor rugs
+    this.setting.props
+      .filter((prop) => prop.type === 'rug')
+      .forEach((prop) => {
+        TileRenderer.drawProp(ctx, prop, tileSize);
+      });
+
+    this.isTileMapDirty = false;
   }
 
   private render() {
@@ -651,54 +973,92 @@ export class VisualizerEngine {
     this.camera.applyTransform(ctx, logicalW, logicalH);
 
     const tileSize = this.setting.tileSize;
+    const worldW = this.setting.gridWidth * tileSize;
+    const worldH = this.setting.gridHeight * tileSize;
 
-    // 1. Draw Tiles (Floor & Static Walls)
-    for (let gx = 0; gx < this.setting.gridWidth; gx++) {
-      for (let gy = 0; gy < this.setting.gridHeight; gy++) {
-        const type = this.setting.tiles[`${gx},${gy}`] || 'floor_carpet_grey';
-        TileRenderer.drawTile(ctx, type, gx * tileSize, gy * tileSize, tileSize);
-      }
+    // 1. Draw Cached Static Tilemap & Floor Rugs (zero per-frame string formatting)
+    if (this.isTileMapDirty || !this.tileCanvas) {
+      this.renderTileMapToCache();
+    }
+    if (this.tileCanvas) {
+      ctx.drawImage(this.tileCanvas, 0, 0);
     }
 
-    // 2. Collect All Renderable Entities for Depth Y-Sorting
-    interface RenderEntity {
-      yOrder: number;
-      draw: () => void;
-    }
+    // 2. Draw Floor Liquid Puddles & Coffee Stains
+    particleSystem.drawFloorPuddles(ctx);
 
-    const renderQueue: RenderEntity[] = [];
+    // 3. Collect All Renderable Entities (Props & Characters) into Reused Render Queue
+    this.renderQueue.length = 0;
 
-    // Add Props to render queue
-    this.setting.props.forEach((prop) => {
+    // Add standing/raised props to render queue with category-aware baseline sorting
+    for (let i = 0; i < this.setting.props.length; i++) {
+      const prop = this.setting.props[i];
+      if (prop.type === 'rug') continue;
+
       const pState = this.propStates.get(prop.id);
       const runtimeProp = pState ? { ...prop, state: pState } : prop;
-      const yOrder = (prop.y + (prop.height || 1) * 0.8) * tileSize + (prop.zIndexOffset || 0);
+      const propH = prop.height || 1;
 
-      renderQueue.push({
+      // Base depth offset:
+      // - Couches and chairs: 0.2 (sort near backrest so sitting characters are drawn in front)
+      // - Flat low tables / coffee tables: 0.35
+      // - Tall desks / counters: 0.75
+      let baseFactor = 0.75;
+      if (prop.type === 'sofa_leather' || prop.type === 'chair_office' || prop.type === 'chair_conference') {
+        baseFactor = 0.2;
+      } else if (prop.type === 'desk_wood' && prop.name?.toLowerCase().includes('coffee')) {
+        baseFactor = 0.35;
+      } else if (prop.type === 'trash_can' || prop.type === 'potted_plant') {
+        baseFactor = 0.7;
+      }
+
+      const yOrder = (prop.y + propH * baseFactor) * tileSize + (prop.zIndexOffset || 0);
+
+      this.renderQueue.push({
         yOrder,
-        draw: () => TileRenderer.drawProp(ctx, runtimeProp, tileSize),
+        draw: () =>
+          TileRenderer.drawProp(
+            ctx,
+            runtimeProp,
+            tileSize,
+            this.propStates.get(prop.id),
+            this.gameTime
+          ),
       });
-    });
+    }
 
-    // Add Characters to render queue
-    this.characterStates.forEach((state) => {
+    // Add Characters to render queue (sorted by feet baseline)
+    for (let i = 0; i < this.cachedCharStates.length; i++) {
+      const state = this.cachedCharStates[i];
       const char = this.charactersMap[state.id];
-      if (!char) return;
-      const yOrder = state.y + 10;
+      if (!char) continue;
+      const yOrder = state.y + 8;
 
-      renderQueue.push({
+      this.renderQueue.push({
         yOrder,
-        draw: () => CharacterRenderer.drawCharacter(ctx, char, state, this.showNameTags),
+        draw: () =>
+          CharacterRenderer.drawCharacter(
+            ctx,
+            char,
+            state,
+            this.showNameTags,
+            this.gameTime
+          ),
       });
-    });
+    }
 
     // Sort by Y-coordinate (smaller Y rendered first, larger Y rendered in front)
-    renderQueue.sort((a, b) => a.yOrder - b.yOrder);
+    this.renderQueue.sort((a, b) => a.yOrder - b.yOrder);
 
     // Draw all entities in sorted depth order
-    renderQueue.forEach((entity) => entity.draw());
+    for (let i = 0; i < this.renderQueue.length; i++) {
+      this.renderQueue[i].draw();
+    }
 
-    // 3. Draw Waypoint Markers (if enabled)
+    // 4. Draw Airborne Flying Particles (Paper Airplanes, Foam, Coffee Droplets, Confetti)
+    particleSystem.drawParticles(ctx);
+
+    // 5. Draw Waypoint Markers (if enabled)
     if (this.showWaypoints) {
       Object.entries(this.setting.waypoints).forEach(([id, wp]) => {
         const wx = wp.x * tileSize;
@@ -713,8 +1073,9 @@ export class VisualizerEngine {
       });
     }
 
-    // 4. Draw Speech Bubbles (Always on top of characters)
-    this.characterStates.forEach((state) => {
+    // 6. Draw Speech Bubbles (Always on top of characters)
+    for (let i = 0; i < this.cachedCharStates.length; i++) {
+      const state = this.cachedCharStates[i];
       if (state.currentSpeech && state.currentSpeech.displayedText.length > 0) {
         const char = this.charactersMap[state.id];
         SpeechBubbleRenderer.drawBubble(ctx, {
@@ -727,7 +1088,10 @@ export class VisualizerEngine {
           maxWidth: 240,
         });
       }
-    });
+    }
+
+    // 7. Dynamic Ambient Lighting & Light Rays
+    lightingEngine.drawLighting(ctx, this.setting, worldW, worldH, this.gameTime);
 
     ctx.restore();
   }

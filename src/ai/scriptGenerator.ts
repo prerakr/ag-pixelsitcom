@@ -16,23 +16,43 @@ export interface GenerationOptions {
 export const COMEDY_PRESET_IDEAS = [
   {
     title: 'Pretzel Day Mayhem',
+    showId: 'the_office',
     idea: 'It is annual Pretzel Day. Stanley is waiting in line when Michael tries to cut the queue with thirty custom toppings. Stanley drops a legendary truth bomb.',
   },
   {
     title: 'Megadesk: The Final Frontier',
+    showId: 'the_office',
     idea: 'Dwight combines three sales desks to form Megadesk. Jim retaliates by building a fortress of wrapping paper. Michael demands to be crowned King of Megadesk.',
   },
   {
-    title: 'The Dundie Awards in Bullpen',
-    idea: 'Michael hosts an impromptu Dundie Awards ceremony in the bullpen. Kevin gets the "Don\'t Spill the Chili" award, Angela gets the "Tightest Bun" award.',
+    title: 'Unagi Level 5 Mastery',
+    showId: 'friends',
+    idea: 'Ross claims he has achieved Level 5 Unagi and challenges Joey and Chandler to a surprise ninja duel at Central Perk.',
   },
   {
-    title: 'Threat Level Midnight II: Script Reading',
-    idea: 'Michael gathers everyone in the conference room to read the first draft of Threat Level Midnight 2: Goldenface Returns.',
+    title: 'DEFCON 1 Couch Cleaning',
+    showId: 'friends',
+    idea: 'Monica discovers a microscopic espresso smudge on the orange velvet couch and initiates an emergency chemical sanitation protocol.',
   },
   {
-    title: 'The Cat in the Ceiling Duct',
-    idea: 'Angela brings Bandit to work. Bandit escapes into the ceiling tiles above Kevin\'s desk. Kevin tries to lure the cat down with a donut.',
+    title: 'Anton’s Crypto Mutiny',
+    showId: 'silicon_valley',
+    idea: 'Gilfoyle configures Anton to mine cryptocurrency whenever Erlich mentions Aviato, triggering a power blackout across Palo Alto.',
+  },
+  {
+    title: 'SeeFood Gold Chain Detector',
+    showId: 'silicon_valley',
+    idea: 'Jian-Yang updates the SeeFood app to detect whether Dinesh’s Italian gold chain is authentic or cheap brass.',
+  },
+  {
+    title: 'The Scuba Diver Scheme',
+    showId: 'himym',
+    idea: 'Barney executes The Scuba Diver play from his Playbook in the red booth while Marshall prepares an emergency Slap Bet countdown.',
+  },
+  {
+    title: 'The Red Cowboy Boots Encore',
+    showId: 'himym',
+    idea: 'Ted wears his controversial red cowboy boots to MacLaren’s, insisting they project architectural confidence and masculine vigor.',
   },
 ];
 
@@ -45,7 +65,7 @@ export async function generateSitcomEpisode(options: GenerationOptions): Promise
   } else if (provider === 'openai' && apiKey) {
     return generateWithOpenAI(apiKey, prompt, options.model);
   } else {
-    // Generate intelligent procedural mock episode based on user idea
+    // Generate intelligent procedural mock episode based on user idea and setting
     return generateProceduralMock(userIdea, setting, characters);
   }
 }
@@ -133,9 +153,12 @@ function generateProceduralMock(
       const rivalSpeaker = charIds[1] || 'dwight';
       const bystander = charIds[2] || 'jim';
 
+      const waypointKeys = Object.keys(setting.waypoints);
+      const targetWp = waypointKeys[Math.floor(waypointKeys.length / 2)] || waypointKeys[0] || 'bullpen_center';
+
       const script: SitcomScript = {
         version: '1.0',
-        title: idea.length > 35 ? `${idea.slice(0, 32)}...` : idea || 'Impromptu Office Chaos',
+        title: idea.length > 35 ? `${idea.slice(0, 32)}...` : idea || 'Impromptu Sitcom Chaos',
         showId: characters[0]?.showId || 'the_office',
         settingId: setting.id,
         synopsis: `An AI-directed comedic scenario based on: "${idea}"`,
@@ -149,7 +172,7 @@ function generateProceduralMock(
               {
                 type: 'camera_cue',
                 target: mainSpeaker,
-                zoom: 1.5,
+                zoom: 1.4,
                 style: 'smooth_pan',
               },
               {
@@ -164,14 +187,14 @@ function generateProceduralMock(
               {
                 type: 'movement',
                 character: rivalSpeaker,
-                target: 'bullpen_center',
+                target: targetWp,
                 speed: 1.3,
                 facing: 'up',
               },
               {
                 type: 'dialogue',
                 speaker: rivalSpeaker,
-                text: 'Wait! Under Section 4B of the Scranton Employee Handbook, this is strictly prohibited!',
+                text: 'Wait! Under official regulations, this plan is completely and utterly catastrophic!',
                 emotion: 'shock',
                 sfx: 'tension_sting',
                 emote: 'exclamation',
@@ -180,13 +203,13 @@ function generateProceduralMock(
               {
                 type: 'camera_cue',
                 target: bystander,
-                zoom: 2.0,
+                zoom: 1.8,
                 style: 'jim_stare',
               },
               {
                 type: 'dialogue',
                 speaker: bystander,
-                text: 'I honestly did not think this morning could get weirder. I was wrong.',
+                text: 'I honestly did not think this situation could get weirder. I was wrong.',
                 emotion: 'smirk',
                 sfx: 'laugh_track',
                 durationMs: 3800,
@@ -210,7 +233,7 @@ function generateProceduralMock(
               {
                 type: 'dialogue',
                 speaker: mainSpeaker,
-                text: "That's what she said! Boom! Meeting adjourned!",
+                text: 'Boom! Comedy history has been made! Meeting adjourned!',
                 emotion: 'happy',
                 sfx: 'rimshot',
                 emote: 'dundie',
