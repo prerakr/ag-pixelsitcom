@@ -1,4 +1,4 @@
-import { CharacterDefinition, CharacterRuntimeState } from '../types/character';
+import { CharacterDefinition, CharacterRuntimeState, HoldableItemType } from '../types/character';
 import { Direction, EmoteIconType } from '../types/script';
 
 export class CharacterRenderer {
@@ -99,12 +99,19 @@ export class CharacterRenderer {
       ctx.fillRect(-bodyHalf - 3, armY + 7 + leftArmSwing, 3, 3);
       ctx.fillRect(bodyHalf, armY + 7 + rightArmSwing, 3, 3);
 
-      // Michael holding his coffee mug when idle
-      if (character.id === 'michael' && !isMoving && facing === 'down') {
+      // Michael holding his coffee mug when idle (if no other heldItem)
+      if (character.id === 'michael' && !isMoving && facing === 'down' && !state.heldItem) {
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(bodyHalf + 1, armY + 5, 4, 4);
         ctx.fillStyle = '#0284c7';
         ctx.fillRect(bodyHalf + 1, armY + 5, 4, 1);
+      }
+
+      // Render Dynamic Inventory Held Item
+      if (state.heldItem) {
+        const itemX = facing === 'down' ? bodyHalf + 1 : -bodyHalf - 4;
+        const itemY = armY + 6 + rightArmSwing;
+        CharacterRenderer.drawHeldItem(ctx, state.heldItem, itemX, itemY, facing);
       }
     } else {
       // Side arm
@@ -112,6 +119,12 @@ export class CharacterRenderer {
       ctx.fillRect(-2 + armSwing, armY, 4, 8);
       ctx.fillStyle = visual.skinColor;
       ctx.fillRect(-2 + armSwing, armY + 7, 4, 3);
+
+      if (state.heldItem) {
+        const itemX = facing === 'right' ? 3 : -6;
+        const itemY = armY + 7 + armSwing;
+        CharacterRenderer.drawHeldItem(ctx, state.heldItem, itemX, itemY, facing);
+      }
     }
 
     // 7. Head
@@ -338,6 +351,98 @@ export class CharacterRenderer {
       default:
         ctx.font = '10px serif';
         ctx.fillText('✨', x, ey);
+    }
+
+    ctx.restore();
+  }
+
+  // Draw Held Inventory Items
+  public static drawHeldItem(
+    ctx: CanvasRenderingContext2D,
+    item: HoldableItemType,
+    hx: number,
+    hy: number,
+    facing: Direction
+  ) {
+    ctx.save();
+
+    switch (item) {
+      case 'dundie_trophy': {
+        // Golden Dundie Trophy held high!
+        ctx.fillStyle = '#f59e0b';
+        ctx.fillRect(hx - 1, hy - 8, 3, 7);
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillRect(hx - 2, hy - 11, 5, 3); // Figure
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(hx - 3, hy - 1, 7, 3); // Marble base
+        break;
+      }
+
+      case 'coffee_mug': {
+        // Ceramic Coffee Mug with steam
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(hx - 2, hy - 3, 5, 5);
+        ctx.fillStyle = '#0284c7';
+        ctx.fillRect(hx - 2, hy - 3, 5, 1);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.fillRect(hx - 1, hy - 6, 2, 2);
+        break;
+      }
+
+      case 'jello_stapler': {
+        // Jello Mold with Stapler
+        ctx.fillStyle = 'rgba(34, 197, 94, 0.85)';
+        ctx.fillRect(hx - 3, hy - 5, 8, 7);
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(hx - 1, hy - 3, 4, 3);
+        break;
+      }
+
+      case 'pizza_box': {
+        // Pizza Box
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(hx - 7, hy - 2, 14, 4);
+        ctx.fillStyle = '#dc2626';
+        ctx.fillRect(hx - 5, hy - 1, 10, 2);
+        break;
+      }
+
+      case 'clipboard': {
+        // Clipboard
+        ctx.fillStyle = '#78350f';
+        ctx.fillRect(hx - 3, hy - 6, 7, 9);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(hx - 2, hy - 4, 5, 6);
+        break;
+      }
+
+      case 'fire_extinguisher': {
+        // Red Extinguisher
+        ctx.fillStyle = '#dc2626';
+        ctx.fillRect(hx - 2, hy - 6, 5, 9);
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(hx - 1, hy - 8, 3, 2);
+        break;
+      }
+
+      case 'pretzel': {
+        // Soft Pretzel
+        ctx.fillStyle = '#b45309';
+        ctx.fillRect(hx - 3, hy - 4, 6, 5);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(hx - 2, hy - 3, 1, 1);
+        ctx.fillRect(hx + 1, hy - 2, 1, 1);
+        break;
+      }
+
+      case 'paper_sheet': {
+        // Paper Document
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(hx - 3, hy - 5, 6, 7);
+        ctx.fillStyle = '#3b82f6';
+        ctx.fillRect(hx - 2, hy - 4, 4, 1);
+        break;
+      }
     }
 
     ctx.restore();

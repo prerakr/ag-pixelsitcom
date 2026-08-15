@@ -1,8 +1,26 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { VisualizerEngine } from '../engine/CanvasRenderer';
-import { ZoomIn, ZoomOut, Maximize2, Video, VideoOff, Eye, MapPin, Tag } from 'lucide-react';
+import {
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
+  Video,
+  VideoOff,
+  Eye,
+  MapPin,
+  Tag,
+  Sun,
+  Sunset,
+  Moon,
+  Flame,
+  Send,
+  Coffee,
+} from 'lucide-react';
 import { CharacterDefinition } from '../types/character';
 import { soundEngine } from '../engine/SoundEngine';
+import { lightingEngine } from '../engine/LightingEngine';
+import { particleSystem } from '../engine/ParticleSystem';
+import { TimeOfDay } from '../types/script';
 
 interface ViewportProps {
   engine: VisualizerEngine;
@@ -29,6 +47,7 @@ export const Viewport: React.FC<ViewportProps> = ({ engine, onInspectCharacter }
   const [showWaypoints, setShowWaypoints] = useState(false);
   const [showNameTags, setShowNameTags] = useState(true);
   const [crtEffect, setCrtEffect] = useState(false);
+  const [timeOfDay, setTimeOfDayState] = useState<TimeOfDay>('day');
   const [selectedEntity, setSelectedEntity] = useState<any | null>(null);
 
   // Auto-fit camera for mobile on first mount and resize
@@ -164,7 +183,6 @@ export const Viewport: React.FC<ViewportProps> = ({ engine, onInspectCharacter }
   // --- TOUCH CONTROLS (MOBILE & TABLET) ---
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 1) {
-      // 1 Finger Pan
       touchStartRef.current = {
         x: e.touches[0].clientX,
         y: e.touches[0].clientY,
@@ -172,7 +190,6 @@ export const Viewport: React.FC<ViewportProps> = ({ engine, onInspectCharacter }
         moved: false,
       };
     } else if (e.touches.length === 2) {
-      // 2 Finger Pinch
       const dx = e.touches[0].clientX - e.touches[1].clientX;
       const dy = e.touches[0].clientY - e.touches[1].clientY;
       touchStartRef.current = {
@@ -207,7 +224,6 @@ export const Viewport: React.FC<ViewportProps> = ({ engine, onInspectCharacter }
       touchStartRef.current.x = touch.clientX;
       touchStartRef.current.y = touch.clientY;
     } else if (e.touches.length === 2) {
-      // Pinch Zoom
       const dx = e.touches[0].clientX - e.touches[1].clientX;
       const dy = e.touches[0].clientY - e.touches[1].clientY;
       const newDist = Math.hypot(dx, dy);
@@ -253,6 +269,38 @@ export const Viewport: React.FC<ViewportProps> = ({ engine, onInspectCharacter }
     if (!next) {
       autoFitCamera();
     }
+  };
+
+  const cycleTimeOfDay = () => {
+    const sequence: TimeOfDay[] = ['day', 'golden_hour', 'night', 'emergency'];
+    const currentIdx = sequence.indexOf(timeOfDay);
+    const nextTime = sequence[(currentIdx + 1) % sequence.length];
+    setTimeOfDayState(nextTime);
+    lightingEngine.setTimeOfDay(nextTime);
+    if (nextTime === 'emergency') {
+      soundEngine.playSfx('fire_alarm', 0.4);
+    }
+  };
+
+  const triggerThrowPlane = () => {
+    const jimState = engine.characterStates.get('jim');
+    const dwightState = engine.characterStates.get('dwight');
+    const sx = jimState ? jimState.x : 350;
+    const sy = jimState ? jimState.y : 420;
+    const tx = dwightState ? dwightState.x : 350;
+    const ty = dwightState ? dwightState.y : 540;
+
+    particleSystem.throwPaperAirplane(sx, sy, tx, ty);
+    soundEngine.playSfx('stapler_click', 0.5);
+  };
+
+  const triggerCoffeeSpill = () => {
+    const michael = engine.characterStates.get('michael');
+    const sx = michael ? michael.x : 400;
+    const sy = michael ? michael.y : 400;
+    particleSystem.spillCoffee(sx, sy + 6);
+    engine.camera.shake(0.25, 4);
+    soundEngine.playSfx('glass_shatter', 0.6);
   };
 
   const toggleWaypoints = () => {
@@ -307,6 +355,51 @@ export const Viewport: React.FC<ViewportProps> = ({ engine, onInspectCharacter }
           title="Fit to Screen (Center Office)"
         >
           <Maximize2 className="w-4 h-4" />
+        </button>
+
+        <div className="h-[1px] bg-[#2a374a] my-0.5" />
+
+        {/* Time of Day Cycle Button */}
+        <button
+          onClick={cycleTimeOfDay}
+          className={`p-2 rounded transition-colors ${
+            timeOfDay === 'day'
+              ? 'bg-amber-500 text-slate-950'
+              : timeOfDay === 'golden_hour'
+              ? 'bg-orange-600 text-white'
+              : timeOfDay === 'night'
+              ? 'bg-indigo-900 text-indigo-200'
+              : 'bg-red-700 text-white animate-pulse'
+          }`}
+          title={`Lighting: ${timeOfDay.toUpperCase()} (Click to cycle)`}
+        >
+          {timeOfDay === 'day' ? (
+            <Sun className="w-4 h-4" />
+          ) : timeOfDay === 'golden_hour' ? (
+            <Sunset className="w-4 h-4" />
+          ) : timeOfDay === 'night' ? (
+            <Moon className="w-4 h-4" />
+          ) : (
+            <Flame className="w-4 h-4" />
+          )}
+        </button>
+
+        {/* Paper Airplane FX Button */}
+        <button
+          onClick={triggerThrowPlane}
+          className="p-2 bg-[#1c2738] hover:bg-cyan-600 rounded text-slate-300 hover:text-white transition-colors"
+          title="Throw Paper Airplane (Jim -> Dwight)"
+        >
+          <Send className="w-4 h-4 text-cyan-400" />
+        </button>
+
+        {/* Coffee Spill FX Button */}
+        <button
+          onClick={triggerCoffeeSpill}
+          className="p-2 bg-[#1c2738] hover:bg-amber-700 rounded text-slate-300 hover:text-white transition-colors"
+          title="Spill Coffee on Floor!"
+        >
+          <Coffee className="w-4 h-4 text-amber-500" />
         </button>
 
         <div className="h-[1px] bg-[#2a374a] my-0.5" />
@@ -374,6 +467,14 @@ export const Viewport: React.FC<ViewportProps> = ({ engine, onInspectCharacter }
                   ✕
                 </button>
               </div>
+
+              {selectedEntity.state?.heldItem && (
+                <div className="mb-2 px-2 py-1 bg-amber-950/80 border border-amber-500/50 rounded flex items-center gap-1.5 text-amber-300 text-[11px] font-mono">
+                  <span>Holding:</span>
+                  <strong className="uppercase font-bold">{selectedEntity.state.heldItem}</strong>
+                </div>
+              )}
+
               <p className="text-xs italic text-slate-300 mb-2 typewriter-font text-[14px]">
                 "{selectedEntity.data.signatureQuotes[0]}"
               </p>

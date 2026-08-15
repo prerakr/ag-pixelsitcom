@@ -1,11 +1,26 @@
 import { SettingDefinition, PropInstance, Waypoint } from '../types/environment';
-import { CharacterDefinition, CharacterRuntimeState } from '../types/character';
-import { SitcomScript, ScriptBeat, DialogueBeat, MovementBeat, InteractionBeat, TalkingHeadBeat, CameraCueBeat, AudioCueBeat, EmoteBeat, GroupActionBeat } from '../types/script';
+import { CharacterDefinition, CharacterRuntimeState, HoldableItemType } from '../types/character';
+import {
+  SitcomScript,
+  ScriptBeat,
+  DialogueBeat,
+  MovementBeat,
+  InteractionBeat,
+  TalkingHeadBeat,
+  CameraCueBeat,
+  AudioCueBeat,
+  EmoteBeat,
+  TimeOfDayBeat,
+  GroupActionBeat,
+  TimeOfDay,
+} from '../types/script';
 import { TileRenderer } from './TileRenderer';
 import { CharacterRenderer } from './CharacterRenderer';
 import { SpeechBubbleRenderer } from './SpeechBubble';
 import { Camera } from './Camera';
 import { soundEngine } from './SoundEngine';
+import { particleSystem } from './ParticleSystem';
+import { lightingEngine } from './LightingEngine';
 
 export interface VisualizerCallbacks {
   onBeatChange?: (sceneIndex: number, beatIndex: number, currentBeat: ScriptBeat | null) => void;
@@ -137,6 +152,12 @@ export class VisualizerEngine {
     this.activeTalkingHead = null;
     this.propStates.clear();
     this.initCharacters();
+
+    if (script.scenes[0]?.timeOfDay) {
+      lightingEngine.setTimeOfDay(script.scenes[0].timeOfDay);
+    } else {
+      lightingEngine.setTimeOfDay('day');
+    }
 
     if (this.callbacks.onTalkingHead) {
       this.callbacks.onTalkingHead(null);
@@ -316,15 +337,97 @@ export class VisualizerEngine {
           state.currentAction = inter.action;
           if (inter.action === 'sit') state.isSitting = true;
           if (inter.action === 'stand') state.isSitting = false;
-          if (inter.action === 'ignite') {
-            const pState = this.propStates.get(inter.targetProp) || {};
-            pState.ignited = true;
-            this.propStates.set(inter.targetProp, pState);
-            this.camera.shake(0.4, 8);
+
+          // Pickup Item
+          if (inter.action === 'pickup') {
+            state.heldItem = (inter.item as HoldableItemType) || 'dundie_trophy';
+            if (inter.targetProp) {
+              const pState = this.propStates.get(inter.targetProp) || {};
+              pState.pickedUp = true;
+              this.propStates.set(inter.targetProp, pState);
+            }
           }
+
+          // Place Item
+          if (inter.action === 'place') {
+            state.heldItem = undefined;
+            if (inter.targetProp) {
+              const pState = this.propStates.get(inter.targetProp) || {};
+              pState.pickedUp = false;
+              this.propStates.set(inter.targetProp, pState);
+            }
+          }
+
+          // Throw Paper Airplane
+          if (inter.action === 'throw_plane') {
+            let tx = state.x + (state.facing === 'left' ? -130 : 130);
+            let ty = state.y;
+            if (inter.targetProp) {
+              const targetChar = this.characterStates.get(inter.targetProp);
+              const targetWp = this.setting.waypoints[inter.targetProp];
+              if (targetChar) {
+                tx = targetChar.x;
+                ty = targetChar.y;
+              } else if (targetWp) {
+                tx = targetWp.x * this.setting.tileSize;
+                ty = targetWp.y * this.setting.tileSize;
+              }
+            }
+            particleSystem.throwPaperAirplane(state.x, state.y, tx, ty);
+            state.heldItem = undefined;
+          }
+
+          // Spill Coffee
+          if (inter.action === 'spill_coffee') {
+            particleSystem.spillCoffee(state.x, state.y + 8);
+            state.heldItem = undefined;
+            this.camera.shake(0.25, 5);
+          }
+
+          // Drink / Eat
+          if (inter.action === 'drink_coffee') {
+            state.heldItem = 'coffee_mug';
+          }
+          if (inter.action === 'eat_pretzel') {
+            state.heldItem = 'pretzel';
+          }
+
+          // Fire Extinguisher Foam
+          if (inter.action === 'extinguish') {
+            const facingAngles: Record<string, number> = {
+              down: Math.PI / 2,
+              up: -Math.PI / 2,
+              left: Math.PI,
+              right: 0,
+            };
+            particleSystem.shootExtinguisherFoam(state.x, state.y, facingAngles[state.facing] || 0);
+            if (inter.targetProp) {
+              const pState = this.propStates.get(inter.targetProp) || {};
+              pState.ignited = false;
+              this.propStates.set(inter.targetProp, pState);
+            }
+          }
+
+          // Ignite Fire
+          if (inter.action === 'ignite') {
+            if (inter.targetProp) {
+              const pState = this.propStates.get(inter.targetProp) || {};
+              pState.ignited = true;
+              this.propStates.set(inter.targetProp, pState);
+              this.camera.shake(0.4, 8);
+            }
+          }
+
           if (inter.sfx) soundEngine.playSfx(inter.sfx);
         }
         this.beatDuration = inter.durationMs || 2000;
+        break;
+      }
+
+      case 'time_of_day': {
+        const tod = beat as TimeOfDayBeat;
+        lightingEngine.setTimeOfDay(tod.time);
+        this.beatDuration = tod.durationMs || 1500;
         break;
       }
 
@@ -622,6 +725,18 @@ export class VisualizerEngine {
       }
     });
 
+    // Update Particle System & Lighting
+    particleSystem.update(scaledDt);
+    lightingEngine.update(scaledDt);
+
+    const worldW = this.setting.gridWidth * tileSize;
+    const worldH = this.setting.gridHeight * tileSize;
+
+    // Spawn subtle dust motes in sunbeams
+    if (lightingEngine.currentTime === 'day' || lightingEngine.currentTime === 'golden_hour') {
+      particleSystem.spawnDustMotes(worldW, worldH, 1);
+    }
+
     // Advance beat timeline if playing
     if (this.isPlaying && !this.activeTalkingHead) {
       this.beatTimer += scaledDt * 1000;
@@ -651,6 +766,8 @@ export class VisualizerEngine {
     this.camera.applyTransform(ctx, logicalW, logicalH);
 
     const tileSize = this.setting.tileSize;
+    const worldW = this.setting.gridWidth * tileSize;
+    const worldH = this.setting.gridHeight * tileSize;
 
     // 1. Draw Tiles (Floor & Static Walls)
     for (let gx = 0; gx < this.setting.gridWidth; gx++) {
@@ -660,7 +777,10 @@ export class VisualizerEngine {
       }
     }
 
-    // 2. Collect All Renderable Entities for Depth Y-Sorting
+    // 2. Draw Floor Liquid Puddles & Coffee Stains (Beneath characters & props)
+    particleSystem.drawFloorPuddles(ctx);
+
+    // 3. Collect All Renderable Entities for Depth Y-Sorting
     interface RenderEntity {
       yOrder: number;
       draw: () => void;
@@ -698,7 +818,10 @@ export class VisualizerEngine {
     // Draw all entities in sorted depth order
     renderQueue.forEach((entity) => entity.draw());
 
-    // 3. Draw Waypoint Markers (if enabled)
+    // 4. Draw Airborne Flying Particles (Paper Airplanes, Foam, Coffee Droplets, Confetti)
+    particleSystem.drawParticles(ctx);
+
+    // 5. Draw Waypoint Markers (if enabled)
     if (this.showWaypoints) {
       Object.entries(this.setting.waypoints).forEach(([id, wp]) => {
         const wx = wp.x * tileSize;
@@ -713,7 +836,7 @@ export class VisualizerEngine {
       });
     }
 
-    // 4. Draw Speech Bubbles (Always on top of characters)
+    // 6. Draw Speech Bubbles (Always on top of characters)
     this.characterStates.forEach((state) => {
       if (state.currentSpeech && state.currentSpeech.displayedText.length > 0) {
         const char = this.charactersMap[state.id];
@@ -728,6 +851,9 @@ export class VisualizerEngine {
         });
       }
     });
+
+    // 7. Dynamic Ambient Lighting & Light Rays
+    lightingEngine.drawLighting(ctx, this.setting, worldW, worldH);
 
     ctx.restore();
   }
