@@ -1,0 +1,97 @@
+import { SitcomScript } from '../../types/script';
+
+export const AI_REVOLUTION_EPISODE: SitcomScript = {
+  version: '1.0',
+  title: 'Michael Scott: AI Visionary',
+  showId: 'the_office',
+  settingId: 'dunder_mifflin_scranton',
+  synopsis: 'Michael discovers artificial intelligence and decides Dunder Mifflin Scranton will be 100% automated by lunchtime.',
+  author: 'Michael Scott',
+  characters: ['michael', 'dwight', 'pam', 'angela', 'kevin', 'toby'],
+  scenes: [
+    {
+      id: 'scene_1',
+      name: 'The Silicon Frontier',
+      beats: [
+        {
+          type: 'camera_cue',
+          target: 'conference_table_head',
+          zoom: 1.5,
+          style: 'smooth_pan',
+        },
+        {
+          type: 'movement',
+          character: 'michael',
+          target: 'conference_table_head',
+          speed: 1.2,
+          facing: 'right',
+        },
+        {
+          type: 'dialogue',
+          speaker: 'michael',
+          text: 'Conference room, five minutes! Today we embrace the future: Artificial... Inteligencia.',
+          emotion: 'smug',
+          sfx: 'theme_jingle',
+          emote: 'lightbulb',
+          durationMs: 4200,
+        },
+        {
+          type: 'group_action',
+          actions: [
+            { type: 'movement', character: 'dwight', target: 'conference_door', speed: 1.4, facing: 'up' },
+            { type: 'movement', character: 'angela', target: 'conference_table_mid', speed: 1.1, facing: 'down' },
+          ],
+        },
+        {
+          type: 'dialogue',
+          speaker: 'dwight',
+          text: 'AI is inferior to beet farming automation. A machine cannot smell a frost coming, Michael!',
+          emotion: 'angry',
+          emote: 'exclamation',
+          durationMs: 3800,
+        },
+        {
+          type: 'dialogue',
+          speaker: 'michael',
+          text: 'Quiet Dwight! I typed into the machine: "How to make Scranton branch 500% more profitable". And it said: fire Toby.',
+          emotion: 'happy',
+          sfx: 'rimshot',
+          emote: 'dundie',
+          durationMs: 4500,
+        },
+        {
+          type: 'movement',
+          character: 'toby',
+          target: 'conference_door',
+          speed: 0.8,
+          facing: 'up',
+        },
+        {
+          type: 'dialogue',
+          speaker: 'toby',
+          text: 'Michael, that violates company policy... and basic computer ethics.',
+          emotion: 'deadpan',
+          durationMs: 3500,
+        },
+        {
+          type: 'dialogue',
+          speaker: 'michael',
+          text: 'Get out of here, Toby! The algorithms have spoken! The algorithm does not lie!',
+          emotion: 'angry',
+          sfx: 'laugh_track',
+          emote: 'rage',
+          durationMs: 4000,
+        },
+        {
+          type: 'talking_head',
+          speaker: 'kevin',
+          monologueText: "Michael told me the computer can do math faster than me. But can the computer eat 14 M&Ms in under ten seconds? I don't think so.",
+          emotion: 'smug',
+          cameraLook: true,
+          sfx: 'laugh_track',
+          durationMs: 5800,
+        },
+      ],
+    },
+  ],
+};
