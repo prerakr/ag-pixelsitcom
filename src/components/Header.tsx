@@ -56,10 +56,10 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex sm:hidden items-center gap-1.5">
           <button
             onClick={onOpenScriptStudio}
-            className="pixel-btn btn-primary text-[8px] px-2 py-1.5 flex items-center gap-1"
+            className="pixel-btn btn-primary text-[8px] px-2 py-1.5 flex items-center gap-1 glow-active"
           >
             <Sparkles className="w-3 h-3 animate-spin" style={{ animationDuration: '4s' }} />
-            <span>AI</span>
+            <span>AI PROMPT</span>
           </button>
           <button
             onClick={onToggleCastDrawer}
@@ -127,10 +127,10 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           onClick={onOpenScriptStudio}
           className="pixel-btn btn-primary text-[9px] px-3 py-1.5 glow-active flex items-center gap-1.5"
-          title="Open AI Script Studio & Generator"
+          title="Open AI Prompt Builder & Script Studio"
         >
           <Sparkles className="w-3.5 h-3.5 animate-spin" style={{ animationDuration: '4s' }} />
-          <span>AI SCRIPT STUDIO</span>
+          <span>AI PROMPT & SCRIPT</span>
         </button>
 
         <button

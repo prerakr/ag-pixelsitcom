@@ -1,11 +1,23 @@
 import React, { useState } from 'react';
-import { Sparkles, Copy, Check, Code, Play, Download, Upload, Lightbulb, Key, AlertCircle } from 'lucide-react';
+import {
+  Sparkles,
+  Copy,
+  Check,
+  Code,
+  Play,
+  Download,
+  ClipboardPaste,
+  Lightbulb,
+  FileCode,
+  AlertCircle,
+  Tv,
+} from 'lucide-react';
 import { SitcomScript } from '../types/script';
 import { SettingDefinition } from '../types/environment';
 import { CharacterDefinition } from '../types/character';
-import { COMEDY_PRESET_IDEAS, generateSitcomEpisode } from '../ai/scriptGenerator';
 import { buildSitcomPrompt } from '../ai/promptTemplates';
 import { parseAndValidateScript } from '../ai/scriptValidator';
+import { PRESET_EPISODES } from '../data/episodes';
 
 interface ScriptStudioProps {
   isOpen: boolean;
@@ -16,6 +28,14 @@ interface ScriptStudioProps {
   onLoadScript: (script: SitcomScript) => void;
 }
 
+const INSPIRATION_IDEAS = [
+  'Michael brings a karaoke machine and forces everyone to audition for The Scrantones.',
+  'Dwight declares Schrute Farms sovereignty over the conference room and charges tolls.',
+  'Jim installs a motion sensor prank under Dwight’s chair that plays airhorns.',
+  'Kevin accidentally invests the entire branch budget into an artisan pretzel truck.',
+  'Angela brings five new rescue cats into accounting, triggering a full bullpen allergy crisis.',
+];
+
 export const ScriptStudio: React.FC<ScriptStudioProps> = ({
   isOpen,
   onClose,
@@ -24,18 +44,13 @@ export const ScriptStudio: React.FC<ScriptStudioProps> = ({
   currentScript,
   onLoadScript,
 }) => {
-  const [activeTab, setActiveTab] = useState<'generator' | 'prompt' | 'editor'>('generator');
+  // First tab is always Master Reusable Prompt
+  const [activeTab, setActiveTab] = useState<'prompt' | 'editor'>('prompt');
 
-  // Generator State
+  // Prompt Builder State
   const [userIdea, setUserIdea] = useState(
     'Michael brings a karaoke machine to the office and forces everyone to audition for The Scrantones.'
   );
-  const [provider, setProvider] = useState<'mock' | 'gemini' | 'openai'>('mock');
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem('pixelsitcom_api_key') || '');
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [genError, setGenError] = useState<string | null>(null);
-
-  // Prompt Builder State
   const [copied, setCopied] = useState(false);
 
   // Editor State
@@ -43,54 +58,55 @@ export const ScriptStudio: React.FC<ScriptStudioProps> = ({
     currentScript ? JSON.stringify(currentScript, null, 2) : ''
   );
   const [editorError, setEditorError] = useState<string | null>(null);
+  const [editorSuccess, setEditorSuccess] = useState<boolean>(false);
 
   if (!isOpen) return null;
 
-  const handleSaveApiKey = (key: string) => {
-    setApiKey(key);
-    localStorage.setItem('pixelsitcom_api_key', key);
+  const currentPrompt = buildSitcomPrompt(currentSetting, characters, userIdea);
+
+  const handleCopyPrompt = () => {
+    navigator.clipboard.writeText(currentPrompt);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2200);
   };
 
-  const handleGenerate = async () => {
-    setIsGenerating(true);
-    setGenError(null);
-
+  const handlePasteClipboard = async () => {
     try {
-      const generated = await generateSitcomEpisode({
-        provider,
-        apiKey,
-        userIdea,
-        setting: currentSetting,
-        characters,
-      });
-
-      onLoadScript(generated);
-      setJsonCode(JSON.stringify(generated, null, 2));
-      onClose();
-    } catch (err: any) {
-      setGenError(err.message || 'Failed to generate episode script');
-    } finally {
-      setIsGenerating(false);
+      const text = await navigator.clipboard.readText();
+      setJsonCode(text);
+      validateAndPreview(text);
+    } catch {
+      // Fallback if clipboard API restricted
     }
   };
 
-  const handleCopyPrompt = () => {
-    const prompt = buildSitcomPrompt(currentSetting, characters, userIdea);
-    navigator.clipboard.writeText(prompt);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const validateAndPreview = (code: string) => {
+    setEditorError(null);
+    setEditorSuccess(false);
+    const result = parseAndValidateScript(code);
+    if (!result.isValid || !result.script) {
+      setEditorError(result.errors.join('\n'));
+      return null;
+    }
+    setEditorSuccess(true);
+    return result.script;
   };
 
   const handleRunJson = () => {
-    setEditorError(null);
-    const result = parseAndValidateScript(jsonCode);
-    if (!result.isValid || !result.script) {
-      setEditorError(result.errors.join('\n'));
-      return;
+    const validScript = validateAndPreview(jsonCode);
+    if (validScript) {
+      onLoadScript(validScript);
+      onClose();
     }
+  };
 
-    onLoadScript(result.script);
-    onClose();
+  const handleLoadSample = (sampleIdx: number) => {
+    const sample = PRESET_EPISODES[sampleIdx];
+    if (sample) {
+      const code = JSON.stringify(sample, null, 2);
+      setJsonCode(code);
+      validateAndPreview(code);
+    }
   };
 
   const handleDownload = () => {
@@ -98,272 +114,266 @@ export const ScriptStudio: React.FC<ScriptStudioProps> = ({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${currentScript?.title?.replace(/\s+/g, '_').toLowerCase() || 'episode'}.json`;
+    a.download = `pixelsitcom_${currentSetting.id}_script.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const content = ev.target?.result as string;
-      setJsonCode(content);
-      const result = parseAndValidateScript(content);
-      if (result.isValid && result.script) {
-        onLoadScript(result.script);
-        setEditorError(null);
-      } else {
-        setEditorError(result.errors.join('\n'));
-      }
-    };
-    reader.readAsText(file);
-  };
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
-      <div className="relative w-full max-w-4xl max-h-[90vh] bg-[#131b26] border-4 border-[#2a374a] shadow-2xl rounded-xl overflow-hidden flex flex-col text-white">
-        {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-3.5 bg-[#0b0f17] border-b-2 border-[#2a374a]">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-amber-500 text-slate-950 rounded border border-amber-300 font-bold">
-              <Sparkles className="w-5 h-5" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-3 sm:p-4 animate-in fade-in duration-200">
+      <div className="relative w-full max-w-4xl bg-[#131b26] border-4 border-[#2a374a] shadow-2xl rounded-xl overflow-hidden flex flex-col text-white max-h-[92vh]">
+        {/* Header Bar */}
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 bg-[#0b0f17] border-b-2 border-[#2a374a] shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 bg-amber-500 rounded text-slate-950 font-bold">
+              <Sparkles className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="pixel-font text-sm text-amber-400 font-bold">
-                AI SCRIPT STUDIO & GENERATOR
-              </h2>
-              <p className="text-xs text-slate-400 font-mono">
-                Generate new comedic episodes, export prompts, or customize SitcomScript JSON
+              <h3 className="pixel-font text-xs sm:text-sm text-amber-400 font-bold">
+                AI SCRIPT STUDIO
+              </h3>
+              <p className="text-[10px] text-slate-400 font-mono hidden sm:block">
+                Generate scripts with any LLM & play them instantly
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 px-3 bg-[#1e293b] hover:bg-red-600 rounded text-slate-300 hover:text-white font-mono text-sm transition-colors"
-          >
-            ✕ CLOSE
-          </button>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onClose}
+              className="p-1.5 px-3 bg-[#1e293b] hover:bg-red-600 rounded text-slate-300 hover:text-white font-mono text-xs transition-colors"
+            >
+              ✕ CLOSE
+            </button>
+          </div>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="flex border-b border-[#2a374a] bg-[#0c1017] px-6">
-          <button
-            onClick={() => setActiveTab('generator')}
-            className={`flex items-center gap-2 py-3 px-4 text-xs font-mono font-bold border-b-2 transition-colors ${
-              activeTab === 'generator'
-                ? 'border-amber-400 text-amber-400 bg-[#131b26]'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Sparkles className="w-4 h-4" />
-            <span>AI GENERATOR</span>
-          </button>
-
+        {/* Studio Navigation Tabs (Prompt is Tab #1) */}
+        <div className="flex items-center bg-[#0e1520] border-b border-[#2a374a] px-3 sm:px-6 shrink-0">
           <button
             onClick={() => setActiveTab('prompt')}
-            className={`flex items-center gap-2 py-3 px-4 text-xs font-mono font-bold border-b-2 transition-colors ${
+            className={`flex items-center gap-2 py-2.5 px-4 font-mono text-xs font-bold border-b-2 transition-colors ${
               activeTab === 'prompt'
-                ? 'border-amber-400 text-amber-400 bg-[#131b26]'
+                ? 'border-amber-400 text-amber-400 bg-[#16202e]'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Copy className="w-4 h-4" />
-            <span>REUSABLE LLM PROMPT</span>
+            <Lightbulb className="w-4 h-4 text-amber-400" />
+            <span>1. MASTER AI PROMPT</span>
           </button>
 
           <button
             onClick={() => setActiveTab('editor')}
-            className={`flex items-center gap-2 py-3 px-4 text-xs font-mono font-bold border-b-2 transition-colors ${
+            className={`flex items-center gap-2 py-2.5 px-4 font-mono text-xs font-bold border-b-2 transition-colors ${
               activeTab === 'editor'
-                ? 'border-amber-400 text-amber-400 bg-[#131b26]'
+                ? 'border-emerald-400 text-emerald-400 bg-[#16202e]'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Code className="w-4 h-4" />
-            <span>JSON SCRIPT EDITOR</span>
+            <Code className="w-4 h-4 text-emerald-400" />
+            <span>2. LOAD & PLAY SCRIPT</span>
           </button>
         </div>
 
-        {/* Modal Body Tabs */}
-        <div className="flex-1 overflow-y-auto p-6 bg-[#131b26]">
-          {/* TAB 1: AI GENERATOR */}
-          {activeTab === 'generator' && (
-            <div className="space-y-5">
-              {/* Preset Idea Inspiration Pills */}
-              <div>
-                <label className="flex items-center gap-1.5 text-xs font-mono text-amber-300 font-bold mb-2">
-                  <Lightbulb className="w-3.5 h-3.5" />
-                  PRESET COMEDY PREMISES (CLICK TO USE):
+        {/* TAB 1: MASTER REUSABLE AI PROMPT */}
+        {activeTab === 'prompt' && (
+          <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-5">
+            {/* Quick 3-Step Guide */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 bg-[#0b0f17] p-3 rounded-lg border border-[#2a374a] text-xs font-mono">
+              <div className="flex items-center gap-2 text-amber-300">
+                <span className="w-5 h-5 rounded-full bg-amber-500/20 flex items-center justify-center font-bold text-amber-400 shrink-0">
+                  1
+                </span>
+                <span>Type or pick episode premise</span>
+              </div>
+              <div className="flex items-center gap-2 text-blue-300">
+                <span className="w-5 h-5 rounded-full bg-blue-500/20 flex items-center justify-center font-bold text-blue-400 shrink-0">
+                  2
+                </span>
+                <span>Copy prompt to ChatGPT/Claude</span>
+              </div>
+              <div className="flex items-center gap-2 text-emerald-300">
+                <span className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center font-bold text-emerald-400 shrink-0">
+                  3
+                </span>
+                <span>Paste JSON in Tab 2 & hit Play</span>
+              </div>
+            </div>
+
+            {/* Premise Input & Inspiration Ideas */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-mono text-amber-400 font-bold">
+                  EPISODE PREMISE / IDEA:
                 </label>
-                <div className="flex flex-wrap gap-2">
-                  {COMEDY_PRESET_IDEAS.map((item, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setUserIdea(item.idea)}
-                      className="text-xs px-3 py-1.5 bg-[#1e293b] hover:bg-amber-600/80 hover:text-white border border-[#2a374a] rounded text-slate-300 transition-colors text-left"
-                    >
-                      {item.title}
-                    </button>
-                  ))}
+                <span className="text-[10px] text-slate-400 font-mono">
+                  Setting: {currentSetting.showTitle} ({currentSetting.name})
+                </span>
+              </div>
+              <textarea
+                value={userIdea}
+                onChange={(e) => setUserIdea(e.target.value)}
+                rows={2}
+                className="w-full bg-[#0b0f17] border border-[#2a374a] focus:border-amber-500 rounded-lg p-2.5 text-xs text-slate-200 outline-none font-mono resize-none shadow-inner"
+                placeholder="What happens in this episode? (e.g. Dwight brings a petting zoo into the bullpen...)"
+              />
+
+              {/* Quick Inspiration Chips */}
+              <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                <span className="text-[10px] font-mono text-slate-400">Try Ideas:</span>
+                {INSPIRATION_IDEAS.map((idea, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setUserIdea(idea)}
+                    className="text-[10px] px-2 py-0.5 bg-[#1b2636] hover:bg-amber-600 hover:text-white text-slate-300 rounded font-mono truncate max-w-[260px] transition-colors"
+                  >
+                    "{idea}"
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Generated LLM Master Prompt Box */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <FileCode className="w-4 h-4 text-cyan-400" />
+                  <span className="text-xs font-mono text-slate-300 font-bold">
+                    STANDARDIZED PROMPT FOR ANY LLM
+                  </span>
                 </div>
+
+                <button
+                  onClick={handleCopyPrompt}
+                  className={`pixel-btn text-[9px] px-3.5 py-1.5 flex items-center gap-1.5 ${
+                    copied ? 'bg-emerald-600 text-white' : 'btn-primary'
+                  }`}
+                >
+                  {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copied ? 'COPIED TO CLIPBOARD!' : 'COPY PROMPT'}</span>
+                </button>
               </div>
 
-              {/* User Idea Input */}
-              <div>
-                <label className="block text-xs font-mono text-slate-300 font-bold mb-2">
-                  EPISODE PREMISE / SCENARIO:
-                </label>
+              <div className="relative">
                 <textarea
-                  value={userIdea}
-                  onChange={(e) => setUserIdea(e.target.value)}
-                  rows={3}
-                  className="w-full bg-[#0b0f17] border-2 border-[#2a374a] rounded-lg p-3 text-sm text-slate-100 font-mono focus:border-amber-500 outline-none"
-                  placeholder="Describe your comedy premise (e.g. Jim puts Dwight's desk in the elevator, Michael discovers TikTok...)"
+                  readOnly
+                  value={currentPrompt}
+                  rows={9}
+                  className="w-full bg-[#090d14] border border-[#2a374a] rounded-lg p-3 text-[11px] font-mono text-slate-300 leading-relaxed outline-none resize-none select-all"
                 />
               </div>
 
-              {/* Provider Selection & API Key */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-[#0b0f17] p-4 rounded-lg border border-[#2a374a]">
-                <div>
-                  <label className="block text-xs font-mono text-slate-300 font-bold mb-2">
-                    GENERATION ENGINE:
-                  </label>
-                  <select
-                    value={provider}
-                    onChange={(e) => setProvider(e.target.value as any)}
-                    className="w-full bg-[#131b26] border border-[#2a374a] rounded p-2 text-xs text-slate-200 outline-none font-mono"
-                  >
-                    <option value="mock">⚡ Instant Procedural AI (No Key Needed)</option>
-                    <option value="gemini">✨ Google Gemini 1.5 Flash (API Key)</option>
-                    <option value="openai">🤖 OpenAI GPT-4o-mini (API Key)</option>
-                  </select>
-                </div>
+              <div className="flex items-center justify-between pt-1">
+                <p className="text-[11px] text-slate-400 font-mono">
+                  Compatible with <strong>ChatGPT (GPT-4o)</strong>, <strong>Claude 3.5</strong>, <strong>Gemini 2.0</strong>, <strong>DeepSeek</strong>, and local LLMs.
+                </p>
 
-                {provider !== 'mock' && (
-                  <div>
-                    <label className="flex items-center gap-1.5 text-xs font-mono text-slate-300 font-bold mb-2">
-                      <Key className="w-3.5 h-3.5 text-amber-400" />
-                      API KEY:
-                    </label>
-                    <input
-                      type="password"
-                      value={apiKey}
-                      onChange={(e) => handleSaveApiKey(e.target.value)}
-                      placeholder={`Enter ${provider === 'gemini' ? 'Gemini' : 'OpenAI'} API Key`}
-                      className="w-full bg-[#131b26] border border-[#2a374a] rounded p-2 text-xs text-slate-200 outline-none font-mono focus:border-amber-500"
-                    />
-                  </div>
+                <button
+                  onClick={() => setActiveTab('editor')}
+                  className="pixel-btn text-[9px] px-3 py-1.5 bg-[#1c283a] text-emerald-400 hover:text-white flex items-center gap-1"
+                >
+                  <span>GO TO SCRIPT LOADER</span>
+                  <span>→</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 2: LOAD & PLAY SCRIPT */}
+        {activeTab === 'editor' && (
+          <div className="p-4 sm:p-6 overflow-y-auto flex-1 flex flex-col space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Code className="w-4 h-4 text-emerald-400" />
+                <span className="text-xs font-mono text-slate-200 font-bold">
+                  PASTE EPISODE JSON SCRIPT:
+                </span>
+                {editorSuccess && (
+                  <span className="text-[10px] px-2 py-0.5 bg-emerald-950 text-emerald-300 border border-emerald-600 rounded font-mono flex items-center gap-1">
+                    <Check className="w-3 h-3" /> Valid Script
+                  </span>
                 )}
               </div>
 
-              {/* Error Box */}
-              {genError && (
-                <div className="flex items-start gap-2 bg-red-950/80 border border-red-500 rounded p-3 text-xs text-red-200">
-                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                  <span>{genError}</span>
-                </div>
-              )}
-
-              {/* Generate Button */}
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  onClick={handleGenerate}
-                  disabled={isGenerating || !userIdea.trim()}
-                  className="pixel-btn btn-primary text-xs px-6 py-3 flex items-center gap-2 disabled:opacity-50"
+              <div className="flex items-center gap-2">
+                {/* Sample scripts quick loader */}
+                <select
+                  onChange={(e) => handleLoadSample(Number(e.target.value))}
+                  defaultValue=""
+                  aria-label="Load Preset Sample Episode"
+                  className="bg-[#0b0f17] border border-[#2a374a] text-[11px] font-mono text-slate-300 px-2 py-1 rounded cursor-pointer outline-none"
                 >
-                  <Sparkles className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
-                  <span>{isGenerating ? 'GENERATING EPISODE...' : 'GENERATE & PLAY'}</span>
+                  <option value="" disabled>
+                    Load Sample Script...
+                  </option>
+                  {PRESET_EPISODES.map((ep, idx) => (
+                    <option key={idx} value={idx}>
+                      {ep.title}
+                    </option>
+                  ))}
+                </select>
+
+                <button
+                  onClick={handlePasteClipboard}
+                  className="pixel-btn text-[9px] px-2.5 py-1 flex items-center gap-1 bg-[#1b2636]"
+                  title="Paste directly from clipboard"
+                >
+                  <ClipboardPaste className="w-3 h-3 text-cyan-400" />
+                  <span>PASTE</span>
+                </button>
+
+                <button
+                  onClick={handleDownload}
+                  className="pixel-btn text-[9px] px-2.5 py-1 flex items-center gap-1 bg-[#1b2636]"
+                  title="Download JSON File"
+                >
+                  <Download className="w-3 h-3 text-amber-400" />
+                  <span>EXPORT</span>
                 </button>
               </div>
             </div>
-          )}
 
-          {/* TAB 2: REUSABLE PROMPT BUILDER */}
-          {activeTab === 'prompt' && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-xs font-mono text-amber-300 font-bold">
-                    UNIVERSAL SITCOM MASTER PROMPT
-                  </h3>
-                  <p className="text-[11px] text-slate-400 font-mono">
-                    Copy this prompt into ChatGPT, Claude, Gemini, or local LLMs to generate valid episode scripts.
-                  </p>
-                </div>
-                <button
-                  onClick={handleCopyPrompt}
-                  className="pixel-btn btn-primary text-[10px] px-3 py-2 flex items-center gap-1.5"
-                >
-                  {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{copied ? 'COPIED!' : 'COPY PROMPT'}</span>
-                </button>
-              </div>
-
-              <textarea
-                readOnly
-                value={buildSitcomPrompt(currentSetting, characters, userIdea)}
-                rows={14}
-                className="w-full bg-[#0b0f17] border-2 border-[#2a374a] rounded-lg p-3 text-xs text-slate-300 font-mono leading-relaxed select-all"
-              />
-            </div>
-          )}
-
-          {/* TAB 3: SCRIPT JSON EDITOR */}
-          {activeTab === 'editor' && (
-            <div className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleRunJson}
-                    className="pixel-btn btn-primary text-[10px] px-3 py-1.5 flex items-center gap-1.5"
-                  >
-                    <Play className="w-3.5 h-3.5" />
-                    <span>LOAD & PLAY</span>
-                  </button>
-
-                  <button
-                    onClick={handleDownload}
-                    className="pixel-btn text-[10px] px-3 py-1.5 flex items-center gap-1.5"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>DOWNLOAD JSON</span>
-                  </button>
-
-                  <label className="pixel-btn text-[10px] px-3 py-1.5 flex items-center gap-1.5 cursor-pointer">
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>IMPORT FILE</span>
-                    <input
-                      type="file"
-                      accept=".json"
-                      onChange={handleFileUpload}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
-
-                <span className="text-[11px] font-mono text-slate-400">
-                  Schema: SitcomScript v1.0
-                </span>
-              </div>
-
-              {editorError && (
-                <div className="bg-red-950/80 border border-red-500 rounded p-2.5 text-xs text-red-200 font-mono whitespace-pre-wrap">
-                  {editorError}
-                </div>
-              )}
-
+            {/* Code Editor Box */}
+            <div className="flex-1 min-h-[220px] flex flex-col">
               <textarea
                 value={jsonCode}
-                onChange={(e) => setJsonCode(e.target.value)}
-                rows={16}
-                className="w-full bg-[#0b0f17] border-2 border-[#2a374a] rounded-lg p-3 text-xs text-amber-200/90 font-mono leading-relaxed focus:border-amber-500 outline-none"
+                onChange={(e) => {
+                  setJsonCode(e.target.value);
+                  validateAndPreview(e.target.value);
+                }}
+                className="flex-1 w-full bg-[#080c12] border border-[#2a374a] focus:border-emerald-500 rounded-lg p-3 font-mono text-xs text-emerald-300 leading-relaxed outline-none resize-none shadow-inner"
+                placeholder='Paste generated SitcomScript JSON here (e.g. { "version": "1.0", "title": "My Episode", "scenes": [...] })'
               />
             </div>
-          )}
-        </div>
+
+            {/* Error Message if JSON Invalid */}
+            {editorError && (
+              <div className="p-3 bg-red-950/80 border border-red-500 rounded-lg text-xs font-mono text-red-200 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                <div className="overflow-x-auto">
+                  <p className="font-bold">Script Validation Error:</p>
+                  <pre className="text-[11px] whitespace-pre-wrap">{editorError}</pre>
+                </div>
+              </div>
+            )}
+
+            {/* Run Button Bar */}
+            <div className="flex items-center justify-between pt-2 border-t border-[#2a374a]">
+              <span className="text-[11px] text-slate-400 font-mono">
+                Click Play to load this script into the top-down visualizer!
+              </span>
+
+              <button
+                onClick={handleRunJson}
+                className="pixel-btn btn-primary text-xs px-5 py-2.5 flex items-center gap-2 glow-active"
+              >
+                <Play className="w-4 h-4 fill-white" />
+                <span className="font-bold">LOAD & PLAY EPISODE NOW</span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

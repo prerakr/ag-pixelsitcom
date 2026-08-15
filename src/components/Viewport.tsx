@@ -56,16 +56,10 @@ export const Viewport: React.FC<ViewportProps> = ({ engine, onInspectCharacter }
       const rect = containerRef.current.getBoundingClientRect();
       const dpr = window.devicePixelRatio || 1;
 
-      canvasRef.current.width = rect.width * dpr;
-      canvasRef.current.height = rect.height * dpr;
+      canvasRef.current.width = Math.round(rect.width * dpr);
+      canvasRef.current.height = Math.round(rect.height * dpr);
       canvasRef.current.style.width = `${rect.width}px`;
       canvasRef.current.style.height = `${rect.height}px`;
-
-      const ctx = canvasRef.current.getContext('2d');
-      if (ctx) {
-        ctx.scale(dpr, dpr);
-        ctx.imageSmoothingEnabled = false;
-      }
     };
 
     handleResize();

@@ -295,8 +295,8 @@ export class VisualizerEngine {
           // Only move camera if allowed and in auto director mode
           if (this.cameraMode === 'auto' && this.allowCameraJumps && d.cameraFocus !== false) {
             const zoom = this.getSafeTargetZoom(1.15);
-            // Target character with safe vertical offset so speech bubble is centered and visible
-            this.camera.setTarget(state.x, Math.max(70, state.y - 18), zoom);
+            // Center directly on speaker's body coordinate (state.x, state.y - 8)
+            this.camera.setTarget(state.x, state.y - 8, zoom);
           }
         }
         break;
@@ -347,8 +347,9 @@ export class VisualizerEngine {
 
           if (cam.target === 'overview') {
             if (this.canvas) {
-              const rectW = this.canvas.width / (window.devicePixelRatio || 1);
-              const rectH = this.canvas.height / (window.devicePixelRatio || 1);
+              const dpr = window.devicePixelRatio || 1;
+              const rectW = this.canvas.width / dpr;
+              const rectH = this.canvas.height / dpr;
               const worldW = this.setting.gridWidth * this.setting.tileSize;
               const worldH = this.setting.gridHeight * this.setting.tileSize;
               this.camera.fitToViewport(rectW, rectH, worldW, worldH);
@@ -367,7 +368,7 @@ export class VisualizerEngine {
                 charState.currentAction = 'jim_stare';
                 this.camera.shake(0.2, 4);
               }
-              this.camera.setTarget(charState.x, Math.max(70, charState.y - 18), zoom);
+              this.camera.setTarget(charState.x, charState.y - 8, zoom);
             } else if (waypoint) {
               this.camera.setTarget(
                 waypoint.x * this.setting.tileSize,
@@ -432,26 +433,92 @@ export class VisualizerEngine {
     }
   }
 
+  private findVacantDestination(
+    movingCharId: string,
+    rawTargetX: number,
+    rawTargetY: number,
+    isDeskWaypoint: boolean
+  ): { x: number; y: number } {
+    if (isDeskWaypoint) {
+      return { x: rawTargetX, y: rawTargetY };
+    }
+
+    const tileSize = this.setting.tileSize;
+    const minBoundX = 2 * tileSize;
+    const maxBoundX = (this.setting.gridWidth - 2) * tileSize;
+    const minBoundY = 2 * tileSize;
+    const maxBoundY = (this.setting.gridHeight - 2) * tileSize;
+
+    // Check if destination is occupied by another character
+    const isOccupied = (tx: number, ty: number): boolean => {
+      for (const [id, other] of this.characterStates.entries()) {
+        if (id === movingCharId) continue;
+        const otherDestX = other.targetX !== undefined ? other.targetX : other.x;
+        const otherDestY = other.targetY !== undefined ? other.targetY : other.y;
+        if (Math.hypot(tx - otherDestX, ty - otherDestY) < 22) {
+          return true;
+        }
+      }
+      return false;
+    };
+
+    if (!isOccupied(rawTargetX, rawTargetY)) {
+      return { x: rawTargetX, y: rawTargetY };
+    }
+
+    // Spot candidate offsets arranged in surrounding clusters
+    const offsets = [
+      { dx: -24, dy: 0 },
+      { dx: 24, dy: 0 },
+      { dx: 0, dy: 20 },
+      { dx: 0, dy: -20 },
+      { dx: -24, dy: 20 },
+      { dx: 24, dy: 20 },
+      { dx: -24, dy: -20 },
+      { dx: 24, dy: -20 },
+      { dx: -44, dy: 0 },
+      { dx: 44, dy: 0 },
+      { dx: 0, dy: 36 },
+      { dx: -44, dy: 20 },
+      { dx: 44, dy: 20 },
+    ];
+
+    for (const offset of offsets) {
+      const candidateX = Math.max(minBoundX, Math.min(maxBoundX, rawTargetX + offset.dx));
+      const candidateY = Math.max(minBoundY, Math.min(maxBoundY, rawTargetY + offset.dy));
+
+      if (!isOccupied(candidateX, candidateY)) {
+        return { x: candidateX, y: candidateY };
+      }
+    }
+
+    return { x: rawTargetX, y: rawTargetY };
+  }
+
   private startCharacterMovement(m: MovementBeat) {
     const state = this.characterStates.get(m.character);
     if (!state) return;
 
     let targetX = state.x;
     let targetY = state.y;
+    let isDesk = false;
 
     if (typeof m.target === 'string') {
       const wp = this.setting.waypoints[m.target];
       if (wp) {
         targetX = wp.x * this.setting.tileSize;
         targetY = wp.y * this.setting.tileSize;
+        isDesk = m.target.includes('seat') || m.target.includes('desk');
       }
     } else if (typeof m.target === 'object') {
       targetX = m.target.x * this.setting.tileSize;
       targetY = m.target.y * this.setting.tileSize;
     }
 
-    state.targetX = targetX;
-    state.targetY = targetY;
+    const vacantSpot = this.findVacantDestination(m.character, targetX, targetY, isDesk);
+
+    state.targetX = vacantSpot.x;
+    state.targetY = vacantSpot.y;
     state.isMoving = true;
     state.isSitting = false;
     state.speed = m.speed || 1.0;
@@ -463,6 +530,31 @@ export class VisualizerEngine {
 
     // Update Camera
     this.camera.update(scaledDt);
+
+    // Soft separation between standing characters so they never directly overlap
+    const charArray = Array.from(this.characterStates.values());
+    for (let i = 0; i < charArray.length; i++) {
+      for (let j = i + 1; j < charArray.length; j++) {
+        const c1 = charArray[i];
+        const c2 = charArray[j];
+        if (c1.isMoving || c2.isMoving || c1.isSitting || c2.isSitting) continue;
+
+        const dx = c2.x - c1.x;
+        const dy = c2.y - c1.y;
+        const dist = Math.hypot(dx, dy);
+        const minDist = 18;
+
+        if (dist > 0 && dist < minDist) {
+          const push = (minDist - dist) * 0.5;
+          const nx = dx / dist;
+          const ny = dy / dist;
+          c1.x -= nx * push * 0.15;
+          c1.y -= ny * push * 0.15;
+          c2.x += nx * push * 0.15;
+          c2.y += ny * push * 0.15;
+        }
+      }
+    }
 
     // Update Characters movement & typewriter speech
     const tileSize = this.setting.tileSize;
@@ -542,16 +634,21 @@ export class VisualizerEngine {
   private render() {
     if (!this.ctx || !this.canvas) return;
     const ctx = this.ctx;
-    const w = this.canvas.width;
-    const h = this.canvas.height;
+    const dpr = window.devicePixelRatio || 1;
+    const logicalW = this.canvas.width / dpr;
+    const logicalH = this.canvas.height / dpr;
 
-    // Clear background
-    ctx.fillStyle = this.setting.backgroundColor;
-    ctx.fillRect(0, 0, w, h);
-
-    // Apply Camera translation and zoom
     ctx.save();
-    this.camera.applyTransform(ctx, w, h);
+    // High-DPI physical-to-logical coordinate normalization
+    ctx.scale(dpr, dpr);
+    ctx.imageSmoothingEnabled = false;
+
+    // Clear background in logical pixels
+    ctx.fillStyle = this.setting.backgroundColor;
+    ctx.fillRect(0, 0, logicalW, logicalH);
+
+    // Apply Camera translation and zoom in logical coordinates
+    this.camera.applyTransform(ctx, logicalW, logicalH);
 
     const tileSize = this.setting.tileSize;
 
