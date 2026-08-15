@@ -91,7 +91,10 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
                 <strong className="text-amber-300">Jim's Camera Stare:</strong> Procedural head turn directly locking eyes with the viewer.
               </li>
               <li>
-                <strong className="text-amber-300">Retro Synthesizer:</strong> Web Audio 8-bit typewriter chatter, laugh tracks, rimshots, boings, and theme jingles.
+                <strong className="text-amber-300">Procedural 8-Bit Soundtracks:</strong> Custom synthesized sitcom chiptune themes (*The Office*, *Friends*, *Silicon Valley*, *HIMYM*) with automatic dialogue ducking.
+              </li>
+              <li>
+                <strong className="text-amber-300">Retro SFX Synthesizer:</strong> Web Audio 8-bit typewriter chatter, laugh tracks, gasps, rimshots, and stings.
               </li>
             </ul>
           </div>

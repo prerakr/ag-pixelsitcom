@@ -1,8 +1,9 @@
 import React from 'react';
-import { Volume2, VolumeX, Music, Sparkles, Users, HelpCircle, Film, Tv } from 'lucide-react';
+import { Volume2, VolumeX, Music, Sparkles, Users, HelpCircle, Film, Tv, Radio } from 'lucide-react';
 import { ALL_SETTINGS } from '../data/settings';
 import { PRESET_EPISODES } from '../data/episodes';
 import { soundEngine } from '../engine/SoundEngine';
+import { musicEngine } from '../engine/MusicEngine';
 
 interface HeaderProps {
   currentSettingId: string;
@@ -15,6 +16,8 @@ interface HeaderProps {
   isCastDrawerOpen: boolean;
   isMuted: boolean;
   onToggleMute: () => void;
+  isBgmMuted: boolean;
+  onToggleBgmMute: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -28,7 +31,11 @@ export const Header: React.FC<HeaderProps> = ({
   isCastDrawerOpen,
   isMuted,
   onToggleMute,
+  isBgmMuted,
+  onToggleBgmMute,
 }) => {
+  const currentThemeName = musicEngine.getCurrentThemeName();
+
   return (
     <header className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between px-3 sm:px-4 py-2 sm:py-2.5 bg-[#131b26] border-b-2 border-[#2a374a] text-white select-none z-20 gap-2 shrink-0">
       {/* Top Row: Brand & Quick Actions */}
@@ -60,6 +67,13 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Sparkles className="w-3 h-3 animate-spin" style={{ animationDuration: '4s' }} />
             <span>AI PROMPT</span>
+          </button>
+          <button
+            onClick={onToggleBgmMute}
+            className={`p-1.5 border rounded ${!isBgmMuted ? 'bg-amber-600/30 border-amber-400 text-amber-300' : 'bg-[#0b0f17] border-[#2a374a] text-slate-400'}`}
+            title={`8-Bit Music: ${!isBgmMuted ? 'ON' : 'MUTED'}`}
+          >
+            <Music className={`w-3.5 h-3.5 ${!isBgmMuted ? 'text-amber-400 animate-pulse' : 'text-slate-500'}`} />
           </button>
           <button
             onClick={onToggleCastDrawer}
@@ -118,6 +132,25 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Desktop Action Buttons */}
       <div className="hidden sm:flex items-center gap-2">
+        {/* Procedural 8-Bit BGM Toggle */}
+        <button
+          onClick={onToggleBgmMute}
+          className={`pixel-btn text-[9px] px-2.5 py-1.5 flex items-center gap-1.5 transition-all ${
+            !isBgmMuted
+              ? 'bg-amber-950/70 border-amber-500 text-amber-300 shadow-[0_0_8px_rgba(245,158,11,0.25)]'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+          title={`8-Bit Music: ${!isBgmMuted ? 'PLAYING' : 'MUTED'} (${currentThemeName})`}
+        >
+          <Music className={`w-3.5 h-3.5 ${!isBgmMuted ? 'text-amber-400 animate-pulse' : 'text-slate-500'}`} />
+          <span className="font-mono">{!isBgmMuted ? 'BGM ON' : 'BGM OFF'}</span>
+          {!isBgmMuted && (
+            <span className="hidden xl:inline text-[8px] px-1 py-0.2 bg-amber-500/20 text-amber-300 rounded font-mono border border-amber-500/40 truncate max-w-[110px]">
+              {currentThemeName}
+            </span>
+          )}
+        </button>
+
         <button
           onClick={onToggleCastDrawer}
           className={`pixel-btn text-[9px] px-2.5 py-1.5 ${isCastDrawerOpen ? 'bg-amber-600 border-amber-400 text-white' : ''}`}
@@ -141,14 +174,14 @@ export const Header: React.FC<HeaderProps> = ({
           className="pixel-btn text-[9px] px-2 py-1.5 hidden xl:inline-flex"
           title="Play 8-Bit Sitcom Theme Jingle"
         >
-          <Music className="w-3.5 h-3.5 text-amber-400" />
-          <span>THEME</span>
+          <Radio className="w-3.5 h-3.5 text-amber-400" />
+          <span>STING</span>
         </button>
 
         <button
           onClick={onToggleMute}
           className="p-1.5 bg-[#0b0f17] hover:bg-[#1b2636] border border-[#2a374a] rounded text-slate-300 hover:text-white"
-          title={isMuted ? 'Unmute Audio' : 'Mute Audio'}
+          title={isMuted ? 'Unmute Master SFX' : 'Mute Master SFX'}
         >
           {isMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4 text-green-400" />}
         </button>

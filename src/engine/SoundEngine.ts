@@ -92,6 +92,11 @@ class SoundEngine {
     return this.masterVolume;
   }
 
+  public getAudioContext(): AudioContext | null {
+    this.initCtx();
+    return this.ctx;
+  }
+
   public playSfx(type: SfxType, customVolume = 1.0) {
     if (this.isMuted) return;
     this.initCtx();

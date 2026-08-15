@@ -107,6 +107,7 @@ ag-pixelsitcom/
 │   │   ├── CanvasRenderer.ts    # Core VisualizerEngine game loop & script execution
 │   │   ├── CharacterRenderer.ts # Procedural pixel art character renderer
 │   │   ├── LightingEngine.ts    # Atmospheric ambient lighting & point lights
+│   │   ├── MusicEngine.ts       # Procedural 8-bit multi-track background music synthesizers & scheduler
 │   │   ├── ParticleSystem.ts    # 2D particle emitter (sparks, fire, smoke, coffee, papers)
 │   │   ├── SoundEngine.ts       # Web Audio API synthesized procedural SFX & jingles
 │   │   ├── SpeechBubble.ts      # Speech bubble layout, typewriter text & tail calculations

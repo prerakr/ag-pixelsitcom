@@ -19,6 +19,7 @@ import { CharacterRenderer } from './CharacterRenderer';
 import { SpeechBubbleRenderer } from './SpeechBubble';
 import { Camera } from './Camera';
 import { soundEngine } from './SoundEngine';
+import { musicEngine } from './MusicEngine';
 import { particleSystem } from './ParticleSystem';
 import { lightingEngine } from './LightingEngine';
 
@@ -127,6 +128,7 @@ export class VisualizerEngine {
       setting.defaultCamera.zoom
     );
     this.initCharacters();
+    musicEngine.playTheme(setting.id);
   }
 
   public initCharacters() {
@@ -184,6 +186,7 @@ export class VisualizerEngine {
     this.propStates.clear();
     this.initCharacters();
     this.isTileMapDirty = true;
+    musicEngine.playTheme(script.settingId || this.setting.id);
 
     if (script.scenes[0]?.timeOfDay) {
       lightingEngine.setTimeOfDay(script.scenes[0].timeOfDay, true);
@@ -310,6 +313,7 @@ export class VisualizerEngine {
 
     if (beat.type !== 'talking_head' && this.activeTalkingHead !== null) {
       this.activeTalkingHead = null;
+      musicEngine.duckAudio(false);
       if (this.callbacks.onTalkingHead) {
         this.callbacks.onTalkingHead(null);
       }
@@ -501,6 +505,7 @@ export class VisualizerEngine {
         const th = beat as TalkingHeadBeat;
         this.activeTalkingHead = th;
         this.beatDuration = th.durationMs || Math.max(4500, th.monologueText.length * 80);
+        musicEngine.duckAudio(true);
         if (th.sfx) soundEngine.playSfx(th.sfx);
         if (this.callbacks.onTalkingHead) {
           this.callbacks.onTalkingHead(th);

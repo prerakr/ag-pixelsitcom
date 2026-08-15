@@ -13,6 +13,7 @@ import { ScriptStudio } from './components/ScriptStudio';
 import { CharacterRoster } from './components/CharacterRoster';
 import { HelpModal } from './components/HelpModal';
 import { soundEngine } from './engine/SoundEngine';
+import { musicEngine } from './engine/MusicEngine';
 
 export function App() {
   const [settingId, setSettingId] = useState<string>(DEFAULT_SETTING_ID);
@@ -41,6 +42,7 @@ export function App() {
   const [isCastDrawerOpen, setIsCastDrawerOpen] = useState<boolean>(false);
   const [isHelpOpen, setIsHelpOpen] = useState<boolean>(false);
   const [isMuted, setIsMuted] = useState<boolean>(false);
+  const [isBgmMuted, setIsBgmMuted] = useState<boolean>(musicEngine.getMuted());
   const [allowCameraJumps, setAllowCameraJumps] = useState<boolean>(true);
 
   // Create & maintain VisualizerEngine instance
@@ -172,6 +174,12 @@ export function App() {
     soundEngine.setMuted(next);
   };
 
+  const handleToggleBgmMute = () => {
+    const next = !isBgmMuted;
+    setIsBgmMuted(next);
+    musicEngine.setMuted(next);
+  };
+
   const handleFocusCharacter = (charId: string) => {
     const state = engine.characterStates.get(charId);
     if (state) {
@@ -194,6 +202,8 @@ export function App() {
         isCastDrawerOpen={isCastDrawerOpen}
         isMuted={isMuted}
         onToggleMute={handleToggleMute}
+        isBgmMuted={isBgmMuted}
+        onToggleBgmMute={handleToggleBgmMute}
       />
 
       {/* Main Top-Down Canvas Viewport */}
