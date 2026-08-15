@@ -168,7 +168,7 @@ export function App() {
   };
 
   return (
-    <div className="flex flex-col w-screen h-screen overflow-hidden bg-[#0c1017] text-white">
+    <div className="flex flex-col w-full h-[100dvh] overflow-hidden bg-[#0c1017] text-white">
       {/* Top Application Header */}
       <Header
         currentSettingId={settingId}

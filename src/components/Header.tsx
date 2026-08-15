@@ -30,37 +30,62 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleMute,
 }) => {
   return (
-    <header className="flex flex-wrap items-center justify-between px-4 py-2.5 bg-[#131b26] border-b-2 border-[#2a374a] text-white select-none z-20">
-      {/* Brand Title */}
-      <div className="flex items-center gap-3">
-        <div className="flex items-center justify-center w-9 h-9 bg-amber-500 text-slate-950 font-black rounded border-2 border-amber-300 shadow-[2px_2px_0px_rgba(0,0,0,0.6)]">
-          <Tv className="w-5 h-5" />
-        </div>
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="pixel-font text-xs md:text-sm font-bold tracking-wider text-amber-400">
-              PIXEL SITCOM
-            </h1>
-            <span className="text-[10px] px-1.5 py-0.5 bg-blue-950 text-blue-300 border border-blue-700 rounded font-mono">
-              v1.0
-            </span>
+    <header className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between px-3 sm:px-4 py-2 sm:py-2.5 bg-[#131b26] border-b-2 border-[#2a374a] text-white select-none z-20 gap-2 shrink-0">
+      {/* Top Row: Brand & Quick Actions */}
+      <div className="flex items-center justify-between sm:justify-start gap-2 sm:gap-3">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center w-7 h-7 sm:w-9 sm:h-9 bg-amber-500 text-slate-950 font-black rounded border-2 border-amber-300 shadow-[2px_2px_0px_rgba(0,0,0,0.6)] shrink-0">
+            <Tv className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <p className="text-[11px] text-slate-400 hidden sm:block font-mono">
-            16-Bit Top-Down Visualizer & AI Episode Engine
-          </p>
+          <div>
+            <div className="flex items-center gap-1.5">
+              <h1 className="pixel-font text-[11px] sm:text-xs md:text-sm font-bold tracking-wider text-amber-400">
+                PIXEL SITCOM
+              </h1>
+              <span className="text-[9px] px-1 py-0.2 bg-blue-950 text-blue-300 border border-blue-700 rounded font-mono">
+                v1.0
+              </span>
+            </div>
+            <p className="text-[10px] text-slate-400 hidden md:block font-mono">
+              16-Bit Top-Down Visualizer & AI Episode Engine
+            </p>
+          </div>
+        </div>
+
+        {/* Mobile Quick Buttons */}
+        <div className="flex sm:hidden items-center gap-1.5">
+          <button
+            onClick={onOpenScriptStudio}
+            className="pixel-btn btn-primary text-[8px] px-2 py-1.5 flex items-center gap-1"
+          >
+            <Sparkles className="w-3 h-3 animate-spin" style={{ animationDuration: '4s' }} />
+            <span>AI</span>
+          </button>
+          <button
+            onClick={onToggleCastDrawer}
+            className={`p-1.5 bg-[#0b0f17] border border-[#2a374a] rounded ${isCastDrawerOpen ? 'bg-amber-600 border-amber-400 text-white' : 'text-slate-300'}`}
+          >
+            <Users className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={onToggleMute}
+            className="p-1.5 bg-[#0b0f17] border border-[#2a374a] rounded text-slate-300"
+          >
+            {isMuted ? <VolumeX className="w-3.5 h-3.5 text-red-400" /> : <Volume2 className="w-3.5 h-3.5 text-green-400" />}
+          </button>
         </div>
       </div>
 
-      {/* Center Setting & Episode Selectors */}
-      <div className="flex items-center gap-2 my-1 sm:my-0">
+      {/* Selectors Row */}
+      <div className="flex items-center gap-2 flex-1 sm:justify-center">
         {/* Show / Setting Selector */}
-        <div className="flex items-center gap-1.5 bg-[#0b0f17] px-2.5 py-1.5 border border-[#2a374a] rounded">
-          <span className="text-[11px] text-amber-400 font-mono hidden md:inline">SHOW:</span>
+        <div className="flex items-center gap-1 bg-[#0b0f17] px-2 py-1 border border-[#2a374a] rounded flex-1 sm:flex-initial">
+          <span className="text-[10px] text-amber-400 font-mono hidden lg:inline">SHOW:</span>
           <select
             value={currentSettingId}
             onChange={(e) => onSelectSetting(e.target.value)}
             aria-label="Select Sitcom Setting"
-            className="bg-transparent text-xs text-slate-200 outline-none cursor-pointer font-medium"
+            className="bg-transparent text-[11px] sm:text-xs text-slate-200 outline-none cursor-pointer font-medium w-full sm:w-auto"
           >
             {Object.values(ALL_SETTINGS).map((s) => (
               <option key={s.id} value={s.id} className="bg-[#131b26] text-white">
@@ -71,13 +96,13 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Preset Episodes Selector */}
-        <div className="flex items-center gap-1.5 bg-[#0b0f17] px-2.5 py-1.5 border border-[#2a374a] rounded">
-          <Film className="w-3.5 h-3.5 text-blue-400" />
+        <div className="flex items-center gap-1 bg-[#0b0f17] px-2 py-1 border border-[#2a374a] rounded flex-1 sm:flex-initial">
+          <Film className="w-3 h-3 text-blue-400 shrink-0" />
           <select
             value={currentEpisodeTitle}
             onChange={(e) => onSelectEpisode(Number(e.target.value))}
             aria-label="Select Episode"
-            className="bg-transparent text-xs text-slate-200 outline-none cursor-pointer font-medium max-w-[140px] sm:max-w-[200px] truncate"
+            className="bg-transparent text-[11px] sm:text-xs text-slate-200 outline-none cursor-pointer font-medium w-full sm:max-w-[170px] md:max-w-[210px] truncate"
           >
             {PRESET_EPISODES.map((ep, idx) => (
               <option key={idx} value={idx} className="bg-[#131b26] text-white">
@@ -88,9 +113,8 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex items-center gap-2">
-        {/* Cast Roster Button */}
+      {/* Desktop Action Buttons */}
+      <div className="hidden sm:flex items-center gap-2">
         <button
           onClick={onToggleCastDrawer}
           className={`pixel-btn text-[9px] px-2.5 py-1.5 ${isCastDrawerOpen ? 'bg-amber-600 border-amber-400 text-white' : ''}`}
@@ -100,7 +124,6 @@ export const Header: React.FC<HeaderProps> = ({
           <span className="hidden md:inline">CAST</span>
         </button>
 
-        {/* AI Script Studio Button */}
         <button
           onClick={onOpenScriptStudio}
           className="pixel-btn btn-primary text-[9px] px-3 py-1.5 glow-active flex items-center gap-1.5"
@@ -110,17 +133,15 @@ export const Header: React.FC<HeaderProps> = ({
           <span>AI SCRIPT STUDIO</span>
         </button>
 
-        {/* 8-Bit Theme Jingle */}
         <button
           onClick={() => soundEngine.playThemeJingle()}
-          className="pixel-btn text-[9px] px-2 py-1.5 hidden lg:inline-flex"
+          className="pixel-btn text-[9px] px-2 py-1.5 hidden xl:inline-flex"
           title="Play 8-Bit Sitcom Theme Jingle"
         >
           <Music className="w-3.5 h-3.5 text-amber-400" />
           <span>THEME</span>
         </button>
 
-        {/* Audio Mute */}
         <button
           onClick={onToggleMute}
           className="p-1.5 bg-[#0b0f17] hover:bg-[#1b2636] border border-[#2a374a] rounded text-slate-300 hover:text-white"
@@ -129,7 +150,6 @@ export const Header: React.FC<HeaderProps> = ({
           {isMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4 text-green-400" />}
         </button>
 
-        {/* Help */}
         <button
           onClick={onOpenHelp}
           className="p-1.5 bg-[#0b0f17] hover:bg-[#1b2636] border border-[#2a374a] rounded text-slate-300 hover:text-white"
