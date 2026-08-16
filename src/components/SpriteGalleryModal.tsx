@@ -168,6 +168,11 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
   const [calibCharId, setCalibCharId] = useState<string>('michael');
   const [calibTileId, setCalibTileId] = useState<string>('floor_carpet_grey');
 
+  const [isCreatingNew, setIsCreatingNew] = useState(false);
+  const [newEntityId, setNewEntityId] = useState('');
+  
+  const activeEntityId = isCreatingNew ? newEntityId : (calibCategory === 'prop' ? calibPropId : calibCategory === 'tile' ? calibTileId : calibCharId);
+
   // Interactive Calibrator Sliders & Values
   const [cropX, setCropX] = useState<number>(55);
   const [cropY, setCropY] = useState<number>(0);
@@ -266,22 +271,33 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
   }, [calibCategory, calibPropId, calibCharId, calibTileId]);
 
   // ─── Interactive Handlers ──────────────────────────────────────────────────
+  const getSourceCoords = (e: React.MouseEvent<HTMLCanvasElement>, canvas: HTMLCanvasElement, img: HTMLCanvasElement) => {
+    const rect = canvas.getBoundingClientRect();
+    const domX = e.clientX - rect.left;
+    const domY = e.clientY - rect.top;
+    const internalX = (domX / rect.width) * canvas.width;
+    const internalY = (domY / rect.height) * canvas.height;
+    const imgScale = canvas.width / img.width;
+    return {
+      x: internalX / imgScale,
+      y: internalY / imgScale,
+      internalX,
+      internalY
+    };
+  };
+
   const handleSheetMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (isEyedropper || isPixelEdit) return;
     const canvas = calibSheetRef.current;
     if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
     const img = spriteManager.getLoadedImages().get(calibImageKey);
-    if (!img) return;
-    const scale = img.width / canvas.width; 
+    if (!img || img.width === 0) return;
     
+    const { x, y } = getSourceCoords(e, canvas, img);
     setIsDragging(true);
     const snap = gridSnap || 1;
-    const startX = Math.round((x * scale) / snap) * snap;
-    const startY = Math.round((y * scale) / snap) * snap;
+    const startX = Math.round(x / snap) * snap;
+    const startY = Math.round(y / snap) * snap;
     setDragStart({ x: startX, y: startY });
     setCropX(startX);
     setCropY(startY);
@@ -292,18 +308,14 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
   const handleSheetMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = calibSheetRef.current;
     if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
     const img = spriteManager.getLoadedImages().get(calibImageKey);
-    if (!img) return;
-    const scale = img.width / canvas.width;
+    if (!img || img.width === 0) return;
 
     if (isDragging && dragStart) {
+      const { x, y } = getSourceCoords(e, canvas, img);
       const snap = gridSnap || 1;
-      let curX = Math.round((x * scale) / snap) * snap;
-      let curY = Math.round((y * scale) / snap) * snap;
+      let curX = Math.round(x / snap) * snap;
+      let curY = Math.round(y / snap) * snap;
       
       setCropX(Math.min(dragStart.x, curX));
       setCropY(Math.min(dragStart.y, curY));
@@ -320,20 +332,17 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
   const handleSheetClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = calibSheetRef.current;
     if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
     const img = spriteManager.getLoadedImages().get(calibImageKey);
-    if (!img) return;
-    const scale = img.width / canvas.width;
-    const imgX = Math.floor(x * scale);
-    const imgY = Math.floor(y * scale);
+    if (!img || img.width === 0) return;
+
+    const { x, y, internalX, internalY } = getSourceCoords(e, canvas, img);
+    const imgX = Math.floor(x);
+    const imgY = Math.floor(y);
 
     if (isEyedropper) {
       const ctx = canvas.getContext('2d');
       if (ctx) {
-        const p = ctx.getImageData(x, y, 1, 1).data;
+        const p = ctx.getImageData(internalX, internalY, 1, 1).data;
         const hex = "#" + ("000000" + ((p[0] << 16) | (p[1] << 8) | p[2]).toString(16)).slice(-6);
         setChromaHex(hex);
         spriteManager.reprocessChromaKey(calibImageKey, hex);
@@ -397,8 +406,9 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
 
   // Apply Live Override
   const handleApplyOverride = () => {
+    if (!activeEntityId) return;
     if (calibCategory === 'prop') {
-      spriteManager.setPropOverride(calibPropId, {
+      spriteManager.setPropOverride(activeEntityId, {
         imageKey: calibImageKey,
         scale: calibScale,
         offsetX: calibOffsetX,
@@ -413,7 +423,7 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
         },
       });
     } else if (calibCategory === 'tile') {
-      spriteManager.setTileOverride(calibTileId, {
+      spriteManager.setTileOverride(activeEntityId, {
         imageKey: calibImageKey,
         rect: {
           x: cropX,
@@ -423,7 +433,7 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
         },
       });
     } else {
-      spriteManager.setCharacterOverride(calibCharId, {
+      spriteManager.setCharacterOverride(activeEntityId, {
         imageKey: calibImageKey,
         scale: calibScale,
         offsetX: calibOffsetX,
@@ -573,7 +583,7 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
             ctx.strokeRect(20, 20, tileSize * 2, tileSize * 2);
 
             // Single focused tile preview
-            const bigSize = 72;
+            const bigSize = 192;
             ctx.drawImage(
               img,
               cropX,
@@ -589,22 +599,23 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
           }
         } else {
           // Center baseline
+          const baselineY = canvas.height * 0.75;
           ctx.strokeStyle = 'rgba(245, 158, 11, 0.4)';
           ctx.beginPath();
           ctx.moveTo(canvas.width / 2, 0);
           ctx.lineTo(canvas.width / 2, canvas.height);
           ctx.stroke();
           ctx.beginPath();
-          ctx.moveTo(0, canvas.height / 2 + 50);
-          ctx.lineTo(canvas.width, canvas.height / 2 + 50);
+          ctx.moveTo(0, baselineY);
+          ctx.lineTo(canvas.width, baselineY);
           ctx.stroke();
 
           if (img && cropW > 0 && cropH > 0) {
-            const fitScale = calibScale * 1.5;
+            const fitScale = calibScale * 4.0;
             const dw = Math.round(cropW * fitScale);
             const dh = Math.round(cropH * fitScale);
             const dx = Math.round(canvas.width / 2 - dw / 2 + calibOffsetX);
-            const dy = Math.round(canvas.height / 2 + 50 - dh + calibOffsetY);
+            const dy = Math.round(baselineY - dh + calibOffsetY);
 
             ctx.drawImage(img, cropX, cropY, cropW, cropH, dx, dy, dw, dh);
           }
@@ -646,8 +657,8 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
   // Generated TypeScript code snippet
   const generatedSnippet =
     calibCategory === 'prop'
-      ? `${calibPropId}: {
-  propType: '${calibPropId}',
+      ? `${activeEntityId || 'new_prop'}: {
+  propType: '${activeEntityId || 'new_prop'}',
   imageKey: '${calibImageKey}',
   rect: { x: ${cropX}, y: ${cropY}, w: ${cropW}, h: ${cropH}, anchorX: ${calibAnchorX}, anchorY: ${calibAnchorY} },
   scale: ${calibScale},
@@ -707,7 +718,7 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
         }
       }}
     >
-      <div className="relative w-full max-w-6xl max-h-[94vh] bg-[#131b26] border-4 border-[#2a374a] shadow-2xl rounded-lg overflow-hidden flex flex-col">
+      <div className="relative w-[98vw] h-[98vh] max-w-none bg-[#131b26] border-4 border-[#2a374a] shadow-2xl rounded-lg overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 bg-[#0c1017] border-b-2 border-[#2a374a]">
           <div className="flex items-center gap-2">
@@ -820,10 +831,19 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
                   </label>
                   {calibCategory === 'prop' ? (
                     <select
-                      value={calibPropId}
-                      onChange={(e) => setCalibPropId(e.target.value)}
+                      value={isCreatingNew ? '--new--' : calibPropId}
+                      onChange={(e) => {
+                        if (e.target.value === '--new--') {
+                          setIsCreatingNew(true);
+                          setNewEntityId('new_prop');
+                        } else {
+                          setIsCreatingNew(false);
+                          setCalibPropId(e.target.value);
+                        }
+                      }}
                       className="w-full bg-[#131b26] border border-[#2a374a] text-slate-200 p-1.5 rounded font-mono text-xs focus:outline-none focus:border-amber-400"
                     >
+                      <option value="--new--">-- Create New --</option>
                       {atlasProps.map((p) => (
                         <option key={p} value={p}>
                           {p.replace(/_/g, ' ')}
@@ -832,10 +852,19 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
                     </select>
                   ) : calibCategory === 'tile' ? (
                     <select
-                      value={calibTileId}
-                      onChange={(e) => setCalibTileId(e.target.value)}
+                      value={isCreatingNew ? '--new--' : calibTileId}
+                      onChange={(e) => {
+                        if (e.target.value === '--new--') {
+                          setIsCreatingNew(true);
+                          setNewEntityId('new_tile');
+                        } else {
+                          setIsCreatingNew(false);
+                          setCalibTileId(e.target.value);
+                        }
+                      }}
                       className="w-full bg-[#131b26] border border-[#2a374a] text-slate-200 p-1.5 rounded font-mono text-xs focus:outline-none focus:border-amber-400"
                     >
+                      <option value="--new--">-- Create New --</option>
                       {atlasTiles.map((t) => (
                         <option key={t} value={t}>
                           {t.replace(/_/g, ' ')}
@@ -844,16 +873,35 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
                     </select>
                   ) : (
                     <select
-                      value={calibCharId}
-                      onChange={(e) => setCalibCharId(e.target.value)}
+                      value={isCreatingNew ? '--new--' : calibCharId}
+                      onChange={(e) => {
+                        if (e.target.value === '--new--') {
+                          setIsCreatingNew(true);
+                          setNewEntityId('new_char');
+                        } else {
+                          setIsCreatingNew(false);
+                          setCalibCharId(e.target.value);
+                        }
+                      }}
                       className="w-full bg-[#131b26] border border-[#2a374a] text-slate-200 p-1.5 rounded font-mono text-xs focus:outline-none focus:border-amber-400"
                     >
+                      <option value="--new--">-- Create New --</option>
                       {atlasCharacters.map((c) => (
                         <option key={c} value={c}>
                           {c} ({ALL_CHARACTERS[c]?.name || c})
                         </option>
                       ))}
                     </select>
+                  )}
+                  
+                  {isCreatingNew && (
+                    <input 
+                      type="text" 
+                      value={newEntityId} 
+                      onChange={e => setNewEntityId(e.target.value)} 
+                      placeholder={`Enter new ${calibCategory} ID...`}
+                      className="mt-2 w-full bg-[#0a0e14] border border-[#2a374a] text-amber-300 p-1.5 rounded font-mono text-xs focus:outline-none focus:border-cyan-400"
+                    />
                   )}
                 </div>
 
@@ -1148,9 +1196,9 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
                     </span>
                     <canvas
                       ref={calibPreviewRef}
-                      width={220}
-                      height={220}
-                      className={`border border-[#1e293b] rounded shadow-inner ${
+                      width={600}
+                      height={600}
+                      className={`w-full h-auto max-h-[65vh] object-contain border border-[#1e293b] rounded shadow-inner ${
                         bgColorMode === 'dark' ? 'bg-[#070a0f]' : 
                         bgColorMode === 'light' ? 'bg-slate-200' : 
                         "bg-[url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAX0lEQVQ4T2N88+bNfwYiAOOoQoZRRYyiYIYZ/kOQc+fOsQDF+IFCBlIFBw8e/E9MGBk4ceLEf2LDSCXDOQeRiMBxVMGoQkZRMJIK8Y3/8OFDEq1iZGRkINUKRg5qGAUAx6E/RfqgUfMAAAAASUVORK5CYII=')]"
@@ -1166,14 +1214,14 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
                     </span>
                     <canvas
                       ref={calibSheetRef}
-                      width={220}
-                      height={220}
+                      width={600}
+                      height={600}
                       onMouseDown={handleSheetMouseDown}
                       onMouseMove={handleSheetMouseMove}
                       onMouseUp={handleSheetMouseUp}
                       onMouseLeave={handleSheetMouseUp}
                       onClick={handleSheetClick}
-                      className={`border border-[#1e293b] rounded shadow-inner ${
+                      className={`w-full h-auto max-h-[65vh] object-contain border border-[#1e293b] rounded shadow-inner ${
                         isEyedropper ? 'cursor-crosshair' : isPixelEdit ? 'cursor-cell' : 'cursor-crosshair'
                       } ${
                         bgColorMode === 'dark' ? 'bg-[#070a0f]' : 

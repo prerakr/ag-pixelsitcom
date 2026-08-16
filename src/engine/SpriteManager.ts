@@ -262,6 +262,11 @@ export class SpriteManager {
   public async loadManifest(manifestOrList: SpriteAtlasManifest | SpriteAtlasManifest[]): Promise<void> {
     const manifests = Array.isArray(manifestOrList) ? manifestOrList : [manifestOrList];
     const loadPromises: Promise<void>[] = [];
+    
+    // Auto-discover public sprites using Vite glob
+    const publicSprites = (import.meta as any).glob('../../public/sprites/*.{png,jpg,jpeg}', { query: '?url', import: 'default', eager: true });
+    
+    const imagesToLoad: Record<string, { url: string, chromaKey?: string, tolerance?: number }> = {};
 
     for (const manifest of manifests) {
       // Register definitions
@@ -270,11 +275,28 @@ export class SpriteManager {
       Object.values(manifest.tiles).forEach((t) => this.tiles.set(t.tileType, t));
       Object.values(manifest.portraits).forEach((pt) => this.portraits.set(pt.characterId, pt));
 
-      // Load and process image textures
+      // Collect image textures
       for (const [key, entry] of Object.entries(manifest.images)) {
-        if (this.images.has(key)) continue; // Already loaded
+        imagesToLoad[key] = entry;
+      }
+    }
 
-        const p = new Promise<void>((resolve) => {
+    // Add auto-discovered sprites (do not overwrite if already defined in manifest)
+    for (const [path, url] of Object.entries(publicSprites)) {
+      const match = path.match(/\/([^/]+)\.(png|jpg|jpeg)$/);
+      if (match) {
+        const key = match[1];
+        if (!imagesToLoad[key]) {
+          imagesToLoad[key] = { url: url as string }; // Default no chromakey
+        }
+      }
+    }
+
+    // Load and process image textures
+    for (const [key, entry] of Object.entries(imagesToLoad)) {
+      if (this.images.has(key)) continue; // Already loaded
+
+      const p = new Promise<void>((resolve) => {
           const img = new Image();
           img.crossOrigin = 'anonymous';
           img.onload = () => {
@@ -303,7 +325,6 @@ export class SpriteManager {
         });
         loadPromises.push(p);
       }
-    }
 
     await Promise.all(loadPromises);
     this.isLoadedState = true;
