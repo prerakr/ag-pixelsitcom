@@ -1,10 +1,113 @@
 import { SpriteAtlasManifest } from '../../../types/sprite';
 
+const EXTENDED_ROW_H = Math.round(2048 / 6); // ~341px
+const MISC_ROW_H = 512;
+const MISC_COL_W = 256;
+
+// 8-column row animation builder for office_characters_extended (Angela, Kevin, Stanley, Ryan)
+function make8ColOfficeAnim(row: number) {
+  const y = row * EXTENDED_ROW_H;
+  const colW = 256;
+  return {
+    down: [
+      { x: 0 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
+      { x: 4 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
+    ],
+    up: [
+      { x: 1 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
+      { x: 5 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
+    ],
+    left: [
+      { x: 2 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
+      { x: 3 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
+    ],
+    right: [
+      { x: 6 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
+      { x: 7 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
+    ],
+    sitting: {
+      down: { x: 0 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
+      left: { x: 2 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
+      right: { x: 6 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
+      up: { x: 1 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
+    },
+  };
+}
+
+// 10-column row animation builder for office_characters_extended (Kelly, Oscar)
+function make10ColOfficeAnim(row: number) {
+  const y = row * EXTENDED_ROW_H;
+  const colW = Math.round(2048 / 10); // ~205px
+  return {
+    down: [
+      { x: 0 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
+      { x: 5 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
+    ],
+    up: [
+      { x: 1 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
+      { x: 6 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
+    ],
+    left: [
+      { x: 3 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
+      { x: 4 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
+    ],
+    right: [
+      { x: 8 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
+      { x: 9 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
+    ],
+    sitting: {
+      down: { x: 0 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
+      left: { x: 3 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
+      right: { x: 8 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
+      up: { x: 1 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
+    },
+  };
+}
+
+// 8-column row animation builder for office_characters_misc (Toby, Phyllis, Meredith, Creed)
+function makeMiscOfficeAnim(row: number) {
+  const y = row * MISC_ROW_H;
+  return {
+    down: [
+      { x: 0 * MISC_COL_W, y, w: MISC_COL_W, h: MISC_ROW_H, anchorX: 0.5, anchorY: 0.92 },
+      { x: 4 * MISC_COL_W, y, w: MISC_COL_W, h: MISC_ROW_H, anchorX: 0.5, anchorY: 0.92 },
+    ],
+    up: [
+      { x: 1 * MISC_COL_W, y, w: MISC_COL_W, h: MISC_ROW_H, anchorX: 0.5, anchorY: 0.92 },
+      { x: 5 * MISC_COL_W, y, w: MISC_COL_W, h: MISC_ROW_H, anchorX: 0.5, anchorY: 0.92 },
+    ],
+    left: [
+      { x: 2 * MISC_COL_W, y, w: MISC_COL_W, h: MISC_ROW_H, anchorX: 0.5, anchorY: 0.92 },
+      { x: 3 * MISC_COL_W, y, w: MISC_COL_W, h: MISC_ROW_H, anchorX: 0.5, anchorY: 0.92 },
+    ],
+    right: [
+      { x: 6 * MISC_COL_W, y, w: MISC_COL_W, h: MISC_ROW_H, anchorX: 0.5, anchorY: 0.92 },
+      { x: 7 * MISC_COL_W, y, w: MISC_COL_W, h: MISC_ROW_H, anchorX: 0.5, anchorY: 0.92 },
+    ],
+    sitting: {
+      down: { x: 0 * MISC_COL_W, y, w: MISC_COL_W, h: MISC_ROW_H, anchorX: 0.5, anchorY: 0.92 },
+      left: { x: 2 * MISC_COL_W, y, w: MISC_COL_W, h: MISC_ROW_H, anchorX: 0.5, anchorY: 0.92 },
+      right: { x: 6 * MISC_COL_W, y, w: MISC_COL_W, h: MISC_ROW_H, anchorX: 0.5, anchorY: 0.92 },
+      up: { x: 1 * MISC_COL_W, y, w: MISC_COL_W, h: MISC_ROW_H, anchorX: 0.5, anchorY: 0.92 },
+    },
+  };
+}
+
 export const OFFICE_MANIFEST: SpriteAtlasManifest = {
   showId: 'the_office',
   images: {
     office_characters: {
       url: '/sprites/office_characters.jpg',
+      chromaKey: '#00ff00',
+      tolerance: 55,
+    },
+    office_characters_extended: {
+      url: '/sprites/office_characters_extended.png',
+      chromaKey: '#00ff00',
+      tolerance: 55,
+    },
+    office_characters_misc: {
+      url: '/sprites/office_characters_misc.png',
       chromaKey: '#00ff00',
       tolerance: 55,
     },
@@ -171,6 +274,108 @@ export const OFFICE_MANIFEST: SpriteAtlasManifest = {
           up: { x: 1 * 128, y: 3 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
         },
       },
+    },
+
+    // Extended Office Cast (Nano Banana High-Resolution Sprites - Batch 1)
+    angela: {
+      characterId: 'angela',
+      imageKey: 'office_characters_extended',
+      frameWidth: 256,
+      frameHeight: EXTENDED_ROW_H,
+      scale: 0.17,
+      enabled: true,
+      animations: make8ColOfficeAnim(0),
+    },
+
+    kevin: {
+      characterId: 'kevin',
+      imageKey: 'office_characters_extended',
+      frameWidth: 256,
+      frameHeight: EXTENDED_ROW_H,
+      scale: 0.185,
+      enabled: true,
+      animations: make8ColOfficeAnim(1),
+    },
+
+    stanley: {
+      characterId: 'stanley',
+      imageKey: 'office_characters_extended',
+      frameWidth: 256,
+      frameHeight: EXTENDED_ROW_H,
+      scale: 0.178,
+      enabled: true,
+      animations: make8ColOfficeAnim(2),
+    },
+
+    ryan: {
+      characterId: 'ryan',
+      imageKey: 'office_characters_extended',
+      frameWidth: 256,
+      frameHeight: EXTENDED_ROW_H,
+      scale: 0.175,
+      enabled: true,
+      animations: make8ColOfficeAnim(3),
+    },
+
+    kelly: {
+      characterId: 'kelly',
+      imageKey: 'office_characters_extended',
+      frameWidth: Math.round(2048 / 10),
+      frameHeight: EXTENDED_ROW_H,
+      scale: 0.168,
+      enabled: true,
+      animations: make10ColOfficeAnim(4),
+    },
+
+    oscar: {
+      characterId: 'oscar',
+      imageKey: 'office_characters_extended',
+      frameWidth: Math.round(2048 / 10),
+      frameHeight: EXTENDED_ROW_H,
+      scale: 0.175,
+      enabled: true,
+      animations: make10ColOfficeAnim(5),
+    },
+
+    // Extended Office Cast (Nano Banana High-Resolution Sprites - Batch 2)
+    toby: {
+      characterId: 'toby',
+      imageKey: 'office_characters_misc',
+      frameWidth: MISC_COL_W,
+      frameHeight: MISC_ROW_H,
+      scale: 0.118,
+      enabled: true,
+      animations: makeMiscOfficeAnim(0),
+    },
+
+    phyllis: {
+      characterId: 'phyllis',
+      imageKey: 'office_characters_misc',
+      frameWidth: MISC_COL_W,
+      frameHeight: MISC_ROW_H,
+      scale: 0.122,
+      enabled: true,
+      animations: makeMiscOfficeAnim(1),
+    },
+
+    meredith: {
+      characterId: 'meredith',
+      imageKey: 'office_characters_misc',
+      frameWidth: MISC_COL_W,
+      frameHeight: MISC_ROW_H,
+      scale: 0.116,
+      enabled: true,
+      animations: makeMiscOfficeAnim(2),
+    },
+
+    creed: {
+      characterId: 'creed',
+      imageKey: 'office_characters_misc',
+      frameWidth: MISC_COL_W,
+      frameHeight: MISC_ROW_H,
+      scale: 0.118,
+      enabled: true,
+      animations: makeMiscOfficeAnim(3),
     },
   },
 
