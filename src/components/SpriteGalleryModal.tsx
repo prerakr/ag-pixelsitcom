@@ -14,13 +14,14 @@ import {
   Crop,
   ShieldCheck,
   ShieldAlert,
+  Image as ImageIcon,
+  Grid,
 } from 'lucide-react';
 import { spriteManager } from '../engine/SpriteManager';
 import { SPRITE_ATLAS_MANIFEST } from '../data/sprites/SpriteAtlas';
 import { ALL_CHARACTERS } from '../data/characters';
 import { ALL_SETTINGS } from '../data/settings';
 import { Direction } from '../types/script';
-import { CharacterSpriteDef, PropSpriteDef } from '../types/sprite';
 
 interface SpriteGalleryModalProps {
   isOpen: boolean;
@@ -162,11 +163,12 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
   const [triggerUpdate, setTriggerUpdate] = useState(0);
 
   // Calibrator Tab State
-  const [calibCategory, setCalibCategory] = useState<'character' | 'prop'>('prop');
+  const [calibCategory, setCalibCategory] = useState<'character' | 'prop' | 'tile'>('prop');
   const [calibPropId, setCalibPropId] = useState<string>('desk_michael');
   const [calibCharId, setCalibCharId] = useState<string>('michael');
+  const [calibTileId, setCalibTileId] = useState<string>('floor_carpet_grey');
 
-  // Interactive Calibrator Sliders
+  // Interactive Calibrator Sliders & Values
   const [cropX, setCropX] = useState<number>(55);
   const [cropY, setCropY] = useState<number>(0);
   const [cropW, setCropW] = useState<number>(375);
@@ -195,7 +197,14 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
   const atlasTiles = useMemo(() => Object.keys(SPRITE_ATLAS_MANIFEST.tiles), [triggerUpdate]);
   const atlasPortraits = useMemo(() => Object.keys(SPRITE_ATLAS_MANIFEST.portraits), [triggerUpdate]);
 
-  // Sync Calibrator Inputs when selection changes
+  const allKnownImageKeys = useMemo(() => {
+    const keys = new Set<string>();
+    Object.keys(SPRITE_ATLAS_MANIFEST.images).forEach((k) => keys.add(k));
+    spriteManager.getImageKeys().forEach((k) => keys.add(k));
+    return Array.from(keys);
+  }, [triggerUpdate]);
+
+  // Sync Calibrator Inputs when selection or category changes
   useEffect(() => {
     if (calibCategory === 'prop') {
       const def = SPRITE_ATLAS_MANIFEST.props[calibPropId as any];
@@ -209,6 +218,20 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
         setCalibOffsetY(def.offsetY ?? 0);
         setCalibAnchorX(def.rect.anchorX ?? 0.5);
         setCalibAnchorY(def.rect.anchorY ?? 1.0);
+        setCalibImageKey(def.imageKey);
+      }
+    } else if (calibCategory === 'tile') {
+      const def = SPRITE_ATLAS_MANIFEST.tiles[calibTileId as any];
+      if (def) {
+        setCropX(def.rect.x);
+        setCropY(def.rect.y);
+        setCropW(def.rect.w);
+        setCropH(def.rect.h);
+        setCalibScale(1.0);
+        setCalibOffsetX(0);
+        setCalibOffsetY(0);
+        setCalibAnchorX(0.5);
+        setCalibAnchorY(0.5);
         setCalibImageKey(def.imageKey);
       }
     } else {
@@ -227,12 +250,13 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
         setCalibImageKey(def.imageKey);
       }
     }
-  }, [calibCategory, calibPropId, calibCharId]);
+  }, [calibCategory, calibPropId, calibCharId, calibTileId]);
 
   // Apply Live Override
   const handleApplyOverride = () => {
     if (calibCategory === 'prop') {
       spriteManager.setPropOverride(calibPropId, {
+        imageKey: calibImageKey,
         scale: calibScale,
         offsetX: calibOffsetX,
         offsetY: calibOffsetY,
@@ -245,8 +269,19 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
           anchorY: calibAnchorY,
         },
       });
+    } else if (calibCategory === 'tile') {
+      spriteManager.setTileOverride(calibTileId, {
+        imageKey: calibImageKey,
+        rect: {
+          x: cropX,
+          y: cropY,
+          w: cropW,
+          h: cropH,
+        },
+      });
     } else {
       spriteManager.setCharacterOverride(calibCharId, {
+        imageKey: calibImageKey,
         scale: calibScale,
         offsetX: calibOffsetX,
         offsetY: calibOffsetY,
@@ -257,7 +292,7 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
   // Reset Override
   const handleResetOverride = () => {
     spriteManager.clearOverrides();
-    // Re-trigger sync
+    // Re-sync
     if (calibCategory === 'prop') {
       const def = SPRITE_ATLAS_MANIFEST.props[calibPropId as any];
       if (def) {
@@ -268,6 +303,16 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
         setCalibScale(def.scale ?? 1.0);
         setCalibOffsetX(0);
         setCalibOffsetY(0);
+        setCalibImageKey(def.imageKey);
+      }
+    } else if (calibCategory === 'tile') {
+      const def = SPRITE_ATLAS_MANIFEST.tiles[calibTileId as any];
+      if (def) {
+        setCropX(def.rect.x);
+        setCropY(def.rect.y);
+        setCropW(def.rect.w);
+        setCropH(def.rect.h);
+        setCalibImageKey(def.imageKey);
       }
     }
   };
@@ -331,7 +376,7 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
     return () => cancelAnimationFrame(animId);
   }, [isOpen, activeTab, selectedChar, selectedDirection, isWalking, triggerUpdate]);
 
-  // Calibrator Preview Render
+  // Calibrator Preview Render (Entity preview + Spritesheet crop box)
   useEffect(() => {
     if (!isOpen || activeTab !== 'calibrator') return;
 
@@ -343,7 +388,7 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.imageSmoothingEnabled = false;
 
-        // Ground grid & center line
+        // Ground grid & center lines
         ctx.strokeStyle = '#1e293b';
         ctx.lineWidth = 1;
         for (let i = 0; i < canvas.width; i += 20) {
@@ -359,26 +404,67 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
           ctx.stroke();
         }
 
-        // Center baseline
-        ctx.strokeStyle = 'rgba(245, 158, 11, 0.4)';
-        ctx.beginPath();
-        ctx.moveTo(canvas.width / 2, 0);
-        ctx.lineTo(canvas.width / 2, canvas.height);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(0, canvas.height / 2 + 50);
-        ctx.lineTo(canvas.width, canvas.height / 2 + 50);
-        ctx.stroke();
-
         const img = spriteManager.getLoadedImages().get(calibImageKey);
-        if (img && cropW > 0 && cropH > 0) {
-          const fitScale = calibScale * 1.5;
-          const dw = Math.round(cropW * fitScale);
-          const dh = Math.round(cropH * fitScale);
-          const dx = Math.round(canvas.width / 2 - dw / 2 + calibOffsetX);
-          const dy = Math.round(canvas.height / 2 + 50 - dh + calibOffsetY);
 
-          ctx.drawImage(img, cropX, cropY, cropW, cropH, dx, dy, dw, dh);
+        if (calibCategory === 'tile') {
+          // Render a 2x2 repeating tile grid on left and 1x1 focused tile on right
+          if (img && cropW > 0 && cropH > 0) {
+            const tileSize = 64;
+            // 2x2 tiled pattern
+            for (let r = 0; r < 2; r++) {
+              for (let c = 0; c < 2; c++) {
+                ctx.drawImage(
+                  img,
+                  cropX,
+                  cropY,
+                  cropW,
+                  cropH,
+                  20 + c * tileSize,
+                  20 + r * tileSize,
+                  tileSize,
+                  tileSize
+                );
+              }
+            }
+            ctx.strokeStyle = 'rgba(245, 158, 11, 0.6)';
+            ctx.strokeRect(20, 20, tileSize * 2, tileSize * 2);
+
+            // Single focused tile preview
+            const bigSize = 72;
+            ctx.drawImage(
+              img,
+              cropX,
+              cropY,
+              cropW,
+              cropH,
+              canvas.width - bigSize - 20,
+              canvas.height / 2 - bigSize / 2,
+              bigSize,
+              bigSize
+            );
+            ctx.strokeRect(canvas.width - bigSize - 20, canvas.height / 2 - bigSize / 2, bigSize, bigSize);
+          }
+        } else {
+          // Center baseline
+          ctx.strokeStyle = 'rgba(245, 158, 11, 0.4)';
+          ctx.beginPath();
+          ctx.moveTo(canvas.width / 2, 0);
+          ctx.lineTo(canvas.width / 2, canvas.height);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(0, canvas.height / 2 + 50);
+          ctx.lineTo(canvas.width, canvas.height / 2 + 50);
+          ctx.stroke();
+
+          if (img && cropW > 0 && cropH > 0) {
+            const fitScale = calibScale * 1.5;
+            const dw = Math.round(cropW * fitScale);
+            const dh = Math.round(cropH * fitScale);
+            const dx = Math.round(canvas.width / 2 - dw / 2 + calibOffsetX);
+            const dy = Math.round(canvas.height / 2 + 50 - dh + calibOffsetY);
+
+            ctx.drawImage(img, cropX, cropY, cropW, cropH, dx, dy, dw, dh);
+          }
         }
       }
     }
@@ -392,20 +478,25 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
         sCtx.imageSmoothingEnabled = false;
 
         const img = spriteManager.getLoadedImages().get(calibImageKey);
-        if (img) {
+        if (img && img.width > 0 && img.height > 0) {
           const scale = sheetCanvas.width / img.width;
           sCtx.drawImage(img, 0, 0, sheetCanvas.width, img.height * scale);
 
-          // Draw red highlighted bounding box over crop
+          // Draw highlighted red bounding box over crop
           sCtx.strokeStyle = '#ef4444';
           sCtx.lineWidth = 2;
           sCtx.strokeRect(cropX * scale, cropY * scale, cropW * scale, cropH * scale);
-          sCtx.fillStyle = 'rgba(239, 68, 68, 0.2)';
+          sCtx.fillStyle = 'rgba(239, 68, 68, 0.25)';
           sCtx.fillRect(cropX * scale, cropY * scale, cropW * scale, cropH * scale);
+        } else {
+          sCtx.fillStyle = '#64748b';
+          sCtx.font = '10px monospace';
+          sCtx.textAlign = 'center';
+          sCtx.fillText(`Image texture "${calibImageKey}" not loaded`, sheetCanvas.width / 2, sheetCanvas.height / 2);
         }
       }
     }
-  }, [isOpen, activeTab, calibCategory, calibPropId, calibCharId, cropX, cropY, cropW, cropH, calibScale, calibOffsetX, calibOffsetY, calibImageKey, triggerUpdate]);
+  }, [isOpen, activeTab, calibCategory, calibPropId, calibCharId, calibTileId, cropX, cropY, cropW, cropH, calibScale, calibOffsetX, calibOffsetY, calibImageKey, triggerUpdate]);
 
   if (!isOpen) return null;
 
@@ -419,6 +510,13 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
   scale: ${calibScale},
   offsetX: ${calibOffsetX},
   offsetY: ${calibOffsetY},
+  enabled: true,
+},`
+      : calibCategory === 'tile'
+      ? `${calibTileId}: {
+  tileType: '${calibTileId}',
+  imageKey: '${calibImageKey}',
+  rect: { x: ${cropX}, y: ${cropY}, w: ${cropW}, h: ${cropH} },
   enabled: true,
 },`
       : `${calibCharId}: {
@@ -435,6 +533,8 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
   const activeEntityEnabled =
     calibCategory === 'prop'
       ? spriteManager.isAssetEnabled('prop', calibPropId)
+      : calibCategory === 'tile'
+      ? spriteManager.isAssetEnabled('tile', calibTileId)
       : spriteManager.isAssetEnabled('character', calibCharId);
 
   const TABS = [
@@ -459,7 +559,7 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
                 SPRITE STUDIO & ART PIPELINE
               </h2>
               <p className="text-[10px] text-slate-400 font-mono">
-                Modular Manifests · Granular Overrides · Live Calibration
+                Modular Manifests · Granular Overrides · Live Spritesheet Calibrator
               </p>
             </div>
           </div>
@@ -518,7 +618,7 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
         {/* Body */}
         <div className="flex-1 p-4 overflow-y-auto min-h-[420px]">
 
-          {/* ═══════════════════ CALIBRATOR & SWAPPER TAB (NEW!) ═══════════════════ */}
+          {/* ═══════════════════ CALIBRATOR & SWAPPER TAB ═══════════════════ */}
           {activeTab === 'calibrator' && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
               {/* Left Control Panel */}
@@ -544,12 +644,22 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
                     >
                       CHARACTER
                     </button>
+                    <button
+                      onClick={() => setCalibCategory('tile')}
+                      className={`px-2 py-0.5 text-[10px] rounded font-bold ${
+                        calibCategory === 'tile' ? 'bg-amber-500 text-slate-950' : 'text-slate-400'
+                      }`}
+                    >
+                      TILE
+                    </button>
                   </div>
                 </div>
 
-                {/* Target Selector */}
+                {/* Target Entity Selector */}
                 <div>
-                  <label className="text-[10px] text-slate-400 block mb-1">SELECT ASSET TO CALIBRATE / OVERRIDE:</label>
+                  <label className="text-[10px] text-slate-400 block mb-1">
+                    SELECT {calibCategory.toUpperCase()} TO CALIBRATE / OVERRIDE:
+                  </label>
                   {calibCategory === 'prop' ? (
                     <select
                       value={calibPropId}
@@ -558,7 +668,19 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
                     >
                       {atlasProps.map((p) => (
                         <option key={p} value={p}>
-                          {p}
+                          {p.replace(/_/g, ' ')}
+                        </option>
+                      ))}
+                    </select>
+                  ) : calibCategory === 'tile' ? (
+                    <select
+                      value={calibTileId}
+                      onChange={(e) => setCalibTileId(e.target.value)}
+                      className="w-full bg-[#131b26] border border-[#2a374a] text-slate-200 p-1.5 rounded font-mono text-xs focus:outline-none focus:border-amber-400"
+                    >
+                      {atlasTiles.map((t) => (
+                        <option key={t} value={t}>
+                          {t.replace(/_/g, ' ')}
                         </option>
                       ))}
                     </select>
@@ -577,6 +699,34 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
                   )}
                 </div>
 
+                {/* Sprite Sheet / Image Texture Selector */}
+                <div className="p-2 rounded bg-[#131b26] border border-[#2a374a]">
+                  <label className="text-[10px] text-cyan-400 font-bold flex items-center gap-1 mb-1">
+                    <ImageIcon className="w-3.5 h-3.5" /> SOURCE SPRITE SHEET (IMAGE KEY):
+                  </label>
+                  <div className="flex gap-1.5">
+                    <select
+                      value={calibImageKey}
+                      onChange={(e) => setCalibImageKey(e.target.value)}
+                      className="flex-1 bg-[#0a0e14] border border-[#2a374a] text-slate-200 p-1 rounded font-mono text-[11px] focus:outline-none focus:border-cyan-400"
+                    >
+                      {allKnownImageKeys.map((k) => (
+                        <option key={k} value={k}>
+                          {k}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="text"
+                      placeholder="Custom key"
+                      value={calibImageKey}
+                      onChange={(e) => setCalibImageKey(e.target.value)}
+                      className="w-32 bg-[#0a0e14] border border-[#2a374a] text-slate-200 p-1 rounded font-mono text-[11px] focus:outline-none focus:border-cyan-400"
+                      title="Type or edit custom imageKey directly"
+                    />
+                  </div>
+                </div>
+
                 {/* Individual Asset Fallback Toggle */}
                 <div className="flex items-center justify-between p-2 rounded bg-[#131b26] border border-[#2a374a]">
                   <div>
@@ -587,6 +737,8 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
                     onClick={() => {
                       if (calibCategory === 'prop') {
                         spriteManager.setAssetEnabled('prop', calibPropId, !activeEntityEnabled);
+                      } else if (calibCategory === 'tile') {
+                        spriteManager.setAssetEnabled('tile', calibTileId, !activeEntityEnabled);
                       } else {
                         spriteManager.setAssetEnabled('character', calibCharId, !activeEntityEnabled);
                       }
@@ -610,26 +762,42 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
                   </button>
                 </div>
 
-                {/* Crop & Offset Sliders */}
+                {/* Crop & Dimension Sliders */}
                 <div className="space-y-2 pt-1">
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-[10px] text-slate-400 block">Crop X: {cropX}px</label>
+                      <div className="flex items-center justify-between text-[10px] text-slate-400 mb-0.5">
+                        <span>Crop X:</span>
+                        <input
+                          type="number"
+                          value={cropX}
+                          onChange={(e) => setCropX(Number(e.target.value))}
+                          className="w-14 bg-[#131b26] border border-[#2a374a] text-amber-300 px-1 py-0.5 rounded text-right"
+                        />
+                      </div>
                       <input
                         type="range"
                         min="0"
-                        max="1024"
+                        max="2048"
                         value={cropX}
                         onChange={(e) => setCropX(Number(e.target.value))}
                         className="w-full h-1.5 bg-[#1e293b] rounded appearance-none cursor-pointer accent-amber-400"
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-400 block">Crop Y: {cropY}px</label>
+                      <div className="flex items-center justify-between text-[10px] text-slate-400 mb-0.5">
+                        <span>Crop Y:</span>
+                        <input
+                          type="number"
+                          value={cropY}
+                          onChange={(e) => setCropY(Number(e.target.value))}
+                          className="w-14 bg-[#131b26] border border-[#2a374a] text-amber-300 px-1 py-0.5 rounded text-right"
+                        />
+                      </div>
                       <input
                         type="range"
                         min="0"
-                        max="1024"
+                        max="2048"
                         value={cropY}
                         onChange={(e) => setCropY(Number(e.target.value))}
                         className="w-full h-1.5 bg-[#1e293b] rounded appearance-none cursor-pointer accent-amber-400"
@@ -639,22 +807,38 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
 
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-[10px] text-slate-400 block">Width: {cropW}px</label>
+                      <div className="flex items-center justify-between text-[10px] text-slate-400 mb-0.5">
+                        <span>Width:</span>
+                        <input
+                          type="number"
+                          value={cropW}
+                          onChange={(e) => setCropW(Number(e.target.value))}
+                          className="w-14 bg-[#131b26] border border-[#2a374a] text-amber-300 px-1 py-0.5 rounded text-right"
+                        />
+                      </div>
                       <input
                         type="range"
-                        min="10"
-                        max="1024"
+                        min="8"
+                        max="2048"
                         value={cropW}
                         onChange={(e) => setCropW(Number(e.target.value))}
                         className="w-full h-1.5 bg-[#1e293b] rounded appearance-none cursor-pointer accent-amber-400"
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-400 block">Height: {cropH}px</label>
+                      <div className="flex items-center justify-between text-[10px] text-slate-400 mb-0.5">
+                        <span>Height:</span>
+                        <input
+                          type="number"
+                          value={cropH}
+                          onChange={(e) => setCropH(Number(e.target.value))}
+                          className="w-14 bg-[#131b26] border border-[#2a374a] text-amber-300 px-1 py-0.5 rounded text-right"
+                        />
+                      </div>
                       <input
                         type="range"
-                        min="10"
-                        max="1024"
+                        min="8"
+                        max="2048"
                         value={cropH}
                         onChange={(e) => setCropH(Number(e.target.value))}
                         className="w-full h-1.5 bg-[#1e293b] rounded appearance-none cursor-pointer accent-amber-400"
@@ -662,42 +846,44 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2">
-                    <div>
-                      <label className="text-[10px] text-slate-400 block">Scale: {calibScale.toFixed(2)}</label>
-                      <input
-                        type="range"
-                        min="0.1"
-                        max="3.0"
-                        step="0.01"
-                        value={calibScale}
-                        onChange={(e) => setCalibScale(Number(e.target.value))}
-                        className="w-full h-1.5 bg-[#1e293b] rounded appearance-none cursor-pointer accent-amber-400"
-                      />
+                  {calibCategory !== 'tile' && (
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <label className="text-[10px] text-slate-400 block">Scale: {calibScale.toFixed(2)}</label>
+                        <input
+                          type="range"
+                          min="0.05"
+                          max="3.0"
+                          step="0.005"
+                          value={calibScale}
+                          onChange={(e) => setCalibScale(Number(e.target.value))}
+                          className="w-full h-1.5 bg-[#1e293b] rounded appearance-none cursor-pointer accent-amber-400"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-400 block">Offset X: {calibOffsetX}px</label>
+                        <input
+                          type="range"
+                          min="-50"
+                          max="50"
+                          value={calibOffsetX}
+                          onChange={(e) => setCalibOffsetX(Number(e.target.value))}
+                          className="w-full h-1.5 bg-[#1e293b] rounded appearance-none cursor-pointer accent-amber-400"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-400 block">Offset Y: {calibOffsetY}px</label>
+                        <input
+                          type="range"
+                          min="-50"
+                          max="50"
+                          value={calibOffsetY}
+                          onChange={(e) => setCalibOffsetY(Number(e.target.value))}
+                          className="w-full h-1.5 bg-[#1e293b] rounded appearance-none cursor-pointer accent-amber-400"
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <label className="text-[10px] text-slate-400 block">Offset X: {calibOffsetX}px</label>
-                      <input
-                        type="range"
-                        min="-50"
-                        max="50"
-                        value={calibOffsetX}
-                        onChange={(e) => setCalibOffsetX(Number(e.target.value))}
-                        className="w-full h-1.5 bg-[#1e293b] rounded appearance-none cursor-pointer accent-amber-400"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] text-slate-400 block">Offset Y: {calibOffsetY}px</label>
-                      <input
-                        type="range"
-                        min="-50"
-                        max="50"
-                        value={calibOffsetY}
-                        onChange={(e) => setCalibOffsetY(Number(e.target.value))}
-                        className="w-full h-1.5 bg-[#1e293b] rounded appearance-none cursor-pointer accent-amber-400"
-                      />
-                    </div>
-                  </div>
+                  )}
                 </div>
 
                 {/* Action Buttons */}
@@ -724,7 +910,8 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
                   {/* Calibrated In-Game Canvas */}
                   <div className="bg-[#0a0e14] p-3 rounded-lg border border-[#2a374a] flex flex-col items-center">
                     <span className="text-[10px] font-mono text-amber-400 uppercase tracking-wider mb-2 flex items-center gap-1">
-                      <Eye className="w-3.5 h-3.5" /> Render Preview
+                      {calibCategory === 'tile' ? <Grid className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      {calibCategory === 'tile' ? 'Tile Repeat & Focus Preview' : 'Render Preview'}
                     </span>
                     <canvas
                       ref={calibPreviewRef}
@@ -738,7 +925,7 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
                   {/* Spritesheet Texture & Bounding Box */}
                   <div className="bg-[#0a0e14] p-3 rounded-lg border border-[#2a374a] flex flex-col items-center">
                     <span className="text-[10px] font-mono text-cyan-400 uppercase tracking-wider mb-2 flex items-center gap-1">
-                      <Crop className="w-3.5 h-3.5" /> Texture Bounding Box
+                      <Crop className="w-3.5 h-3.5" /> Texture Sheet ({calibImageKey})
                     </span>
                     <canvas
                       ref={calibSheetRef}
@@ -1059,10 +1246,10 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
               <div className="bg-[#0b1017] p-3 rounded border border-amber-500/30">
                 <h3 className="text-amber-400 font-bold text-sm mb-1 flex items-center gap-1.5">
                   <Sparkles className="w-4 h-4 text-amber-400" />
-                  Gemini / Imagen Image Generation Recipes
+                  Gemini / Nano Banana Image Generation Recipes
                 </h3>
                 <p className="text-[11px] text-slate-400 mb-3">
-                  Copy these prompts into Gemini Image Generation or Imagen to produce compatible pixel art assets. All output must use the specified chroma-key background color for automatic transparency processing.
+                  Copy these prompts into Nano Banana or Gemini to produce compatible pixel art assets. All output must use the specified chroma-key background color for automatic transparency processing.
                 </p>
 
                 <div className="space-y-4">
@@ -1072,28 +1259,28 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
                       1. 4-Direction Walk-Cycle Character Spritesheet (8-column grid)
                     </span>
                     <p className="text-[10px] text-slate-500 mb-1.5">
-                      Generates a 1024×256 grid: 8 columns × 1 row. Cols 0-3: stride A (front/back/left/right), Cols 4-7: stride B.
+                      Generates an 8-column horizontal grid. Cols 0-3: stride A (front/back/left/right), Cols 4-7: stride B.
                     </p>
                     <div className="relative">
                       <code className="text-[10px] text-emerald-400 block bg-[#080d14] p-2.5 rounded whitespace-pre-wrap leading-relaxed">
 {`16-bit retro pixel art sprite sheet of [CHARACTER NAME] from [SHOW], [OUTFIT DESCRIPTION]. 
-Organized as a precise 8-column × 1-row grid (1024×256 px). Each cell is 128×256 px.
+Organized as a precise 8-column horizontal grid for 4-direction RPG walk cycles:
 
 Column layout:
 - Col 0: Front-facing walk stride A (left foot forward)
 - Col 1: Back-facing walk stride A
 - Col 2: Left-facing walk stride A
-- Col 3: Right-facing walk stride A
+- Col 3: Left-facing walk stride B
 - Col 4: Front-facing walk stride B (right foot forward)
 - Col 5: Back-facing walk stride B
-- Col 6: Left-facing walk stride B
+- Col 6: Right-facing walk stride A
 - Col 7: Right-facing walk stride B
 
 Style: Top-down 3/4 RPG view, SNES-era crisp pixel art, clean black outlines, no anti-aliasing.
 Background: Solid bright green chroma-key #00FF00 filling all empty space.
 Important: Each character must be centered in their cell with consistent proportions across all 8 poses.`}
                       </code>
-                      <CopyButton text={`16-bit retro pixel art sprite sheet of [CHARACTER NAME] from [SHOW], [OUTFIT DESCRIPTION].\nOrganized as a precise 8-column × 1-row grid (1024×256 px). Each cell is 128×256 px.\n\nColumn layout:\n- Col 0: Front-facing walk stride A (left foot forward)\n- Col 1: Back-facing walk stride A\n- Col 2: Left-facing walk stride A\n- Col 3: Right-facing walk stride A\n- Col 4: Front-facing walk stride B (right foot forward)\n- Col 5: Back-facing walk stride B\n- Col 6: Left-facing walk stride B\n- Col 7: Right-facing walk stride B\n\nStyle: Top-down 3/4 RPG view, SNES-era crisp pixel art, clean black outlines, no anti-aliasing.\nBackground: Solid bright green chroma-key #00FF00 filling all empty space.\nImportant: Each character must be centered in their cell with consistent proportions across all 8 poses.`} />
+                      <CopyButton text={`16-bit retro pixel art sprite sheet of [CHARACTER NAME] from [SHOW], [OUTFIT DESCRIPTION].\nOrganized as a precise 8-column horizontal grid for 4-direction RPG walk cycles:\n\nColumn layout:\n- Col 0: Front-facing walk stride A (left foot forward)\n- Col 1: Back-facing walk stride A\n- Col 2: Left-facing walk stride A\n- Col 3: Left-facing walk stride B\n- Col 4: Front-facing walk stride B (right foot forward)\n- Col 5: Back-facing walk stride B\n- Col 6: Right-facing walk stride A\n- Col 7: Right-facing walk stride B\n\nStyle: Top-down 3/4 RPG view, SNES-era crisp pixel art, clean black outlines, no anti-aliasing.\nBackground: Solid bright green chroma-key #00FF00 filling all empty space.\nImportant: Each character must be centered in their cell with consistent proportions across all 8 poses.`} />
                     </div>
                   </div>
 
@@ -1103,7 +1290,7 @@ Important: Each character must be centered in their cell with consistent proport
                       2. Strictly 2D Top-Down Props & Furniture Spritesheet
                     </span>
                     <p className="text-[10px] text-slate-500 mb-1.5">
-                      Generates a 1024×1024 spritesheet with 6-10 props arranged in a loose grid. Each prop must be strictly orthogonal top-down (no isometric tilting).
+                      Generates a 1024×1024 spritesheet with props arranged in a loose grid. Each prop must be strictly orthogonal top-down (no isometric tilting).
                     </p>
                     <div className="relative">
                       <code className="text-[10px] text-emerald-400 block bg-[#080d14] p-2.5 rounded whitespace-pre-wrap leading-relaxed">

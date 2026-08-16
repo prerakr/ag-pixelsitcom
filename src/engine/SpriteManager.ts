@@ -242,6 +242,11 @@ export class SpriteManager {
     this.notifyListeners();
   }
 
+  public setTileOverride(tileType: string, override: Partial<TileSpriteDef>) {
+    this.tileOverrides.set(tileType, { ...this.tileOverrides.get(tileType), ...override });
+    this.notifyListeners();
+  }
+
   public clearOverrides() {
     this.characterOverrides.clear();
     this.propOverrides.clear();
@@ -411,13 +416,22 @@ export class SpriteManager {
     if (this.artStyleMode === 'procedural') return null;
     if (!this.isAssetEnabled('tile', tileType as string)) return null;
 
-    const def = this.tiles.get(tileType as string);
+    let def = this.tiles.get(tileType as string);
     if (!def) return null;
+
+    const override = this.tileOverrides.get(tileType as string);
+    if (override) {
+      def = { ...def, ...override };
+    }
 
     const canvas = this.images.get(def.imageKey);
     if (!canvas) return null;
 
     return { canvas, rect: def.rect };
+  }
+
+  public getImageKeys(): string[] {
+    return Array.from(this.images.keys());
   }
 
   public hasPortrait(characterId: string): boolean {
