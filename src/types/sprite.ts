@@ -1,5 +1,6 @@
 import { Direction, EmotionType } from './script';
 import { TileType, PropType } from './environment';
+import { CharacterState } from './character';
 
 export interface SpriteRect {
   x: number;
@@ -10,6 +11,8 @@ export interface SpriteRect {
   anchorY?: number; // Normalized pivot (0-1), default 1.0 (feet baseline)
   offsetX?: number; // Fine-tune draw offset in pixels (horizontal)
   offsetY?: number; // Fine-tune draw offset in pixels (vertical)
+  flipX?: boolean;  // Horizontally mirror this sprite frame around its anchor pivot
+  flipY?: boolean;  // Vertically mirror this sprite frame
 }
 
 export interface CharacterAnimationFrames {
@@ -17,13 +20,15 @@ export interface CharacterAnimationFrames {
   up: SpriteRect[];    // Walk / idle frames facing back/up
   left: SpriteRect[];  // Walk / idle frames facing left
   right: SpriteRect[]; // Walk / idle frames facing right
+  idle?: Partial<Record<Direction, SpriteRect | SpriteRect[]>>;
+  run?: Partial<Record<Direction, SpriteRect[]>>;
   sitting?: {
     down?: SpriteRect;
     up?: SpriteRect;
     left?: SpriteRect;
     right?: SpriteRect;
   };
-  actions?: Record<string, SpriteRect | SpriteRect[]>; // e.g. 'jim_stare', 'drink_coffee'
+  actions?: Partial<Record<CharacterState | string, SpriteRect | SpriteRect[]>>;
 }
 
 export interface CharacterSpriteDef {

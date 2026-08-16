@@ -321,7 +321,8 @@ export class SpriteManager {
     animFrame: number,
     isMoving: boolean,
     isSitting = false,
-    action?: string
+    action?: string,
+    characterState?: string
   ): { canvas: HTMLCanvasElement; rect: SpriteRect; scale: number; offsetX: number; offsetY: number } | null {
     if (this.artStyleMode === 'procedural') return null;
     if (!this.isAssetEnabled('character', characterId)) return null;
@@ -341,28 +342,64 @@ export class SpriteManager {
     const offsetX = def.offsetX || 0;
     const offsetY = def.offsetY || 0;
 
-    // Check specific action overrides
-    if (action && def.animations.actions && def.animations.actions[action]) {
-      const act = def.animations.actions[action];
+    // 1. Check specific action overrides (by explicit action name or character state)
+    const effectiveAction = action || characterState;
+    if (effectiveAction && def.animations.actions && def.animations.actions[effectiveAction]) {
+      const act = def.animations.actions[effectiveAction];
       const rect = Array.isArray(act) ? act[animFrame % act.length] : act;
       return { canvas, rect, scale, offsetX, offsetY };
     }
 
-    // Check sitting frames
-    if (isSitting && def.animations.sitting) {
+    // 2. Check sitting frames
+    const sittingState = isSitting || characterState === 'sitting_desk' || characterState === 'sitting_couch';
+    if (sittingState && def.animations.sitting) {
       const sitRect = def.animations.sitting[facing] || def.animations.sitting.down;
       if (sitRect) {
         return { canvas, rect: sitRect, scale, offsetX, offsetY };
       }
     }
 
-    // Standard walk / idle frames
-    const frames = def.animations[facing] || def.animations.down;
+    // 3. Check idle frames when stationary
+    if (!isMoving && def.animations.idle) {
+      const idleFrames = def.animations.idle[facing] || def.animations.idle.down;
+      if (idleFrames) {
+        const rect = Array.isArray(idleFrames) ? idleFrames[animFrame % idleFrames.length] : idleFrames;
+        return { canvas, rect, scale, offsetX, offsetY };
+      }
+    }
+
+    // 4. Check run frames when running
+    if (isMoving && characterState === 'running' && def.animations.run) {
+      const runFrames = def.animations.run[facing] || def.animations.run.down;
+      if (runFrames && runFrames.length > 0) {
+        const rect = runFrames[animFrame % runFrames.length];
+        return { canvas, rect, scale, offsetX, offsetY };
+      }
+    }
+
+    // 5. Standard walk / idle frames
+    let frames = def.animations[facing];
+    let autoFlipX = false;
+
+    // Automatic fallback: If facing left and no left frames, use right with flipX
+    if ((!frames || frames.length === 0) && facing === 'left' && def.animations.right) {
+      frames = def.animations.right;
+      autoFlipX = true;
+    }
+
+    if (!frames || frames.length === 0) {
+      frames = def.animations.down;
+    }
+
     if (!frames || frames.length === 0) return null;
 
     // If standing still, use frame 0 (idle pose); if moving, cycle frame
     const frameIndex = isMoving ? animFrame % frames.length : 0;
-    const rect = frames[frameIndex];
+    let rect = frames[frameIndex];
+
+    if (autoFlipX && !rect.flipX) {
+      rect = { ...rect, flipX: true };
+    }
 
     return { canvas, rect, scale, offsetX, offsetY };
   }

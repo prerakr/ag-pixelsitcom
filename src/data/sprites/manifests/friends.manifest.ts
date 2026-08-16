@@ -14,18 +14,20 @@ function makeCharAnimations(row: number) {
       { x: Math.round(1 * COL_W), y, w: COL_W, h: ROW_H, anchorX: 0.5, anchorY: 0.95 },
       { x: Math.round(7 * COL_W), y, w: COL_W, h: ROW_H, anchorX: 0.5, anchorY: 0.95 },
     ],
-    left: [
+    right: [
       { x: Math.round(3 * COL_W), y, w: COL_W, h: ROW_H, anchorX: 0.5, anchorY: 0.95 },
       { x: Math.round(4 * COL_W), y, w: COL_W, h: ROW_H, anchorX: 0.5, anchorY: 0.95 },
+      { x: Math.round(5 * COL_W), y, w: COL_W, h: ROW_H, anchorX: 0.5, anchorY: 0.95 },
     ],
-    right: [
-      { x: Math.round(9 * COL_W), y, w: COL_W, h: ROW_H, anchorX: 0.5, anchorY: 0.95 },
-      { x: Math.round(10 * COL_W), y, w: COL_W, h: ROW_H, anchorX: 0.5, anchorY: 0.95 },
+    left: [
+      { x: Math.round(3 * COL_W), y, w: COL_W, h: ROW_H, anchorX: 0.5, anchorY: 0.95, flipX: true },
+      { x: Math.round(4 * COL_W), y, w: COL_W, h: ROW_H, anchorX: 0.5, anchorY: 0.95, flipX: true },
+      { x: Math.round(5 * COL_W), y, w: COL_W, h: ROW_H, anchorX: 0.5, anchorY: 0.95, flipX: true },
     ],
     sitting: {
       down: { x: Math.round(0 * COL_W), y, w: COL_W, h: ROW_H, anchorX: 0.5, anchorY: 0.95 },
-      left: { x: Math.round(3 * COL_W), y, w: COL_W, h: ROW_H, anchorX: 0.5, anchorY: 0.95 },
-      right: { x: Math.round(9 * COL_W), y, w: COL_W, h: ROW_H, anchorX: 0.5, anchorY: 0.95 },
+      left: { x: Math.round(3 * COL_W), y, w: COL_W, h: ROW_H, anchorX: 0.5, anchorY: 0.95, flipX: true },
+      right: { x: Math.round(3 * COL_W), y, w: COL_W, h: ROW_H, anchorX: 0.5, anchorY: 0.95 },
       up: { x: Math.round(1 * COL_W), y, w: COL_W, h: ROW_H, anchorX: 0.5, anchorY: 0.95 },
     },
   };

@@ -10,6 +10,32 @@ export type HoldableItemType =
   | 'pretzel'
   | 'paper_sheet';
 
+export type CharacterState =
+  | 'idle'
+  | 'walking'
+  | 'running'
+  | 'sneaking'
+  | 'tiptoeing'
+  | 'sitting_desk'
+  | 'sitting_couch'
+  | 'typing'
+  | 'drinking'
+  | 'eating'
+  | 'holding'
+  | 'gesturing'
+  | 'shocked'
+  | 'cowering'
+  | 'fallen'
+  | 'camera_stare';
+
+export type CharacterGesture =
+  | 'facepalm'
+  | 'shrug'
+  | 'wave'
+  | 'point'
+  | 'cross_arms'
+  | 'hands_on_hips';
+
 export interface CharacterVisualProfile {
   skinColor: string;
   hairColor: string;
@@ -47,12 +73,17 @@ export interface CharacterRuntimeState {
   targetX?: number;
   targetY?: number;
   facing: Direction;
+  targetFacing?: Direction;
   isMoving: boolean;
   speed: number;
   animFrame: number;
   animTimer: number;
   animSpeed?: number;
+  state?: CharacterState;
   currentAction?: string;
+  gesture?: CharacterGesture;
+  actionTimer?: number;
+  runLean?: number;
   isSitting?: boolean;
   heldItem?: HoldableItemType;
   currentSpeech?: {
@@ -71,3 +102,4 @@ export interface CharacterRuntimeState {
     maxDuration: number;
   };
 }
+

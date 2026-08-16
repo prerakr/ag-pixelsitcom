@@ -17,18 +17,22 @@ function make8ColOfficeAnim(row: number) {
       { x: 1 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
       { x: 5 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
     ],
-    left: [
+    right: [
       { x: 2 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
       { x: 3 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
-    ],
-    right: [
       { x: 6 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
       { x: 7 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
     ],
+    left: [
+      { x: 2 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92, flipX: true },
+      { x: 3 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92, flipX: true },
+      { x: 6 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92, flipX: true },
+      { x: 7 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92, flipX: true },
+    ],
     sitting: {
       down: { x: 0 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
-      left: { x: 2 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
-      right: { x: 6 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
+      left: { x: 2 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92, flipX: true },
+      right: { x: 2 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
       up: { x: 1 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
     },
   };
@@ -47,18 +51,22 @@ function make10ColOfficeAnim(row: number) {
       { x: 1 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
       { x: 6 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
     ],
-    left: [
+    right: [
       { x: 3 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
       { x: 4 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
-    ],
-    right: [
       { x: 8 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
       { x: 9 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
     ],
+    left: [
+      { x: 3 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92, flipX: true },
+      { x: 4 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92, flipX: true },
+      { x: 8 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92, flipX: true },
+      { x: 9 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92, flipX: true },
+    ],
     sitting: {
       down: { x: 0 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
-      left: { x: 3 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
-      right: { x: 8 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
+      left: { x: 3 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92, flipX: true },
+      right: { x: 3 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
       up: { x: 1 * colW, y, w: colW, h: EXTENDED_ROW_H, anchorX: 0.5, anchorY: 0.92 },
     },
   };
@@ -76,18 +84,22 @@ function makeMiscOfficeAnim(row: number) {
       { x: 1 * MISC_COL_W, y, w: MISC_COL_W, h: MISC_ROW_H, anchorX: 0.5, anchorY: 0.92 },
       { x: 5 * MISC_COL_W, y, w: MISC_COL_W, h: MISC_ROW_H, anchorX: 0.5, anchorY: 0.92 },
     ],
-    left: [
+    right: [
       { x: 2 * MISC_COL_W, y, w: MISC_COL_W, h: MISC_ROW_H, anchorX: 0.5, anchorY: 0.92 },
       { x: 3 * MISC_COL_W, y, w: MISC_COL_W, h: MISC_ROW_H, anchorX: 0.5, anchorY: 0.92 },
-    ],
-    right: [
       { x: 6 * MISC_COL_W, y, w: MISC_COL_W, h: MISC_ROW_H, anchorX: 0.5, anchorY: 0.92 },
       { x: 7 * MISC_COL_W, y, w: MISC_COL_W, h: MISC_ROW_H, anchorX: 0.5, anchorY: 0.92 },
     ],
+    left: [
+      { x: 2 * MISC_COL_W, y, w: MISC_COL_W, h: MISC_ROW_H, anchorX: 0.5, anchorY: 0.92, flipX: true },
+      { x: 3 * MISC_COL_W, y, w: MISC_COL_W, h: MISC_ROW_H, anchorX: 0.5, anchorY: 0.92, flipX: true },
+      { x: 6 * MISC_COL_W, y, w: MISC_COL_W, h: MISC_ROW_H, anchorX: 0.5, anchorY: 0.92, flipX: true },
+      { x: 7 * MISC_COL_W, y, w: MISC_COL_W, h: MISC_ROW_H, anchorX: 0.5, anchorY: 0.92, flipX: true },
+    ],
     sitting: {
       down: { x: 0 * MISC_COL_W, y, w: MISC_COL_W, h: MISC_ROW_H, anchorX: 0.5, anchorY: 0.92 },
-      left: { x: 2 * MISC_COL_W, y, w: MISC_COL_W, h: MISC_ROW_H, anchorX: 0.5, anchorY: 0.92 },
-      right: { x: 6 * MISC_COL_W, y, w: MISC_COL_W, h: MISC_ROW_H, anchorX: 0.5, anchorY: 0.92 },
+      left: { x: 2 * MISC_COL_W, y, w: MISC_COL_W, h: MISC_ROW_H, anchorX: 0.5, anchorY: 0.92, flipX: true },
+      right: { x: 2 * MISC_COL_W, y, w: MISC_COL_W, h: MISC_ROW_H, anchorX: 0.5, anchorY: 0.92 },
       up: { x: 1 * MISC_COL_W, y, w: MISC_COL_W, h: MISC_ROW_H, anchorX: 0.5, anchorY: 0.92 },
     },
   };
@@ -159,17 +171,21 @@ export const OFFICE_MANIFEST: SpriteAtlasManifest = {
         ],
         left: [
           { x: 2 * 128, y: 0 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
-          { x: 6 * 128, y: 0 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
+          { x: 3 * 128, y: 0 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
         ],
         right: [
-          { x: 3 * 128, y: 0 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
+          { x: 6 * 128, y: 0 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
           { x: 7 * 128, y: 0 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
         ],
         sitting: {
           down: { x: 0 * 128, y: 0 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
           left: { x: 2 * 128, y: 0 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
-          right: { x: 3 * 128, y: 0 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
+          right: { x: 6 * 128, y: 0 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
           up: { x: 1 * 128, y: 0 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
+        },
+        actions: {
+          camera_stare: { x: 0 * 128, y: 0 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
+          typing: { x: 0 * 128, y: 0 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
         },
       },
     },
@@ -192,16 +208,16 @@ export const OFFICE_MANIFEST: SpriteAtlasManifest = {
         ],
         left: [
           { x: 2 * 128, y: 1 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
-          { x: 6 * 128, y: 1 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
+          { x: 3 * 128, y: 1 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
         ],
         right: [
-          { x: 3 * 128, y: 1 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
+          { x: 6 * 128, y: 1 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
           { x: 7 * 128, y: 1 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
         ],
         sitting: {
           down: { x: 0 * 128, y: 1 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
           left: { x: 2 * 128, y: 1 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
-          right: { x: 3 * 128, y: 1 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
+          right: { x: 6 * 128, y: 1 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
           up: { x: 1 * 128, y: 1 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
         },
       },
@@ -225,20 +241,21 @@ export const OFFICE_MANIFEST: SpriteAtlasManifest = {
         ],
         left: [
           { x: 2 * 128, y: 2 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
-          { x: 6 * 128, y: 2 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
+          { x: 3 * 128, y: 2 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
         ],
         right: [
-          { x: 3 * 128, y: 2 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
+          { x: 6 * 128, y: 2 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
           { x: 7 * 128, y: 2 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
         ],
         sitting: {
           down: { x: 0 * 128, y: 2 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
           left: { x: 2 * 128, y: 2 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
-          right: { x: 3 * 128, y: 2 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
+          right: { x: 6 * 128, y: 2 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
           up: { x: 1 * 128, y: 2 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
         },
         actions: {
           jim_stare: { x: 0 * 128, y: 2 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
+          camera_stare: { x: 0 * 128, y: 2 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
         },
       },
     },
@@ -261,16 +278,16 @@ export const OFFICE_MANIFEST: SpriteAtlasManifest = {
         ],
         left: [
           { x: 2 * 128, y: 3 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
-          { x: 6 * 128, y: 3 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
+          { x: 3 * 128, y: 3 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
         ],
         right: [
-          { x: 3 * 128, y: 3 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
+          { x: 6 * 128, y: 3 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
           { x: 7 * 128, y: 3 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
         ],
         sitting: {
           down: { x: 0 * 128, y: 3 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
           left: { x: 2 * 128, y: 3 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
-          right: { x: 3 * 128, y: 3 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
+          right: { x: 6 * 128, y: 3 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
           up: { x: 1 * 128, y: 3 * 256, w: 128, h: 256, anchorX: 0.5, anchorY: 0.95 },
         },
       },

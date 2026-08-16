@@ -177,6 +177,7 @@ export class VisualizerEngine {
         speed: 1.0,
         animFrame: 0,
         animTimer: 0,
+        state: isAtDesk ? 'sitting_desk' : 'idle',
         isSitting: isAtDesk,
       });
     });
@@ -378,12 +379,21 @@ export class VisualizerEngine {
         const state = this.characterStates.get(inter.character);
         if (state) {
           state.currentAction = inter.action;
-          if (inter.action === 'sit') state.isSitting = true;
-          if (inter.action === 'stand') state.isSitting = false;
+          if (inter.facing) state.facing = inter.facing;
+
+          if (inter.action === 'sit') {
+            state.isSitting = true;
+            state.state = 'sitting_desk';
+          }
+          if (inter.action === 'stand') {
+            state.isSitting = false;
+            state.state = 'idle';
+          }
 
           // Pickup Item
           if (inter.action === 'pickup') {
             state.heldItem = (inter.item as HoldableItemType) || 'dundie_trophy';
+            state.state = 'holding';
             if (inter.targetProp) {
               const pState = this.propStates.get(inter.targetProp) || {};
               pState.pickedUp = true;
@@ -394,6 +404,7 @@ export class VisualizerEngine {
           // Place Item
           if (inter.action === 'place') {
             state.heldItem = undefined;
+            state.state = 'idle';
             if (inter.targetProp) {
               const pState = this.propStates.get(inter.targetProp) || {};
               pState.pickedUp = false;
@@ -424,23 +435,28 @@ export class VisualizerEngine {
           if (inter.action === 'spill_coffee') {
             particleSystem.spillCoffee(state.x, state.y + 8);
             state.heldItem = undefined;
+            state.state = 'shocked';
             this.camera.shake(0.25, 5);
           }
 
           // Drink / Eat
           if (inter.action === 'drink_coffee') {
             state.heldItem = 'coffee_mug';
+            state.state = 'drinking';
           }
           if (inter.action === 'eat_pretzel') {
             state.heldItem = 'pretzel';
+            state.state = 'eating';
           }
           if (inter.action === 'eat_snack') {
             state.heldItem = 'pretzel';
+            state.state = 'eating';
           }
 
           // PC Typing
           if (inter.action === 'type_pc') {
             state.isSitting = true;
+            state.state = 'typing';
             state.heldItem = undefined;
             if (inter.sfx) soundEngine.playSfx(inter.sfx);
             else soundEngine.playSfx('typewriter', 0.4);
@@ -449,6 +465,7 @@ export class VisualizerEngine {
           // Photocopier
           if (inter.action === 'use_photocopier') {
             state.heldItem = 'paper_sheet';
+            state.state = 'holding';
             if (inter.sfx) soundEngine.playSfx(inter.sfx);
             else soundEngine.playSfx('typewriter', 0.5);
           }
@@ -556,6 +573,7 @@ export class VisualizerEngine {
             if (targetX !== undefined && targetY !== undefined) {
               if (cam.style === 'jim_stare' && charState) {
                 charState.currentAction = 'jim_stare';
+                charState.state = 'camera_stare';
                 this.camera.shake(0.2, 4);
               }
 
@@ -771,21 +789,26 @@ export class VisualizerEngine {
     state.targetY = vacantSpot.y;
     state.isMoving = true;
     state.isSitting = false;
+    state.targetFacing = m.facing;
 
     // Movement animation state multipliers
     let animSpeedMultiplier = 1.0;
     if (m.animationState === 'run') {
       animSpeedMultiplier = 1.8;
       state.animSpeed = 0.09;
+      state.state = 'running';
     } else if (m.animationState === 'tiptoe') {
       animSpeedMultiplier = 0.55;
       state.animSpeed = 0.25;
+      state.state = 'tiptoeing';
     } else if (m.animationState === 'sneak') {
       animSpeedMultiplier = 0.65;
       state.animSpeed = 0.22;
+      state.state = 'sneaking';
     } else {
       animSpeedMultiplier = 1.0;
       state.animSpeed = 0.16;
+      state.state = 'walking';
     }
 
     state.speed = (m.speed || 1.0) * animSpeedMultiplier;
@@ -854,6 +877,11 @@ export class VisualizerEngine {
           state.targetX = undefined;
           state.targetY = undefined;
           state.animFrame = 0;
+          if (state.targetFacing) {
+            state.facing = state.targetFacing;
+            state.targetFacing = undefined;
+          }
+          state.state = state.isSitting ? 'sitting_desk' : 'idle';
         } else {
           // Direction
           if (Math.abs(dx) > Math.abs(dy)) {

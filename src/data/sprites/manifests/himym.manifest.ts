@@ -14,20 +14,26 @@ function makeHimymAnim(row: number) {
       { x: 1 * COL_W, y, w: COL_W, h: ROW_H, anchorX: 0.5, anchorY: 0.92 },
       { x: 6 * COL_W, y, w: COL_W, h: ROW_H, anchorX: 0.5, anchorY: 0.92 },
     ],
-    left: [
+    right: [
       { x: 2 * COL_W, y, w: COL_W, h: ROW_H, anchorX: 0.5, anchorY: 0.92 },
       { x: 3 * COL_W, y, w: COL_W, h: ROW_H, anchorX: 0.5, anchorY: 0.92 },
       { x: 4 * COL_W, y, w: COL_W, h: ROW_H, anchorX: 0.5, anchorY: 0.92 },
-    ],
-    right: [
       { x: 7 * COL_W, y, w: COL_W, h: ROW_H, anchorX: 0.5, anchorY: 0.92 },
       { x: 8 * COL_W, y, w: COL_W, h: ROW_H, anchorX: 0.5, anchorY: 0.92 },
       { x: 9 * COL_W, y, w: COL_W, h: ROW_H, anchorX: 0.5, anchorY: 0.92 },
     ],
+    left: [
+      { x: 2 * COL_W, y, w: COL_W, h: ROW_H, anchorX: 0.5, anchorY: 0.92, flipX: true },
+      { x: 3 * COL_W, y, w: COL_W, h: ROW_H, anchorX: 0.5, anchorY: 0.92, flipX: true },
+      { x: 4 * COL_W, y, w: COL_W, h: ROW_H, anchorX: 0.5, anchorY: 0.92, flipX: true },
+      { x: 7 * COL_W, y, w: COL_W, h: ROW_H, anchorX: 0.5, anchorY: 0.92, flipX: true },
+      { x: 8 * COL_W, y, w: COL_W, h: ROW_H, anchorX: 0.5, anchorY: 0.92, flipX: true },
+      { x: 9 * COL_W, y, w: COL_W, h: ROW_H, anchorX: 0.5, anchorY: 0.92, flipX: true },
+    ],
     sitting: {
       down: { x: 0 * COL_W, y, w: COL_W, h: ROW_H, anchorX: 0.5, anchorY: 0.92 },
-      left: { x: 2 * COL_W, y, w: COL_W, h: ROW_H, anchorX: 0.5, anchorY: 0.92 },
-      right: { x: 7 * COL_W, y, w: COL_W, h: ROW_H, anchorX: 0.5, anchorY: 0.92 },
+      left: { x: 2 * COL_W, y, w: COL_W, h: ROW_H, anchorX: 0.5, anchorY: 0.92, flipX: true },
+      right: { x: 2 * COL_W, y, w: COL_W, h: ROW_H, anchorX: 0.5, anchorY: 0.92 },
       up: { x: 1 * COL_W, y, w: COL_W, h: ROW_H, anchorX: 0.5, anchorY: 0.92 },
     },
   };
