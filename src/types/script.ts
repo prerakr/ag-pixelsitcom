@@ -155,6 +155,7 @@ export interface TimeOfDayBeat extends BaseBeat {
 
 export interface GroupActionBeat extends BaseBeat {
   type: 'group_action';
+  durationMs?: number;
   actions: Array<
     | MovementBeat
     | DialogueBeat
@@ -164,6 +165,7 @@ export interface GroupActionBeat extends BaseBeat {
     | TimeOfDayBeat
   >;
 }
+
 
 export interface WaitBeat extends BaseBeat {
   type: 'wait';

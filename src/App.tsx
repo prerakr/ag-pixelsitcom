@@ -19,8 +19,9 @@ import { musicEngine } from './engine/MusicEngine';
 
 export function App() {
   const [settingId, setSettingId] = useState<string>(DEFAULT_SETTING_ID);
-  const allMergedSettings = useMemo(() => getMergedSettings(), [settingId]);
-  const currentSetting = getSettingById(settingId);
+  const [settingsVersion, setSettingsVersion] = useState<number>(0);
+  const allMergedSettings = useMemo(() => getMergedSettings(), [settingId, settingsVersion]);
+  const currentSetting = useMemo(() => getSettingById(settingId), [settingId, settingsVersion]);
 
   // Characters for active show
   const currentShowCharacters = useMemo(() => {
@@ -279,13 +280,18 @@ export function App() {
       {/* Soundstage & Environment Editor Modal */}
       <SoundstageModal
         isOpen={isSoundstageOpen}
-        onClose={() => setIsSoundstageOpen(false)}
+        onClose={() => {
+          setIsSoundstageOpen(false);
+          setSettingsVersion(v => v + 1);
+        }}
         initialSettingId={settingId}
         onApplySettingToApp={(newSettingId) => {
           handleSelectSetting(newSettingId);
+          setSettingsVersion(v => v + 1);
         }}
         characters={currentShowCharacters}
       />
+
 
       {/* Sprite Studio & Art Pipeline Modal */}
       <SpriteGalleryModal

@@ -336,11 +336,17 @@ export class SpriteManager {
     }
 
     const canvas = this.images.get(def.imageKey);
-    if (!canvas) return null;
+    if (!canvas || canvas.width <= 0 || canvas.height <= 0) return null;
 
     const scale = def.scale || 1.0;
     const offsetX = def.offsetX || 0;
     const offsetY = def.offsetY || 0;
+
+    const isValidRect = (r?: SpriteRect): boolean => {
+      if (!r || r.w <= 0 || r.h <= 0 || r.x < 0 || r.y < 0) return false;
+      if (r.x + r.w > canvas.width || r.y + r.h > canvas.height) return false;
+      return true;
+    };
 
     // 1. Check specific action overrides (by explicit action name or character state)
     const effectiveAction = action || characterState;
@@ -348,8 +354,8 @@ export class SpriteManager {
       const act = def.animations.actions[effectiveAction];
       const frameIdx = Math.floor(Math.abs(animFrame || 0)) % (Array.isArray(act) ? act.length : 1);
       const rect = Array.isArray(act) ? act[frameIdx] : act;
-      if (rect) {
-        return { canvas, rect, scale, offsetX, offsetY };
+      if (isValidRect(rect)) {
+        return { canvas, rect: rect!, scale, offsetX, offsetY };
       }
     }
 
@@ -357,8 +363,8 @@ export class SpriteManager {
     const sittingState = isSitting || characterState === 'sitting_desk' || characterState === 'sitting_couch';
     if (sittingState && def.animations.sitting) {
       const sitRect = def.animations.sitting[facing] || def.animations.sitting.down;
-      if (sitRect) {
-        return { canvas, rect: sitRect, scale, offsetX, offsetY };
+      if (isValidRect(sitRect)) {
+        return { canvas, rect: sitRect!, scale, offsetX, offsetY };
       }
     }
 
@@ -368,8 +374,8 @@ export class SpriteManager {
       if (idleFrames) {
         const frameIdx = Math.floor(Math.abs(animFrame || 0)) % (Array.isArray(idleFrames) ? idleFrames.length : 1);
         const rect = Array.isArray(idleFrames) ? idleFrames[frameIdx] : idleFrames;
-        if (rect) {
-          return { canvas, rect, scale, offsetX, offsetY };
+        if (isValidRect(rect)) {
+          return { canvas, rect: rect!, scale, offsetX, offsetY };
         }
       }
     }
@@ -380,8 +386,8 @@ export class SpriteManager {
       if (runFrames && runFrames.length > 0) {
         const frameIdx = Math.floor(Math.abs(animFrame || 0)) % runFrames.length;
         const rect = runFrames[frameIdx];
-        if (rect) {
-          return { canvas, rect, scale, offsetX, offsetY };
+        if (isValidRect(rect)) {
+          return { canvas, rect: rect!, scale, offsetX, offsetY };
         }
       }
     }
@@ -405,7 +411,7 @@ export class SpriteManager {
     // If standing still, use frame 0 (idle pose); if moving, cycle frame
     const frameIndex = isMoving ? Math.floor(Math.abs(animFrame || 0)) % frames.length : 0;
     let rect = frames[frameIndex] || frames[0];
-    if (!rect) return null;
+    if (!isValidRect(rect)) return null;
 
     if (autoFlipX && !rect.flipX) {
       rect = { ...rect, flipX: true };
@@ -438,12 +444,14 @@ export class SpriteManager {
     }
 
     const canvas = this.images.get(def.imageKey);
-    if (!canvas) return null;
+    if (!canvas || canvas.width <= 0 || canvas.height <= 0) return null;
 
     let rect = def.rect;
     if (stateName && def.states && def.states[stateName]) {
       rect = def.states[stateName];
     }
+    if (!rect || rect.w <= 0 || rect.h <= 0 || rect.x < 0 || rect.y < 0) return null;
+    if (rect.x + rect.w > canvas.width || rect.y + rect.h > canvas.height) return null;
 
     const offsetX = (def.offsetX || 0) + (rect.offsetX || 0);
     const offsetY = (def.offsetY || 0) + (rect.offsetY || 0);
@@ -473,9 +481,13 @@ export class SpriteManager {
     }
 
     const canvas = this.images.get(def.imageKey);
-    if (!canvas) return null;
+    if (!canvas || canvas.width <= 0 || canvas.height <= 0) return null;
 
-    return { canvas, rect: def.rect };
+    const rect = def.rect;
+    if (!rect || rect.w <= 0 || rect.h <= 0 || rect.x < 0 || rect.y < 0) return null;
+    if (rect.x + rect.w > canvas.width || rect.y + rect.h > canvas.height) return null;
+
+    return { canvas, rect };
   }
 
   public getImageKeys(): string[] {
@@ -497,15 +509,19 @@ export class SpriteManager {
     if (!def) return null;
 
     const canvas = this.images.get(def.imageKey);
-    if (!canvas) return null;
+    if (!canvas || canvas.width <= 0 || canvas.height <= 0) return null;
 
     let rect = def.rect;
     if (emotion && def.emotionRects && def.emotionRects[emotion]) {
       rect = def.emotionRects[emotion];
     }
+    if (rect && (rect.w <= 0 || rect.h <= 0 || rect.x < 0 || rect.y < 0 || rect.x + rect.w > canvas.width || rect.y + rect.h > canvas.height)) {
+      return null;
+    }
 
     return { canvas, rect };
   }
+
 
   public getLoadedImages(): Map<string, HTMLCanvasElement> {
     return this.images;

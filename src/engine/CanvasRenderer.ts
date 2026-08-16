@@ -226,10 +226,12 @@ export class VisualizerEngine {
 
   public play() {
     this.isPlaying = true;
+    this.start();
     if (this.callbacks.onPlaybackStateChange) {
       this.callbacks.onPlaybackStateChange(true);
     }
   }
+
 
   public pause() {
     this.isPlaying = false;
@@ -622,14 +624,18 @@ export class VisualizerEngine {
 
       case 'group_action': {
         const grp = beat as GroupActionBeat;
-        let maxDur = 2500;
+        let maxDur = grp.durationMs || 2500;
         grp.actions.forEach((subAction) => {
           if ('durationMs' in subAction && subAction.durationMs && subAction.durationMs > maxDur) {
             maxDur = subAction.durationMs;
           }
           if (subAction.type === 'movement') {
             this.startCharacterMovement(subAction);
+            if (this.beatDuration > maxDur) {
+              maxDur = this.beatDuration;
+            }
           } else if (subAction.type === 'emote') {
+
             const st = this.characterStates.get(subAction.character);
             if (st) {
               st.currentEmote = {
@@ -773,15 +779,24 @@ export class VisualizerEngine {
 
     if (typeof m.target === 'string') {
       const wp = this.setting.waypoints[m.target];
+      const targetChar = this.characterStates.get(m.target);
+      const targetProp = this.setting.props.find((p) => p.id === m.target);
       if (wp) {
         targetX = wp.x * this.setting.tileSize;
         targetY = wp.y * this.setting.tileSize;
         isDesk = m.target.includes('seat') || m.target.includes('desk');
+      } else if (targetChar) {
+        targetX = targetChar.x;
+        targetY = targetChar.y;
+      } else if (targetProp) {
+        targetX = (targetProp.x + (targetProp.width || 1) * 0.5) * this.setting.tileSize;
+        targetY = (targetProp.y + (targetProp.height || 1) * 0.5) * this.setting.tileSize;
       }
-    } else if (typeof m.target === 'object') {
+    } else if (typeof m.target === 'object' && m.target !== null) {
       targetX = m.target.x * this.setting.tileSize;
       targetY = m.target.y * this.setting.tileSize;
     }
+
 
     const vacantSpot = this.findVacantDestination(m.character, targetX, targetY, isDesk);
 
@@ -997,148 +1012,155 @@ export class VisualizerEngine {
     const logicalH = this.canvas.height / dpr;
 
     ctx.save();
-    // High-DPI physical-to-logical coordinate normalization
-    ctx.scale(dpr, dpr);
-    ctx.imageSmoothingEnabled = false;
+    try {
+      // High-DPI physical-to-logical coordinate normalization
+      ctx.scale(dpr, dpr);
+      ctx.imageSmoothingEnabled = false;
 
-    // Clear background in logical pixels
-    ctx.fillStyle = this.setting.backgroundColor;
-    ctx.fillRect(0, 0, logicalW, logicalH);
+      // Clear background in logical pixels
+      ctx.fillStyle = this.setting.backgroundColor;
+      ctx.fillRect(0, 0, logicalW, logicalH);
 
-    // Apply Camera translation and zoom in logical coordinates
-    this.camera.applyTransform(ctx, logicalW, logicalH);
+      // Apply Camera translation and zoom in logical coordinates
+      this.camera.applyTransform(ctx, logicalW, logicalH);
 
-    const tileSize = this.setting.tileSize;
-    const worldW = this.setting.gridWidth * tileSize;
-    const worldH = this.setting.gridHeight * tileSize;
+      const tileSize = this.setting.tileSize;
+      const worldW = this.setting.gridWidth * tileSize;
+      const worldH = this.setting.gridHeight * tileSize;
 
-    // 1. Draw Cached Static Tilemap & Floor Rugs (zero per-frame string formatting)
-    if (this.isTileMapDirty || !this.tileCanvas) {
-      this.renderTileMapToCache();
-    }
-    if (this.tileCanvas) {
-      ctx.drawImage(this.tileCanvas, 0, 0);
-    }
-
-    // 2. Draw Floor Liquid Puddles & Coffee Stains
-    particleSystem.drawFloorPuddles(ctx);
-
-    // 3. Collect All Renderable Entities (Props & Characters) into Reused Render Queue
-    this.renderQueue.length = 0;
-
-    // Add standing/raised props to render queue with category-aware baseline sorting
-    for (let i = 0; i < this.setting.props.length; i++) {
-      const prop = this.setting.props[i];
-      if (prop.type === 'rug') continue;
-
-      const pState = this.propStates.get(prop.id);
-      const runtimeProp = pState ? { ...prop, state: pState } : prop;
-      const propH = prop.height || 1;
-
-      // Base depth offset:
-      // - Couches and chairs: 0.2 (sort near backrest so sitting characters are drawn in front)
-      // - Flat low tables / coffee tables: 0.35
-      // - Tall desks / counters: 0.75
-      let baseFactor = 0.75;
-      if (prop.type === 'sofa_leather' || prop.type === 'chair_office' || prop.type === 'chair_conference') {
-        baseFactor = 0.2;
-      } else if (prop.type === 'desk_wood' && prop.name?.toLowerCase().includes('coffee')) {
-        baseFactor = 0.35;
-      } else if (prop.type === 'trash_can' || prop.type === 'potted_plant') {
-        baseFactor = 0.7;
+      // 1. Draw Cached Static Tilemap & Floor Rugs (zero per-frame string formatting)
+      if (this.isTileMapDirty || !this.tileCanvas) {
+        this.renderTileMapToCache();
+      }
+      if (this.tileCanvas) {
+        ctx.drawImage(this.tileCanvas, 0, 0);
       }
 
-      const yOrder = (prop.y + propH * baseFactor) * tileSize + (prop.zIndexOffset || 0);
+      // 2. Draw Floor Liquid Puddles & Coffee Stains
+      particleSystem.drawFloorPuddles(ctx);
 
-      this.renderQueue.push({
-        yOrder,
-        draw: () =>
-          TileRenderer.drawProp(
-            ctx,
-            runtimeProp,
-            tileSize,
-            this.propStates.get(prop.id),
-            this.gameTime
-          ),
-      });
-    }
+      // 3. Collect All Renderable Entities (Props & Characters) into Reused Render Queue
+      this.renderQueue.length = 0;
 
-    // Add Characters to render queue (sorted by feet baseline)
-    for (let i = 0; i < this.cachedCharStates.length; i++) {
-      const state = this.cachedCharStates[i];
-      const char = this.charactersMap[state.id];
-      if (!char) continue;
-      const yOrder = state.y + 8;
+      // Add standing/raised props to render queue with category-aware baseline sorting
+      for (let i = 0; i < this.setting.props.length; i++) {
+        const prop = this.setting.props[i];
+        if (prop.type === 'rug') continue;
 
-      this.renderQueue.push({
-        yOrder,
-        draw: () =>
-          CharacterRenderer.drawCharacter(
-            ctx,
-            char,
-            state,
-            this.showNameTags,
-            this.gameTime
-          ),
-      });
-    }
+        const pState = this.propStates.get(prop.id);
+        const runtimeProp = pState ? { ...prop, state: pState } : prop;
+        const propH = prop.height || 1;
 
-    // Sort by Y-coordinate (smaller Y rendered first, larger Y rendered in front)
-    this.renderQueue.sort((a, b) => a.yOrder - b.yOrder);
+        // Base depth offset:
+        // - Couches and chairs: 0.2 (sort near backrest so sitting characters are drawn in front)
+        // - Flat low tables / coffee tables: 0.35
+        // - Tall desks / counters: 0.75
+        let baseFactor = 0.75;
+        if (prop.type === 'sofa_leather' || prop.type === 'chair_office' || prop.type === 'chair_conference') {
+          baseFactor = 0.2;
+        } else if (prop.type === 'desk_wood' && prop.name?.toLowerCase().includes('coffee')) {
+          baseFactor = 0.35;
+        } else if (prop.type === 'trash_can' || prop.type === 'potted_plant') {
+          baseFactor = 0.7;
+        }
 
-    // Draw all entities in sorted depth order
-    for (let i = 0; i < this.renderQueue.length; i++) {
-      this.renderQueue[i].draw();
-    }
+        const yOrder = (prop.y + propH * baseFactor) * tileSize + (prop.zIndexOffset || 0);
 
-    // 4. Draw Airborne Flying Particles (Paper Airplanes, Foam, Coffee Droplets, Confetti)
-    particleSystem.drawParticles(ctx);
-
-    // 5. Draw Waypoint Markers (if enabled)
-    if (this.showWaypoints) {
-      Object.entries(this.setting.waypoints).forEach(([id, wp]) => {
-        const wx = wp.x * tileSize;
-        const wy = wp.y * tileSize;
-        ctx.fillStyle = 'rgba(239, 68, 68, 0.4)';
-        ctx.beginPath();
-        ctx.arc(wx, wy, 6, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '8px monospace';
-        ctx.fillText(id, wx + 8, wy);
-      });
-    }
-
-    // 6. Draw Speech Bubbles (Always on top of characters)
-    for (let i = 0; i < this.cachedCharStates.length; i++) {
-      const state = this.cachedCharStates[i];
-      if (state.currentSpeech && state.currentSpeech.displayedText.length > 0) {
-        const char = this.charactersMap[state.id];
-        SpeechBubbleRenderer.drawBubble(ctx, {
-          speakerName: char?.nickname || char?.name || state.id,
-          text: state.currentSpeech.text,
-          displayedText: state.currentSpeech.displayedText,
-          x: state.x,
-          y: state.y,
-          emotion: state.currentSpeech.emotion,
-          maxWidth: 240,
+        this.renderQueue.push({
+          yOrder,
+          draw: () =>
+            TileRenderer.drawProp(
+              ctx,
+              runtimeProp,
+              tileSize,
+              this.propStates.get(prop.id),
+              this.gameTime
+            ),
         });
       }
+
+      // Add Characters to render queue (sorted by feet baseline)
+      for (let i = 0; i < this.cachedCharStates.length; i++) {
+        const state = this.cachedCharStates[i];
+        const char = this.charactersMap[state.id];
+        if (!char) continue;
+        const yOrder = state.y + 8;
+
+        this.renderQueue.push({
+          yOrder,
+          draw: () =>
+            CharacterRenderer.drawCharacter(
+              ctx,
+              char,
+              state,
+              this.showNameTags,
+              this.gameTime
+            ),
+        });
+      }
+
+      // Sort by Y-coordinate (smaller Y rendered first, larger Y rendered in front)
+      this.renderQueue.sort((a, b) => a.yOrder - b.yOrder);
+
+      // Draw all entities in sorted depth order
+      for (let i = 0; i < this.renderQueue.length; i++) {
+        this.renderQueue[i].draw();
+      }
+
+      // 4. Draw Airborne Flying Particles (Paper Airplanes, Foam, Coffee Droplets, Confetti)
+      particleSystem.drawParticles(ctx);
+
+      // 5. Draw Waypoint Markers (if enabled)
+      if (this.showWaypoints) {
+        Object.entries(this.setting.waypoints).forEach(([id, wp]) => {
+          const wx = wp.x * tileSize;
+          const wy = wp.y * tileSize;
+          ctx.fillStyle = 'rgba(239, 68, 68, 0.4)';
+          ctx.beginPath();
+          ctx.arc(wx, wy, 6, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#ffffff';
+          ctx.font = '8px monospace';
+          ctx.fillText(id, wx + 8, wy);
+        });
+      }
+
+      // 6. Draw Speech Bubbles (Always on top of characters)
+      for (let i = 0; i < this.cachedCharStates.length; i++) {
+        const state = this.cachedCharStates[i];
+        if (state.currentSpeech && state.currentSpeech.displayedText.length > 0) {
+          const char = this.charactersMap[state.id];
+          SpeechBubbleRenderer.drawBubble(ctx, {
+            speakerName: char?.nickname || char?.name || state.id,
+            text: state.currentSpeech.text,
+            displayedText: state.currentSpeech.displayedText,
+            x: state.x,
+            y: state.y,
+            emotion: state.currentSpeech.emotion,
+            maxWidth: 240,
+          });
+        }
+      }
+
+      // 7. Dynamic Ambient Lighting & Light Rays
+      lightingEngine.drawLighting(ctx, this.setting, worldW, worldH, this.gameTime);
+    } finally {
+      ctx.restore();
     }
-
-    // 7. Dynamic Ambient Lighting & Light Rays
-    lightingEngine.drawLighting(ctx, this.setting, worldW, worldH, this.gameTime);
-
-    ctx.restore();
   }
 
   private gameLoop(timestamp: number) {
     const dt = Math.min((timestamp - this.lastTime) / 1000, 0.1);
     this.lastTime = timestamp;
 
-    this.updateSimulation(dt);
-    this.render();
+    try {
+      this.updateSimulation(dt);
+      this.render();
+    } catch (err) {
+      console.error('[VisualizerEngine] Simulation/render error in gameLoop:', err);
+    }
 
     this.animFrameId = requestAnimationFrame(this.gameLoop.bind(this));
   }
+
 }

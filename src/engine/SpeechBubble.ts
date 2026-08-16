@@ -74,15 +74,18 @@ export class SpeechBubbleRenderer {
     const boxW = Math.max(maxLineWidth + paddingX * 2, 90);
     const boxH = lines.length * lineHeight + paddingY * 2 + headerHeight;
 
-    // Center bubble horizontally over character, position cleanly above head with safe clamping
-    let boxX = Math.max(12, Math.round(x - boxW / 2));
-    let boxY = Math.round(y - boxH - 68);
+    // Position bubble cleanly above character head
+    // Character head baseline is around y - 36
+    const headOffset = 36;
+    let boxX = Math.max(8, Math.round(x - boxW / 2));
+    let boxY = Math.round(y - headOffset - boxH - 6);
 
-    // If character is near top of map/room, place bubble below them so it's never cut off
-    const isAboveHead = boxY >= 12;
+    // If character is too close to the top boundary, place bubble comfortably below them
+    const isAboveHead = boxY >= 8;
     if (!isAboveHead) {
-      boxY = Math.round(y + 32);
+      boxY = Math.round(y + 24);
     }
+
 
     // Color theme based on emotion
     let bubbleBg = '#ffffff';
