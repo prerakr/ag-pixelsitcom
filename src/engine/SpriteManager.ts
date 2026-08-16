@@ -346,8 +346,11 @@ export class SpriteManager {
     const effectiveAction = action || characterState;
     if (effectiveAction && def.animations.actions && def.animations.actions[effectiveAction]) {
       const act = def.animations.actions[effectiveAction];
-      const rect = Array.isArray(act) ? act[animFrame % act.length] : act;
-      return { canvas, rect, scale, offsetX, offsetY };
+      const frameIdx = Math.floor(Math.abs(animFrame || 0)) % (Array.isArray(act) ? act.length : 1);
+      const rect = Array.isArray(act) ? act[frameIdx] : act;
+      if (rect) {
+        return { canvas, rect, scale, offsetX, offsetY };
+      }
     }
 
     // 2. Check sitting frames
@@ -363,8 +366,11 @@ export class SpriteManager {
     if (!isMoving && def.animations.idle) {
       const idleFrames = def.animations.idle[facing] || def.animations.idle.down;
       if (idleFrames) {
-        const rect = Array.isArray(idleFrames) ? idleFrames[animFrame % idleFrames.length] : idleFrames;
-        return { canvas, rect, scale, offsetX, offsetY };
+        const frameIdx = Math.floor(Math.abs(animFrame || 0)) % (Array.isArray(idleFrames) ? idleFrames.length : 1);
+        const rect = Array.isArray(idleFrames) ? idleFrames[frameIdx] : idleFrames;
+        if (rect) {
+          return { canvas, rect, scale, offsetX, offsetY };
+        }
       }
     }
 
@@ -372,8 +378,11 @@ export class SpriteManager {
     if (isMoving && characterState === 'running' && def.animations.run) {
       const runFrames = def.animations.run[facing] || def.animations.run.down;
       if (runFrames && runFrames.length > 0) {
-        const rect = runFrames[animFrame % runFrames.length];
-        return { canvas, rect, scale, offsetX, offsetY };
+        const frameIdx = Math.floor(Math.abs(animFrame || 0)) % runFrames.length;
+        const rect = runFrames[frameIdx];
+        if (rect) {
+          return { canvas, rect, scale, offsetX, offsetY };
+        }
       }
     }
 
@@ -394,14 +403,16 @@ export class SpriteManager {
     if (!frames || frames.length === 0) return null;
 
     // If standing still, use frame 0 (idle pose); if moving, cycle frame
-    const frameIndex = isMoving ? animFrame % frames.length : 0;
-    let rect = frames[frameIndex];
+    const frameIndex = isMoving ? Math.floor(Math.abs(animFrame || 0)) % frames.length : 0;
+    let rect = frames[frameIndex] || frames[0];
+    if (!rect) return null;
 
     if (autoFlipX && !rect.flipX) {
       rect = { ...rect, flipX: true };
     }
 
     return { canvas, rect, scale, offsetX, offsetY };
+
   }
 
   public hasProp(propType: PropType | string): boolean {

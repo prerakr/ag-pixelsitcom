@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import confetti from 'canvas-confetti';
 import { VisualizerEngine } from './engine/CanvasRenderer';
-import { ALL_SETTINGS, DEFAULT_SETTING_ID, getShowIdForSetting } from './data/settings';
+import { ALL_SETTINGS, DEFAULT_SETTING_ID, getShowIdForSetting, getMergedSettings, getSettingById } from './data/settings';
 import { ALL_CHARACTERS, getCharactersForShow } from './data/characters';
 import { PRESET_EPISODES } from './data/episodes';
 import { SitcomScript, ScriptBeat, TalkingHeadBeat } from './types/script';
@@ -10,6 +10,7 @@ import { Viewport } from './components/Viewport';
 import { PlaybackControls } from './components/PlaybackControls';
 import { TalkingHeadModal } from './components/TalkingHeadModal';
 import { ScriptStudio } from './components/ScriptStudio';
+import { SoundstageModal } from './components/soundstage/SoundstageModal';
 import { CharacterRoster } from './components/CharacterRoster';
 import { HelpModal } from './components/HelpModal';
 import { SpriteGalleryModal } from './components/SpriteGalleryModal';
@@ -18,7 +19,8 @@ import { musicEngine } from './engine/MusicEngine';
 
 export function App() {
   const [settingId, setSettingId] = useState<string>(DEFAULT_SETTING_ID);
-  const currentSetting = ALL_SETTINGS[settingId] || ALL_SETTINGS[DEFAULT_SETTING_ID];
+  const allMergedSettings = useMemo(() => getMergedSettings(), [settingId]);
+  const currentSetting = getSettingById(settingId);
 
   // Characters for active show
   const currentShowCharacters = useMemo(() => {
@@ -39,6 +41,7 @@ export function App() {
   const [talkingHead, setTalkingHead] = useState<TalkingHeadBeat | null>(null);
 
   // Modals & Drawers
+  const [isSoundstageOpen, setIsSoundstageOpen] = useState<boolean>(false);
   const [isScriptStudioOpen, setIsScriptStudioOpen] = useState<boolean>(false);
   const [isSpriteGalleryOpen, setIsSpriteGalleryOpen] = useState<boolean>(false);
   const [isCastDrawerOpen, setIsCastDrawerOpen] = useState<boolean>(false);
@@ -46,6 +49,7 @@ export function App() {
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [isBgmMuted, setIsBgmMuted] = useState<boolean>(musicEngine.getMuted());
   const [allowCameraJumps, setAllowCameraJumps] = useState<boolean>(true);
+
 
   // Create & maintain VisualizerEngine instance
   const engine = useMemo(() => {
@@ -131,7 +135,8 @@ export function App() {
   // Handler functions
   const handleSelectSetting = (id: string) => {
     setSettingId(id);
-    const newSetting = ALL_SETTINGS[id];
+    const merged = getMergedSettings();
+    const newSetting = merged[id];
     if (newSetting) {
       const showId = getShowIdForSetting(id);
       const matchingEp = PRESET_EPISODES.find((ep) => ep.settingId === id || ep.showId === showId);
@@ -156,7 +161,8 @@ export function App() {
     setCurrentEpisodeIndex(idx);
     const ep = PRESET_EPISODES[idx];
     if (ep) {
-      if (ep.settingId && ALL_SETTINGS[ep.settingId]) {
+      const merged = getMergedSettings();
+      if (ep.settingId && merged[ep.settingId]) {
         setSettingId(ep.settingId);
       }
       setActiveScript(ep);
@@ -164,7 +170,8 @@ export function App() {
   };
 
   const handleLoadCustomScript = (script: SitcomScript) => {
-    if (script.settingId && ALL_SETTINGS[script.settingId]) {
+    const merged = getMergedSettings();
+    if (script.settingId && merged[script.settingId]) {
       setSettingId(script.settingId);
     }
     setActiveScript(script);
@@ -196,8 +203,10 @@ export function App() {
       <Header
         currentSettingId={settingId}
         onSelectSetting={handleSelectSetting}
+        allSettings={allMergedSettings}
         currentEpisodeTitle={String(currentEpisodeIndex)}
         onSelectEpisode={handleSelectPresetEpisode}
+        onOpenSoundstage={() => setIsSoundstageOpen(true)}
         onOpenScriptStudio={() => setIsScriptStudioOpen(true)}
         onOpenSpriteGallery={() => setIsSpriteGalleryOpen(true)}
         onToggleCastDrawer={() => setIsCastDrawerOpen(!isCastDrawerOpen)}
@@ -267,6 +276,17 @@ export function App() {
         />
       )}
 
+      {/* Soundstage & Environment Editor Modal */}
+      <SoundstageModal
+        isOpen={isSoundstageOpen}
+        onClose={() => setIsSoundstageOpen(false)}
+        initialSettingId={settingId}
+        onApplySettingToApp={(newSettingId) => {
+          handleSelectSetting(newSettingId);
+        }}
+        characters={currentShowCharacters}
+      />
+
       {/* Sprite Studio & Art Pipeline Modal */}
       <SpriteGalleryModal
         isOpen={isSpriteGalleryOpen}
@@ -289,3 +309,4 @@ export function App() {
   );
 }
 export default App;
+

@@ -1,6 +1,7 @@
 import React from 'react';
-import { Volume2, VolumeX, Music, Sparkles, Users, HelpCircle, Film, Tv, Radio, Palette } from 'lucide-react';
+import { Volume2, VolumeX, Music, Sparkles, Users, HelpCircle, Film, Tv, Radio, Palette, LayoutGrid } from 'lucide-react';
 import { ALL_SETTINGS } from '../data/settings';
+import { SettingDefinition } from '../types/environment';
 import { PRESET_EPISODES } from '../data/episodes';
 import { soundEngine } from '../engine/SoundEngine';
 import { musicEngine } from '../engine/MusicEngine';
@@ -8,8 +9,10 @@ import { musicEngine } from '../engine/MusicEngine';
 interface HeaderProps {
   currentSettingId: string;
   onSelectSetting: (id: string) => void;
+  allSettings: Record<string, SettingDefinition>;
   currentEpisodeTitle: string;
   onSelectEpisode: (index: number) => void;
+  onOpenSoundstage: () => void;
   onOpenScriptStudio: () => void;
   onOpenSpriteGallery: () => void;
   onToggleCastDrawer: () => void;
@@ -24,8 +27,10 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   currentSettingId,
   onSelectSetting,
+  allSettings,
   currentEpisodeTitle,
   onSelectEpisode,
+  onOpenSoundstage,
   onOpenScriptStudio,
   onOpenSpriteGallery,
   onToggleCastDrawer,
@@ -37,6 +42,7 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleBgmMute,
 }) => {
   const currentThemeName = musicEngine.getCurrentThemeName();
+
 
   return (
     <header className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between px-3 sm:px-4 py-2 sm:py-2.5 bg-[#131b26] border-b-2 border-[#2a374a] text-white select-none z-20 gap-2 shrink-0">
@@ -63,6 +69,13 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Mobile Quick Buttons */}
         <div className="flex sm:hidden items-center gap-1.5">
+          <button
+            onClick={onOpenSoundstage}
+            className="p-1.5 bg-[#0b0f17] border border-amber-500/50 rounded text-amber-400"
+            title="Set Studio & Environment Editor"
+          >
+            <LayoutGrid className="w-3.5 h-3.5" />
+          </button>
           <button
             onClick={onOpenSpriteGallery}
             className="p-1.5 bg-[#0b0f17] border border-emerald-500/50 rounded text-emerald-400"
@@ -103,15 +116,16 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="flex items-center gap-2 flex-1 sm:justify-center">
         {/* Show / Setting Selector */}
         <div className="flex items-center gap-1 bg-[#0b0f17] px-2 py-1 border border-[#2a374a] rounded flex-1 sm:flex-initial">
-          <span className="text-[10px] text-amber-400 font-mono hidden lg:inline">SHOW:</span>
+          <span className="text-[10px] text-amber-400 font-mono hidden lg:inline">SETTING:</span>
           <select
             value={currentSettingId}
             onChange={(e) => onSelectSetting(e.target.value)}
             aria-label="Select Sitcom Setting"
             className="bg-transparent text-[11px] sm:text-xs text-slate-200 outline-none cursor-pointer font-medium w-full sm:w-auto"
           >
-            {Object.values(ALL_SETTINGS).map((s) => (
+            {Object.values(allSettings).map((s) => (
               <option key={s.id} value={s.id} className="bg-[#131b26] text-white">
+                {s.id.startsWith('custom_') ? '★ ' : ''}
                 {s.showTitle} ({s.name})
               </option>
             ))}
@@ -128,7 +142,7 @@ export const Header: React.FC<HeaderProps> = ({
             className="bg-transparent text-[11px] sm:text-xs text-slate-200 outline-none cursor-pointer font-medium w-full sm:max-w-[190px] md:max-w-[240px] truncate"
           >
             {PRESET_EPISODES.map((ep, idx) => {
-              const showName = ALL_SETTINGS[ep.settingId]?.showTitle || ep.showId || 'Sitcom';
+              const showName = allSettings[ep.settingId]?.showTitle || ep.showId || 'Sitcom';
               return (
                 <option key={idx} value={idx} className="bg-[#131b26] text-white">
                   [{showName}] {ep.title}
@@ -141,6 +155,16 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Desktop Action Buttons */}
       <div className="hidden sm:flex items-center gap-2">
+        {/* Set Studio Button */}
+        <button
+          onClick={onOpenSoundstage}
+          className="pixel-btn text-[9px] px-2.5 py-1.5 flex items-center gap-1.5 bg-amber-950/80 border-amber-500 text-amber-300 shadow-[0_0_8px_rgba(245,158,11,0.25)] hover:bg-amber-900/90 font-bold"
+          title="Open Soundstage & Environment Editor"
+        >
+          <LayoutGrid className="w-3.5 h-3.5 text-amber-400" />
+          <span className="hidden md:inline">SET STUDIO</span>
+        </button>
+
         {/* Procedural 8-Bit BGM Toggle */}
         <button
           onClick={onToggleBgmMute}
@@ -186,6 +210,7 @@ export const Header: React.FC<HeaderProps> = ({
           <Sparkles className="w-3.5 h-3.5 animate-spin" style={{ animationDuration: '4s' }} />
           <span>AI SCRIPT</span>
         </button>
+
 
         <button
           onClick={() => soundEngine.playThemeJingle()}

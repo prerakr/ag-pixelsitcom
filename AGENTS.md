@@ -73,7 +73,16 @@ ag-pixelsitcom/
 │   │   ├── ScriptStudio.tsx     # AI generator modal, JSON script editor, validation feedback
 │   │   ├── CharacterRoster.tsx  # Cast drawer with character details, quotes, & focus buttons
 │   │   ├── TalkingHeadModal.tsx # Mockumentary interview portrait overlay
-│   │   └── HelpModal.tsx        # Keyboard shortcuts, manual & script specifications
+│   │   ├── HelpModal.tsx        # Keyboard shortcuts, manual & script specifications
+│   │   └── soundstage/          # Soundstage Studio environment designer & level editor (see SET_STUDIO.md)
+│   │       ├── SoundstageModal.tsx      # Main soundstage editor dialog & hotkey orchestrator
+│   │       ├── SoundstageCanvas.tsx     # High-DPI interactive canvas (tiles, props, zones, director)
+│   │       ├── SoundstageToolbar.tsx    # Left tool palette with hotkeys
+│   │       ├── SoundstageHeader.tsx     # Top bar (dimensions, zoom, snap, undo/redo, export)
+│   │       ├── SoundstageAssetTray.tsx  # Asset drawer (tiles, props, waypoints, zones, prefabs)
+│   │       ├── SoundstageInspector.tsx  # Entity properties inspector & coordinate tuner
+│   │       ├── SoundstagePrefabs.ts     # 1-click authentic sitcom furniture bundles
+│   │       └── useSoundstageHistory.ts  # 50-step undo/redo transaction history hook
 │   │
 │   ├── data/                 # Static presets, characters, settings & episodes
 │   │   ├── characters/       # Character profiles categorized by show
