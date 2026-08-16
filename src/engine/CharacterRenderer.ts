@@ -48,11 +48,11 @@ export class CharacterRenderer {
     );
 
     if (spriteFrame) {
-      const { canvas, rect, scale } = spriteFrame;
+      const { canvas, rect, scale, offsetX, offsetY } = spriteFrame;
       const destW = Math.round(rect.w * scale);
       const destH = Math.round(rect.h * scale);
-      const destX = Math.round(-destW / 2);
-      const destY = Math.round(-destH + 15 + walkBob + (isSitting ? 5 : 0));
+      const destX = Math.round(-destW / 2 + (offsetX || 0));
+      const destY = Math.round(-destH + 15 + walkBob + (isSitting ? 5 : 0) + (offsetY || 0));
 
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(

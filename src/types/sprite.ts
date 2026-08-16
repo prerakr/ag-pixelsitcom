@@ -8,6 +8,8 @@ export interface SpriteRect {
   h: number;
   anchorX?: number; // Normalized pivot (0-1), default 0.5
   anchorY?: number; // Normalized pivot (0-1), default 1.0 (feet baseline)
+  offsetX?: number; // Fine-tune draw offset in pixels (horizontal)
+  offsetY?: number; // Fine-tune draw offset in pixels (vertical)
 }
 
 export interface CharacterAnimationFrames {
@@ -31,20 +33,27 @@ export interface CharacterSpriteDef {
   frameHeight: number;
   animations: CharacterAnimationFrames;
   scale?: number;
+  offsetX?: number;
+  offsetY?: number;
+  enabled?: boolean; // If false, gracefully falls back to procedural without affecting others
 }
 
 export interface PropSpriteDef {
-  propType: PropType;
+  propType: PropType | string;
   imageKey: string;
   rect: SpriteRect;
   states?: Record<string, SpriteRect>; // e.g. 'ignited', 'open', 'broken'
   scale?: number;
+  offsetX?: number;
+  offsetY?: number;
+  enabled?: boolean; // If false, gracefully falls back to procedural
 }
 
 export interface TileSpriteDef {
-  tileType: TileType;
+  tileType: TileType | string;
   imageKey: string;
   rect: SpriteRect;
+  enabled?: boolean;
 }
 
 export interface TalkingHeadPortraitDef {
@@ -52,16 +61,21 @@ export interface TalkingHeadPortraitDef {
   imageKey: string;
   rect?: SpriteRect;
   emotionRects?: Partial<Record<EmotionType, SpriteRect>>;
+  enabled?: boolean;
+}
+
+export interface ImageManifestEntry {
+  url: string;
+  chromaKey?: string; // Hex color to make transparent, e.g. '#00ff00' or '#ff00ff'
+  tolerance?: number; // Chroma color tolerance (0 to 120, default ~45)
 }
 
 export interface SpriteAtlasManifest {
-  images: Record<string, {
-    url: string;
-    chromaKey?: string; // Hex color to make transparent, e.g. '#00ff00' or '#ff00ff'
-    tolerance?: number; // Chroma color tolerance (0 to 120, default ~45)
-  }>;
+  showId?: string;
+  images: Record<string, ImageManifestEntry>;
   characters: Record<string, CharacterSpriteDef>;
   props: Record<string, PropSpriteDef>;
   tiles: Record<string, TileSpriteDef>;
   portraits: Record<string, TalkingHeadPortraitDef>;
 }
+

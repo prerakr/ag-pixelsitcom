@@ -216,7 +216,7 @@ export class TileRenderer {
     );
 
     if (propSprite) {
-      const { canvas, rect, scale: customScale } = propSprite;
+      const { canvas, rect, scale: customScale, offsetX, offsetY } = propSprite;
       ctx.imageSmoothingEnabled = false;
 
       // Uniform aspect ratio scaling: fit within the allocated grid box without distortion
@@ -225,9 +225,9 @@ export class TileRenderer {
       const drawW = Math.round(rect.w * fitScale);
       const drawH = Math.round(rect.h * fitScale);
 
-      // Center horizontally in the grid footprint and align to bottom ground line
-      const drawX = Math.round(px + (w - drawW) / 2);
-      const drawY = Math.round(py + (h - drawH));
+      // Center horizontally in the grid footprint and align to bottom ground line + custom offsets
+      const drawX = Math.round(px + (w - drawW) / 2 + (offsetX || 0));
+      const drawY = Math.round(py + (h - drawH) + (offsetY || 0));
 
       ctx.drawImage(
         canvas,

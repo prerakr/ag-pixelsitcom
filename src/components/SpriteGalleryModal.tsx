@@ -1,10 +1,26 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Palette, Eye, Sparkles, CheckCircle2, AlertCircle, Copy, Check } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import {
+  X,
+  Palette,
+  Eye,
+  Sparkles,
+  CheckCircle2,
+  AlertCircle,
+  Copy,
+  Check,
+  Sliders,
+  RotateCcw,
+  Layers,
+  Crop,
+  ShieldCheck,
+  ShieldAlert,
+} from 'lucide-react';
 import { spriteManager } from '../engine/SpriteManager';
 import { SPRITE_ATLAS_MANIFEST } from '../data/sprites/SpriteAtlas';
 import { ALL_CHARACTERS } from '../data/characters';
 import { ALL_SETTINGS } from '../data/settings';
 import { Direction } from '../types/script';
+import { CharacterSpriteDef, PropSpriteDef } from '../types/sprite';
 
 interface SpriteGalleryModalProps {
   isOpen: boolean;
@@ -110,8 +126,8 @@ const CopyButton: React.FC<{ text: string }> = ({ text }) => {
   return (
     <button
       onClick={handleCopy}
-      className="absolute top-1.5 right-1.5 p-1 rounded bg-slate-700/60 hover:bg-slate-600 transition-colors"
-      title="Copy prompt"
+      className="absolute top-1.5 right-1.5 p-1 rounded bg-slate-700/60 hover:bg-slate-600 transition-colors z-10"
+      title="Copy snippet"
     >
       {copied ? (
         <Check className="w-3.5 h-3.5 text-emerald-400" />
@@ -138,21 +154,125 @@ const StatusBadge: React.FC<{ hasSprite: boolean }> = ({ hasSprite }) =>
 // ─── Main Modal ─────────────────────────────────────────────────────────────
 
 export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, onClose }) => {
-  const [activeTab, setActiveTab] = useState<'cast' | 'props' | 'tiles' | 'portraits' | 'coverage' | 'prompts'>('coverage');
+  const [activeTab, setActiveTab] = useState<'coverage' | 'calibrator' | 'cast' | 'props' | 'tiles' | 'portraits' | 'prompts'>('coverage');
   const [selectedChar, setSelectedChar] = useState<string>('michael');
   const [selectedDirection, setSelectedDirection] = useState<Direction>('down');
   const [isWalking, setIsWalking] = useState(true);
   const [artMode, setArtMode] = useState<'sprites' | 'procedural'>(spriteManager.mode);
+  const [triggerUpdate, setTriggerUpdate] = useState(0);
+
+  // Calibrator Tab State
+  const [calibCategory, setCalibCategory] = useState<'character' | 'prop'>('prop');
+  const [calibPropId, setCalibPropId] = useState<string>('desk_michael');
+  const [calibCharId, setCalibCharId] = useState<string>('michael');
+
+  // Interactive Calibrator Sliders
+  const [cropX, setCropX] = useState<number>(55);
+  const [cropY, setCropY] = useState<number>(0);
+  const [cropW, setCropW] = useState<number>(375);
+  const [cropH, setCropH] = useState<number>(265);
+  const [calibScale, setCalibScale] = useState<number>(1.0);
+  const [calibOffsetX, setCalibOffsetX] = useState<number>(0);
+  const [calibOffsetY, setCalibOffsetY] = useState<number>(0);
+  const [calibAnchorX, setCalibAnchorX] = useState<number>(0.5);
+  const [calibAnchorY, setCalibAnchorY] = useState<number>(1.0);
+  const [calibImageKey, setCalibImageKey] = useState<string>('office_props_topdown');
+
   const previewCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const calibPreviewRef = useRef<HTMLCanvasElement | null>(null);
+  const calibSheetRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
     const unsub = spriteManager.subscribe(() => {
       setArtMode(spriteManager.mode);
+      setTriggerUpdate((n) => n + 1);
     });
     return unsub;
   }, []);
 
-  // Animated character walk-cycle preview loop
+  const atlasCharacters = useMemo(() => Object.keys(SPRITE_ATLAS_MANIFEST.characters), [triggerUpdate]);
+  const atlasProps = useMemo(() => Object.keys(SPRITE_ATLAS_MANIFEST.props), [triggerUpdate]);
+  const atlasTiles = useMemo(() => Object.keys(SPRITE_ATLAS_MANIFEST.tiles), [triggerUpdate]);
+  const atlasPortraits = useMemo(() => Object.keys(SPRITE_ATLAS_MANIFEST.portraits), [triggerUpdate]);
+
+  // Sync Calibrator Inputs when selection changes
+  useEffect(() => {
+    if (calibCategory === 'prop') {
+      const def = SPRITE_ATLAS_MANIFEST.props[calibPropId as any];
+      if (def) {
+        setCropX(def.rect.x);
+        setCropY(def.rect.y);
+        setCropW(def.rect.w);
+        setCropH(def.rect.h);
+        setCalibScale(def.scale ?? 1.0);
+        setCalibOffsetX(def.offsetX ?? 0);
+        setCalibOffsetY(def.offsetY ?? 0);
+        setCalibAnchorX(def.rect.anchorX ?? 0.5);
+        setCalibAnchorY(def.rect.anchorY ?? 1.0);
+        setCalibImageKey(def.imageKey);
+      }
+    } else {
+      const def = SPRITE_ATLAS_MANIFEST.characters[calibCharId];
+      if (def) {
+        const frame = def.animations.down[0] || { x: 0, y: 0, w: def.frameWidth, h: def.frameHeight };
+        setCropX(frame.x);
+        setCropY(frame.y);
+        setCropW(frame.w);
+        setCropH(frame.h);
+        setCalibScale(def.scale ?? 0.235);
+        setCalibOffsetX(def.offsetX ?? 0);
+        setCalibOffsetY(def.offsetY ?? 0);
+        setCalibAnchorX(frame.anchorX ?? 0.5);
+        setCalibAnchorY(frame.anchorY ?? 0.95);
+        setCalibImageKey(def.imageKey);
+      }
+    }
+  }, [calibCategory, calibPropId, calibCharId]);
+
+  // Apply Live Override
+  const handleApplyOverride = () => {
+    if (calibCategory === 'prop') {
+      spriteManager.setPropOverride(calibPropId, {
+        scale: calibScale,
+        offsetX: calibOffsetX,
+        offsetY: calibOffsetY,
+        rect: {
+          x: cropX,
+          y: cropY,
+          w: cropW,
+          h: cropH,
+          anchorX: calibAnchorX,
+          anchorY: calibAnchorY,
+        },
+      });
+    } else {
+      spriteManager.setCharacterOverride(calibCharId, {
+        scale: calibScale,
+        offsetX: calibOffsetX,
+        offsetY: calibOffsetY,
+      });
+    }
+  };
+
+  // Reset Override
+  const handleResetOverride = () => {
+    spriteManager.clearOverrides();
+    // Re-trigger sync
+    if (calibCategory === 'prop') {
+      const def = SPRITE_ATLAS_MANIFEST.props[calibPropId as any];
+      if (def) {
+        setCropX(def.rect.x);
+        setCropY(def.rect.y);
+        setCropW(def.rect.w);
+        setCropH(def.rect.h);
+        setCalibScale(def.scale ?? 1.0);
+        setCalibOffsetX(0);
+        setCalibOffsetY(0);
+      }
+    }
+  };
+
+  // Animated character walk-cycle preview loop for Cast Tab
   useEffect(() => {
     if (!isOpen || activeTab !== 'cast') return;
     const canvas = previewCanvasRef.current;
@@ -189,18 +309,18 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
       ctx.fill();
 
       if (spriteFrame) {
-        const { canvas: sc, rect } = spriteFrame;
-        const scale = 1.35;
+        const { canvas: sc, rect, scale: charScale, offsetX, offsetY } = spriteFrame;
+        const scale = charScale * 4.5;
         const dw = Math.round(rect.w * scale);
         const dh = Math.round(rect.h * scale);
-        const dx = Math.round(canvas.width / 2 - dw / 2);
-        const dy = Math.round(canvas.height / 2 - dh / 2 + 10);
+        const dx = Math.round(canvas.width / 2 - dw / 2 + (offsetX || 0));
+        const dy = Math.round(canvas.height / 2 - dh / 2 + 10 + (offsetY || 0));
         ctx.drawImage(sc, rect.x, rect.y, rect.w, rect.h, dx, dy, dw, dh);
       } else {
         ctx.fillStyle = '#94a3b8';
         ctx.font = '12px monospace';
         ctx.textAlign = 'center';
-        ctx.fillText('No sprite loaded', canvas.width / 2, canvas.height / 2);
+        ctx.fillText('No sprite loaded (procedural active)', canvas.width / 2, canvas.height / 2);
       }
 
       ctx.restore();
@@ -209,21 +329,117 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
 
     render();
     return () => cancelAnimationFrame(animId);
-  }, [isOpen, activeTab, selectedChar, selectedDirection, isWalking]);
+  }, [isOpen, activeTab, selectedChar, selectedDirection, isWalking, triggerUpdate]);
+
+  // Calibrator Preview Render
+  useEffect(() => {
+    if (!isOpen || activeTab !== 'calibrator') return;
+
+    // 1. Render calibrated entity preview
+    const canvas = calibPreviewRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.imageSmoothingEnabled = false;
+
+        // Ground grid & center line
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = 1;
+        for (let i = 0; i < canvas.width; i += 20) {
+          ctx.beginPath();
+          ctx.moveTo(i, 0);
+          ctx.lineTo(i, canvas.height);
+          ctx.stroke();
+        }
+        for (let j = 0; j < canvas.height; j += 20) {
+          ctx.beginPath();
+          ctx.moveTo(0, j);
+          ctx.lineTo(canvas.width, j);
+          ctx.stroke();
+        }
+
+        // Center baseline
+        ctx.strokeStyle = 'rgba(245, 158, 11, 0.4)';
+        ctx.beginPath();
+        ctx.moveTo(canvas.width / 2, 0);
+        ctx.lineTo(canvas.width / 2, canvas.height);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(0, canvas.height / 2 + 50);
+        ctx.lineTo(canvas.width, canvas.height / 2 + 50);
+        ctx.stroke();
+
+        const img = spriteManager.getLoadedImages().get(calibImageKey);
+        if (img && cropW > 0 && cropH > 0) {
+          const fitScale = calibScale * 1.5;
+          const dw = Math.round(cropW * fitScale);
+          const dh = Math.round(cropH * fitScale);
+          const dx = Math.round(canvas.width / 2 - dw / 2 + calibOffsetX);
+          const dy = Math.round(canvas.height / 2 + 50 - dh + calibOffsetY);
+
+          ctx.drawImage(img, cropX, cropY, cropW, cropH, dx, dy, dw, dh);
+        }
+      }
+    }
+
+    // 2. Render source texture sheet with crop box overlay
+    const sheetCanvas = calibSheetRef.current;
+    if (sheetCanvas) {
+      const sCtx = sheetCanvas.getContext('2d');
+      if (sCtx) {
+        sCtx.clearRect(0, 0, sheetCanvas.width, sheetCanvas.height);
+        sCtx.imageSmoothingEnabled = false;
+
+        const img = spriteManager.getLoadedImages().get(calibImageKey);
+        if (img) {
+          const scale = sheetCanvas.width / img.width;
+          sCtx.drawImage(img, 0, 0, sheetCanvas.width, img.height * scale);
+
+          // Draw red highlighted bounding box over crop
+          sCtx.strokeStyle = '#ef4444';
+          sCtx.lineWidth = 2;
+          sCtx.strokeRect(cropX * scale, cropY * scale, cropW * scale, cropH * scale);
+          sCtx.fillStyle = 'rgba(239, 68, 68, 0.2)';
+          sCtx.fillRect(cropX * scale, cropY * scale, cropW * scale, cropH * scale);
+        }
+      }
+    }
+  }, [isOpen, activeTab, calibCategory, calibPropId, calibCharId, cropX, cropY, cropW, cropH, calibScale, calibOffsetX, calibOffsetY, calibImageKey, triggerUpdate]);
 
   if (!isOpen) return null;
 
-  const atlasCharacters = Object.keys(SPRITE_ATLAS_MANIFEST.characters);
-  const atlasProps = Object.keys(SPRITE_ATLAS_MANIFEST.props);
-  const atlasTiles = Object.keys(SPRITE_ATLAS_MANIFEST.tiles);
-  const atlasPortraits = Object.keys(SPRITE_ATLAS_MANIFEST.portraits);
+  // Generated TypeScript code snippet
+  const generatedSnippet =
+    calibCategory === 'prop'
+      ? `${calibPropId}: {
+  propType: '${calibPropId}',
+  imageKey: '${calibImageKey}',
+  rect: { x: ${cropX}, y: ${cropY}, w: ${cropW}, h: ${cropH}, anchorX: ${calibAnchorX}, anchorY: ${calibAnchorY} },
+  scale: ${calibScale},
+  offsetX: ${calibOffsetX},
+  offsetY: ${calibOffsetY},
+  enabled: true,
+},`
+      : `${calibCharId}: {
+  characterId: '${calibCharId}',
+  imageKey: '${calibImageKey}',
+  frameWidth: ${cropW},
+  frameHeight: ${cropH},
+  scale: ${calibScale},
+  offsetX: ${calibOffsetX},
+  offsetY: ${calibOffsetY},
+  enabled: true,
+},`;
 
-  // Coverage data
-  const allPropTypes = collectAllPropTypes();
-  const allTileTypes = collectAllTileTypes();
+  const activeEntityEnabled =
+    calibCategory === 'prop'
+      ? spriteManager.isAssetEnabled('prop', calibPropId)
+      : spriteManager.isAssetEnabled('character', calibCharId);
 
   const TABS = [
     { id: 'coverage' as const, label: '📊 Asset Coverage', count: null },
+    { id: 'calibrator' as const, label: '🎯 Calibrator & Swapper', count: null },
     { id: 'cast' as const, label: '🏃 Cast', count: atlasCharacters.length },
     { id: 'props' as const, label: '🪑 Props', count: atlasProps.length },
     { id: 'tiles' as const, label: '🧱 Tiles', count: atlasTiles.length },
@@ -233,7 +449,7 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-5 animate-in fade-in duration-200">
-      <div className="relative w-full max-w-5xl max-h-[92vh] bg-[#131b26] border-4 border-[#2a374a] shadow-2xl rounded-lg overflow-hidden flex flex-col">
+      <div className="relative w-full max-w-6xl max-h-[94vh] bg-[#131b26] border-4 border-[#2a374a] shadow-2xl rounded-lg overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 bg-[#0c1017] border-b-2 border-[#2a374a]">
           <div className="flex items-center gap-2">
@@ -243,14 +459,14 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
                 SPRITE STUDIO & ART PIPELINE
               </h2>
               <p className="text-[10px] text-slate-400 font-mono">
-                Asset Management · Walk Cycles · Prompt Recipes
+                Modular Manifests · Granular Overrides · Live Calibration
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
             <div className="flex items-center bg-[#131b26] p-1 border border-[#2a374a] rounded">
-              <span className="text-[10px] font-mono text-slate-400 mr-2 ml-1">MODE:</span>
+              <span className="text-[10px] font-mono text-slate-400 mr-2 ml-1">GLOBAL MODE:</span>
               <button
                 onClick={() => spriteManager.setMode('sprites')}
                 className={`text-[9px] px-2 py-1 rounded font-mono font-bold transition-all ${
@@ -300,7 +516,255 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
         </div>
 
         {/* Body */}
-        <div className="flex-1 p-4 overflow-y-auto min-h-[380px]">
+        <div className="flex-1 p-4 overflow-y-auto min-h-[420px]">
+
+          {/* ═══════════════════ CALIBRATOR & SWAPPER TAB (NEW!) ═══════════════════ */}
+          {activeTab === 'calibrator' && (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+              {/* Left Control Panel */}
+              <div className="lg:col-span-5 flex flex-col gap-3 bg-[#0a0e14] p-3.5 rounded-lg border border-[#2a374a] text-xs font-mono">
+                <div className="flex items-center justify-between pb-2 border-b border-[#2a374a]">
+                  <span className="text-amber-400 font-bold flex items-center gap-1.5">
+                    <Sliders className="w-4 h-4" /> ASSET CALIBRATOR
+                  </span>
+                  <div className="flex items-center gap-1 bg-[#131b26] p-0.5 rounded border border-[#2a374a]">
+                    <button
+                      onClick={() => setCalibCategory('prop')}
+                      className={`px-2 py-0.5 text-[10px] rounded font-bold ${
+                        calibCategory === 'prop' ? 'bg-amber-500 text-slate-950' : 'text-slate-400'
+                      }`}
+                    >
+                      PROP
+                    </button>
+                    <button
+                      onClick={() => setCalibCategory('character')}
+                      className={`px-2 py-0.5 text-[10px] rounded font-bold ${
+                        calibCategory === 'character' ? 'bg-amber-500 text-slate-950' : 'text-slate-400'
+                      }`}
+                    >
+                      CHARACTER
+                    </button>
+                  </div>
+                </div>
+
+                {/* Target Selector */}
+                <div>
+                  <label className="text-[10px] text-slate-400 block mb-1">SELECT ASSET TO CALIBRATE / OVERRIDE:</label>
+                  {calibCategory === 'prop' ? (
+                    <select
+                      value={calibPropId}
+                      onChange={(e) => setCalibPropId(e.target.value)}
+                      className="w-full bg-[#131b26] border border-[#2a374a] text-slate-200 p-1.5 rounded font-mono text-xs focus:outline-none focus:border-amber-400"
+                    >
+                      {atlasProps.map((p) => (
+                        <option key={p} value={p}>
+                          {p}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <select
+                      value={calibCharId}
+                      onChange={(e) => setCalibCharId(e.target.value)}
+                      className="w-full bg-[#131b26] border border-[#2a374a] text-slate-200 p-1.5 rounded font-mono text-xs focus:outline-none focus:border-amber-400"
+                    >
+                      {atlasCharacters.map((c) => (
+                        <option key={c} value={c}>
+                          {c} ({ALL_CHARACTERS[c]?.name || c})
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+
+                {/* Individual Asset Fallback Toggle */}
+                <div className="flex items-center justify-between p-2 rounded bg-[#131b26] border border-[#2a374a]">
+                  <div>
+                    <span className="text-[11px] text-slate-200 font-bold block">Individual Asset Mode</span>
+                    <span className="text-[9px] text-slate-400">Toggle sprite vs procedural for this asset only</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (calibCategory === 'prop') {
+                        spriteManager.setAssetEnabled('prop', calibPropId, !activeEntityEnabled);
+                      } else {
+                        spriteManager.setAssetEnabled('character', calibCharId, !activeEntityEnabled);
+                      }
+                      setTriggerUpdate((n) => n + 1);
+                    }}
+                    className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold ${
+                      activeEntityEnabled
+                        ? 'bg-emerald-600 text-white shadow'
+                        : 'bg-amber-600 text-slate-950 shadow'
+                    }`}
+                  >
+                    {activeEntityEnabled ? (
+                      <>
+                        <ShieldCheck className="w-3.5 h-3.5" /> SPRITE ON
+                      </>
+                    ) : (
+                      <>
+                        <ShieldAlert className="w-3.5 h-3.5" /> PROCEDURAL
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Crop & Offset Sliders */}
+                <div className="space-y-2 pt-1">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] text-slate-400 block">Crop X: {cropX}px</label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="1024"
+                        value={cropX}
+                        onChange={(e) => setCropX(Number(e.target.value))}
+                        className="w-full h-1.5 bg-[#1e293b] rounded appearance-none cursor-pointer accent-amber-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-400 block">Crop Y: {cropY}px</label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="1024"
+                        value={cropY}
+                        onChange={(e) => setCropY(Number(e.target.value))}
+                        className="w-full h-1.5 bg-[#1e293b] rounded appearance-none cursor-pointer accent-amber-400"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] text-slate-400 block">Width: {cropW}px</label>
+                      <input
+                        type="range"
+                        min="10"
+                        max="1024"
+                        value={cropW}
+                        onChange={(e) => setCropW(Number(e.target.value))}
+                        className="w-full h-1.5 bg-[#1e293b] rounded appearance-none cursor-pointer accent-amber-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-400 block">Height: {cropH}px</label>
+                      <input
+                        type="range"
+                        min="10"
+                        max="1024"
+                        value={cropH}
+                        onChange={(e) => setCropH(Number(e.target.value))}
+                        className="w-full h-1.5 bg-[#1e293b] rounded appearance-none cursor-pointer accent-amber-400"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="text-[10px] text-slate-400 block">Scale: {calibScale.toFixed(2)}</label>
+                      <input
+                        type="range"
+                        min="0.1"
+                        max="3.0"
+                        step="0.01"
+                        value={calibScale}
+                        onChange={(e) => setCalibScale(Number(e.target.value))}
+                        className="w-full h-1.5 bg-[#1e293b] rounded appearance-none cursor-pointer accent-amber-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-400 block">Offset X: {calibOffsetX}px</label>
+                      <input
+                        type="range"
+                        min="-50"
+                        max="50"
+                        value={calibOffsetX}
+                        onChange={(e) => setCalibOffsetX(Number(e.target.value))}
+                        className="w-full h-1.5 bg-[#1e293b] rounded appearance-none cursor-pointer accent-amber-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-400 block">Offset Y: {calibOffsetY}px</label>
+                      <input
+                        type="range"
+                        min="-50"
+                        max="50"
+                        value={calibOffsetY}
+                        onChange={(e) => setCalibOffsetY(Number(e.target.value))}
+                        className="w-full h-1.5 bg-[#1e293b] rounded appearance-none cursor-pointer accent-amber-400"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex items-center gap-2 pt-2 border-t border-[#2a374a]">
+                  <button
+                    onClick={handleApplyOverride}
+                    className="flex-1 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded text-xs transition-colors shadow"
+                  >
+                    Apply Live In-Game
+                  </button>
+                  <button
+                    onClick={handleResetOverride}
+                    className="p-1.5 bg-[#131b26] hover:bg-[#1a2332] text-slate-400 hover:text-white rounded border border-[#2a374a]"
+                    title="Reset to manifest defaults"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Right Preview Panels */}
+              <div className="lg:col-span-7 flex flex-col gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {/* Calibrated In-Game Canvas */}
+                  <div className="bg-[#0a0e14] p-3 rounded-lg border border-[#2a374a] flex flex-col items-center">
+                    <span className="text-[10px] font-mono text-amber-400 uppercase tracking-wider mb-2 flex items-center gap-1">
+                      <Eye className="w-3.5 h-3.5" /> Render Preview
+                    </span>
+                    <canvas
+                      ref={calibPreviewRef}
+                      width={220}
+                      height={220}
+                      className="border border-[#1e293b] rounded bg-[#070a0f] shadow-inner"
+                      style={{ imageRendering: 'pixelated' }}
+                    />
+                  </div>
+
+                  {/* Spritesheet Texture & Bounding Box */}
+                  <div className="bg-[#0a0e14] p-3 rounded-lg border border-[#2a374a] flex flex-col items-center">
+                    <span className="text-[10px] font-mono text-cyan-400 uppercase tracking-wider mb-2 flex items-center gap-1">
+                      <Crop className="w-3.5 h-3.5" /> Texture Bounding Box
+                    </span>
+                    <canvas
+                      ref={calibSheetRef}
+                      width={220}
+                      height={220}
+                      className="border border-[#1e293b] rounded bg-[#070a0f] shadow-inner"
+                      style={{ imageRendering: 'pixelated' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Generated Code Snippet */}
+                <div className="bg-[#0a0e14] p-3 rounded-lg border border-[#2a374a] relative">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">
+                      Export Manifest TypeScript Definition:
+                    </span>
+                  </div>
+                  <pre className="text-[10px] text-emerald-400 bg-[#070a0f] p-2.5 rounded overflow-x-auto font-mono">
+                    <code>{generatedSnippet}</code>
+                  </pre>
+                  <CopyButton text={generatedSnippet} />
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* ═══════════════════ COVERAGE TAB ═══════════════════ */}
           {activeTab === 'coverage' && (
@@ -318,14 +782,8 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
                 const settingTiles = settingId ? collectTileTypesForSetting(settingId) : new Set<string>();
 
                 const charsSprited = chars.filter((c) => !!SPRITE_ATLAS_MANIFEST.characters[c.id]);
-                const charsNoSprite = chars.filter((c) => !SPRITE_ATLAS_MANIFEST.characters[c.id]);
-
                 const propsSprited = [...settingProps].filter((t) => !!SPRITE_ATLAS_MANIFEST.props[t as any]);
-                const propsNoSprite = [...settingProps].filter((t) => !SPRITE_ATLAS_MANIFEST.props[t as any]);
-
                 const tilesSprited = [...settingTiles].filter((t) => !!SPRITE_ATLAS_MANIFEST.tiles[t as any]);
-                const tilesNoSprite = [...settingTiles].filter((t) => !SPRITE_ATLAS_MANIFEST.tiles[t as any]);
-
                 const portraitsSprited = chars.filter((c) => !!SPRITE_ATLAS_MANIFEST.portraits[c.id]);
 
                 const totalAssets = chars.length + settingProps.size + settingTiles.size;
@@ -601,10 +1059,10 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
               <div className="bg-[#0b1017] p-3 rounded border border-amber-500/30">
                 <h3 className="text-amber-400 font-bold text-sm mb-1 flex items-center gap-1.5">
                   <Sparkles className="w-4 h-4 text-amber-400" />
-                  Nano Banana / Gemini Image Generation Recipes
+                  Gemini / Imagen Image Generation Recipes
                 </h3>
                 <p className="text-[11px] text-slate-400 mb-3">
-                  Copy these prompts into Gemini Image Generation or Nano Banana Pro to produce compatible pixel art assets. All output must use the specified chroma-key background color for automatic transparency processing.
+                  Copy these prompts into Gemini Image Generation or Imagen to produce compatible pixel art assets. All output must use the specified chroma-key background color for automatic transparency processing.
                 </p>
 
                 <div className="space-y-4">
@@ -734,7 +1192,7 @@ Clean outlines, expressive eyes, visible personality.`}
         <div className="flex items-center justify-between px-4 py-2.5 bg-[#0c1017] border-t border-[#2a374a]">
           <div className="flex items-center gap-1.5 text-[10px] font-mono text-emerald-400">
             <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>Hybrid Engine: {atlasCharacters.length} chars · {atlasProps.length} props · {atlasTiles.length} tiles · {atlasPortraits.length} portraits</span>
+            <span>Modular Pipeline: {atlasCharacters.length} chars · {atlasProps.length} props · {atlasTiles.length} tiles · {atlasPortraits.length} portraits</span>
           </div>
           <button
             onClick={onClose}

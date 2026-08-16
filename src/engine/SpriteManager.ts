@@ -188,47 +188,114 @@ export class SpriteManager {
     return canvas;
   }
 
+  private characterOverrides: Map<string, Partial<CharacterSpriteDef>> = new Map();
+  private propOverrides: Map<string, Partial<PropSpriteDef>> = new Map();
+  private tileOverrides: Map<string, Partial<TileSpriteDef>> = new Map();
+  private assetEnabledOverrides: Map<string, boolean> = new Map();
+
   /**
-   * Loads all images and atlas definitions in a manifest.
+   * Check if a specific individual asset is enabled (allows selective procedural fallback).
    */
-  public async loadManifest(manifest: SpriteAtlasManifest): Promise<void> {
+  public isAssetEnabled(category: 'character' | 'prop' | 'tile' | 'portrait', id: string): boolean {
+    const key = `${category}:${id}`;
+    if (this.assetEnabledOverrides.has(key)) {
+      return this.assetEnabledOverrides.get(key)!;
+    }
+    if (category === 'character') {
+      const def = this.characters.get(id);
+      return def ? def.enabled !== false : false;
+    }
+    if (category === 'prop') {
+      const def = this.props.get(id);
+      return def ? def.enabled !== false : false;
+    }
+    if (category === 'tile') {
+      const def = this.tiles.get(id);
+      return def ? def.enabled !== false : false;
+    }
+    if (category === 'portrait') {
+      const def = this.portraits.get(id);
+      return def ? def.enabled !== false : false;
+    }
+    return true;
+  }
+
+  /**
+   * Selectively enable or disable a single asset without affecting other assets in the scene.
+   */
+  public setAssetEnabled(category: 'character' | 'prop' | 'tile' | 'portrait', id: string, enabled: boolean) {
+    const key = `${category}:${id}`;
+    this.assetEnabledOverrides.set(key, enabled);
+    this.notifyListeners();
+  }
+
+  /**
+   * Set live runtime calibration overrides (e.g. crop rect, scale, offset) for instant visual tuning.
+   */
+  public setCharacterOverride(id: string, override: Partial<CharacterSpriteDef>) {
+    this.characterOverrides.set(id, { ...this.characterOverrides.get(id), ...override });
+    this.notifyListeners();
+  }
+
+  public setPropOverride(propType: string, override: Partial<PropSpriteDef>) {
+    this.propOverrides.set(propType, { ...this.propOverrides.get(propType), ...override });
+    this.notifyListeners();
+  }
+
+  public clearOverrides() {
+    this.characterOverrides.clear();
+    this.propOverrides.clear();
+    this.tileOverrides.clear();
+    this.assetEnabledOverrides.clear();
+    this.notifyListeners();
+  }
+
+  /**
+   * Loads all images and atlas definitions in a manifest or array of manifests.
+   */
+  public async loadManifest(manifestOrList: SpriteAtlasManifest | SpriteAtlasManifest[]): Promise<void> {
+    const manifests = Array.isArray(manifestOrList) ? manifestOrList : [manifestOrList];
     const loadPromises: Promise<void>[] = [];
 
-    // Register definitions
-    Object.values(manifest.characters).forEach((c) => this.characters.set(c.characterId, c));
-    Object.values(manifest.props).forEach((p) => this.props.set(p.propType, p));
-    Object.values(manifest.tiles).forEach((t) => this.tiles.set(t.tileType, t));
-    Object.values(manifest.portraits).forEach((pt) => this.portraits.set(pt.characterId, pt));
+    for (const manifest of manifests) {
+      // Register definitions
+      Object.values(manifest.characters).forEach((c) => this.characters.set(c.characterId, c));
+      Object.values(manifest.props).forEach((p) => this.props.set(p.propType, p));
+      Object.values(manifest.tiles).forEach((t) => this.tiles.set(t.tileType, t));
+      Object.values(manifest.portraits).forEach((pt) => this.portraits.set(pt.characterId, pt));
 
-    // Load and process image textures
-    for (const [key, entry] of Object.entries(manifest.images)) {
-      const p = new Promise<void>((resolve, reject) => {
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = () => {
-          if (entry.chromaKey) {
-            const processed = this.processChromaKey(img, entry.chromaKey, entry.tolerance || 45);
-            this.images.set(key, processed);
-          } else {
-            const canvas = document.createElement('canvas');
-            canvas.width = img.naturalWidth || img.width;
-            canvas.height = img.naturalHeight || img.height;
-            const ctx = canvas.getContext('2d');
-            if (ctx) {
-              ctx.imageSmoothingEnabled = false;
-              ctx.drawImage(img, 0, 0);
+      // Load and process image textures
+      for (const [key, entry] of Object.entries(manifest.images)) {
+        if (this.images.has(key)) continue; // Already loaded
+
+        const p = new Promise<void>((resolve) => {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => {
+            if (entry.chromaKey) {
+              const processed = this.processChromaKey(img, entry.chromaKey, entry.tolerance || 45);
+              this.images.set(key, processed);
+            } else {
+              const canvas = document.createElement('canvas');
+              canvas.width = img.naturalWidth || img.width;
+              canvas.height = img.naturalHeight || img.height;
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                ctx.imageSmoothingEnabled = false;
+                ctx.drawImage(img, 0, 0);
+              }
+              this.images.set(key, canvas);
             }
-            this.images.set(key, canvas);
-          }
-          resolve();
-        };
-        img.onerror = () => {
-          console.warn(`[SpriteManager] Failed to load image texture "${key}" from ${entry.url}`);
-          resolve(); // Resolve anyway so other assets can continue
-        };
-        img.src = entry.url;
-      });
-      loadPromises.push(p);
+            resolve();
+          };
+          img.onerror = () => {
+            console.warn(`[SpriteManager] Failed to load image texture "${key}" from ${entry.url}`);
+            resolve(); // Resolve anyway so other assets can continue
+          };
+          img.src = entry.url;
+        });
+        loadPromises.push(p);
+      }
     }
 
     await Promise.all(loadPromises);
@@ -238,6 +305,7 @@ export class SpriteManager {
 
   public hasCharacter(characterId: string): boolean {
     if (this.artStyleMode === 'procedural') return false;
+    if (!this.isAssetEnabled('character', characterId)) return false;
     const def = this.characters.get(characterId);
     return !!def && this.images.has(def.imageKey);
   }
@@ -249,26 +317,37 @@ export class SpriteManager {
     isMoving: boolean,
     isSitting = false,
     action?: string
-  ): { canvas: HTMLCanvasElement; rect: SpriteRect; scale: number } | null {
+  ): { canvas: HTMLCanvasElement; rect: SpriteRect; scale: number; offsetX: number; offsetY: number } | null {
     if (this.artStyleMode === 'procedural') return null;
-    const def = this.characters.get(characterId);
+    if (!this.isAssetEnabled('character', characterId)) return null;
+
+    let def = this.characters.get(characterId);
     if (!def) return null;
+
+    const override = this.characterOverrides.get(characterId);
+    if (override) {
+      def = { ...def, ...override };
+    }
 
     const canvas = this.images.get(def.imageKey);
     if (!canvas) return null;
+
+    const scale = def.scale || 1.0;
+    const offsetX = def.offsetX || 0;
+    const offsetY = def.offsetY || 0;
 
     // Check specific action overrides
     if (action && def.animations.actions && def.animations.actions[action]) {
       const act = def.animations.actions[action];
       const rect = Array.isArray(act) ? act[animFrame % act.length] : act;
-      return { canvas, rect, scale: def.scale || 1.0 };
+      return { canvas, rect, scale, offsetX, offsetY };
     }
 
     // Check sitting frames
     if (isSitting && def.animations.sitting) {
       const sitRect = def.animations.sitting[facing] || def.animations.sitting.down;
       if (sitRect) {
-        return { canvas, rect: sitRect, scale: def.scale || 1.0 };
+        return { canvas, rect: sitRect, scale, offsetX, offsetY };
       }
     }
 
@@ -280,22 +359,30 @@ export class SpriteManager {
     const frameIndex = isMoving ? animFrame % frames.length : 0;
     const rect = frames[frameIndex];
 
-    return { canvas, rect, scale: def.scale || 1.0 };
+    return { canvas, rect, scale, offsetX, offsetY };
   }
 
   public hasProp(propType: PropType | string): boolean {
     if (this.artStyleMode === 'procedural') return false;
-    const def = this.props.get(propType as PropType);
+    if (!this.isAssetEnabled('prop', propType as string)) return false;
+    const def = this.props.get(propType as string);
     return !!def && this.images.has(def.imageKey);
   }
 
   public getPropSprite(
     propType: PropType | string,
     stateName?: string
-  ): { canvas: HTMLCanvasElement; rect: SpriteRect; scale?: number } | null {
+  ): { canvas: HTMLCanvasElement; rect: SpriteRect; scale?: number; offsetX: number; offsetY: number } | null {
     if (this.artStyleMode === 'procedural') return null;
-    const def = this.props.get(propType as PropType);
+    if (!this.isAssetEnabled('prop', propType as string)) return null;
+
+    let def = this.props.get(propType as string);
     if (!def) return null;
+
+    const override = this.propOverrides.get(propType as string);
+    if (override) {
+      def = { ...def, ...override };
+    }
 
     const canvas = this.images.get(def.imageKey);
     if (!canvas) return null;
@@ -305,12 +392,16 @@ export class SpriteManager {
       rect = def.states[stateName];
     }
 
-    return { canvas, rect, scale: def.scale };
+    const offsetX = (def.offsetX || 0) + (rect.offsetX || 0);
+    const offsetY = (def.offsetY || 0) + (rect.offsetY || 0);
+
+    return { canvas, rect, scale: def.scale, offsetX, offsetY };
   }
 
   public hasTile(tileType: TileType | string): boolean {
     if (this.artStyleMode === 'procedural') return false;
-    const def = this.tiles.get(tileType as TileType);
+    if (!this.isAssetEnabled('tile', tileType as string)) return false;
+    const def = this.tiles.get(tileType as string);
     return !!def && this.images.has(def.imageKey);
   }
 
@@ -318,7 +409,9 @@ export class SpriteManager {
     tileType: TileType | string
   ): { canvas: HTMLCanvasElement; rect: SpriteRect } | null {
     if (this.artStyleMode === 'procedural') return null;
-    const def = this.tiles.get(tileType as TileType);
+    if (!this.isAssetEnabled('tile', tileType as string)) return null;
+
+    const def = this.tiles.get(tileType as string);
     if (!def) return null;
 
     const canvas = this.images.get(def.imageKey);
@@ -328,6 +421,7 @@ export class SpriteManager {
   }
 
   public hasPortrait(characterId: string): boolean {
+    if (!this.isAssetEnabled('portrait', characterId)) return false;
     const def = this.portraits.get(characterId);
     return !!def && this.images.has(def.imageKey);
   }
@@ -336,6 +430,7 @@ export class SpriteManager {
     characterId: string,
     emotion?: EmotionType
   ): { canvas: HTMLCanvasElement; rect?: SpriteRect } | null {
+    if (!this.isAssetEnabled('portrait', characterId)) return null;
     const def = this.portraits.get(characterId);
     if (!def) return null;
 
@@ -352,6 +447,22 @@ export class SpriteManager {
 
   public getLoadedImages(): Map<string, HTMLCanvasElement> {
     return this.images;
+  }
+
+  public getAllCharacterDefs(): Map<string, CharacterSpriteDef> {
+    return this.characters;
+  }
+
+  public getAllPropDefs(): Map<string, PropSpriteDef> {
+    return this.props;
+  }
+
+  public getAllTileDefs(): Map<string, TileSpriteDef> {
+    return this.tiles;
+  }
+
+  public getAllPortraitDefs(): Map<string, TalkingHeadPortraitDef> {
+    return this.portraits;
   }
 }
 
