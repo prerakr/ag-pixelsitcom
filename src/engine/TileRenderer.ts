@@ -1,4 +1,5 @@
 import { TileType, PropInstance } from '../types/environment';
+import { spriteManager } from './SpriteManager';
 
 export class TileRenderer {
   // Tile rendering with rich texture and depth
@@ -10,6 +11,16 @@ export class TileRenderer {
     size: number
   ) {
     ctx.save();
+
+    // Check if rich sprite asset is available from SpriteManager
+    const tileSprite = spriteManager.getTileSprite(type);
+    if (tileSprite) {
+      const { canvas, rect } = tileSprite;
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(canvas, rect.x, rect.y, rect.w, rect.h, x, y, size, size);
+      ctx.restore();
+      return;
+    }
 
     switch (type) {
       case 'floor_carpet_grey': {
@@ -197,6 +208,41 @@ export class TileRenderer {
     const propName = prop.name?.toLowerCase() || '';
 
     ctx.save();
+
+    // Check if rich sprite asset is available from SpriteManager
+    const propSprite = spriteManager.getPropSprite(
+      prop.type,
+      state?.ignited ? 'ignited' : undefined
+    );
+
+    if (propSprite) {
+      const { canvas, rect, scale: customScale } = propSprite;
+      ctx.imageSmoothingEnabled = false;
+
+      // Uniform aspect ratio scaling: fit within the allocated grid box without distortion
+      // Only use customScale if explicitly defined on the prop; otherwise fit to grid box
+      const fitScale = (customScale != null) ? customScale : Math.min(w / rect.w, h / rect.h);
+      const drawW = Math.round(rect.w * fitScale);
+      const drawH = Math.round(rect.h * fitScale);
+
+      // Center horizontally in the grid footprint and align to bottom ground line
+      const drawX = Math.round(px + (w - drawW) / 2);
+      const drawY = Math.round(py + (h - drawH));
+
+      ctx.drawImage(
+        canvas,
+        rect.x,
+        rect.y,
+        rect.w,
+        rect.h,
+        drawX,
+        drawY,
+        drawW,
+        drawH
+      );
+      ctx.restore();
+      return;
+    }
 
     switch (prop.type) {
       case 'desk_wood': {

@@ -1,5 +1,6 @@
 import { CharacterDefinition, CharacterRuntimeState, HoldableItemType } from '../types/character';
 import { Direction, EmoteIconType } from '../types/script';
+import { spriteManager } from './SpriteManager';
 
 export class CharacterRenderer {
   public static drawCharacter(
@@ -33,10 +34,78 @@ export class CharacterRenderer {
     // 3. Shadow beneath character
     ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
     ctx.beginPath();
-    ctx.ellipse(0, 14, 10, 4, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 14, 12, 4.5, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // 4. Legs & Shoes
+    // Check if rich sprite asset is available from SpriteManager
+    const spriteFrame = spriteManager.getCharacterFrame(
+      character.id,
+      facing,
+      animFrame,
+      isMoving,
+      isSitting,
+      state.currentAction
+    );
+
+    if (spriteFrame) {
+      const { canvas, rect, scale } = spriteFrame;
+      const destW = Math.round(rect.w * scale);
+      const destH = Math.round(rect.h * scale);
+      const destX = Math.round(-destW / 2);
+      const destY = Math.round(-destH + 15 + walkBob + (isSitting ? 5 : 0));
+
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(
+        canvas,
+        rect.x,
+        rect.y,
+        rect.w,
+        rect.h,
+        destX,
+        destY,
+        destW,
+        destH
+      );
+
+      // Draw Held Item if present
+      if (state.heldItem) {
+        const itemX = facing === 'left' ? -11 : facing === 'right' ? 11 : 9;
+        const itemY = 1 + walkBob;
+        this.drawHeldItem(ctx, state.heldItem, itemX, itemY, facing);
+      }
+
+      // Draw Floating Emote Bubble
+      const headY = destY + 5;
+      if (currentEmote) {
+        this.drawEmoteBubble(ctx, currentEmote.icon, 0, headY - 14, now);
+      }
+
+      // Draw Name Tag
+      if (showNameTag) {
+        ctx.font = '7px "Press Start 2P", monospace';
+        ctx.textAlign = 'center';
+        const displayName = character.nickname || character.name.split(' ')[0];
+        const textMetrics = ctx.measureText(displayName);
+        const tagW = textMetrics.width + 6;
+        const tagY = headY - 8;
+
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+        ctx.fillRect(-tagW / 2, tagY - 8, tagW, 10);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.strokeRect(-tagW / 2, tagY - 8, tagW, 10);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(displayName, 0, tagY);
+      }
+
+      ctx.restore();
+      return;
+    }
+
+    // 4. Procedural Fallback Rendering (scaled to match sprite character proportion)
+    ctx.scale(1.4, 1.4);
+
+    // Legs & Shoes
     if (!isSitting) {
       const legOffset = isMoving ? (animFrame === 1 ? 3 : animFrame === 3 ? -3 : 0) : 0;
       ctx.fillStyle = visual.pantsColor;

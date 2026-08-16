@@ -12,6 +12,7 @@ import { TalkingHeadModal } from './components/TalkingHeadModal';
 import { ScriptStudio } from './components/ScriptStudio';
 import { CharacterRoster } from './components/CharacterRoster';
 import { HelpModal } from './components/HelpModal';
+import { SpriteGalleryModal } from './components/SpriteGalleryModal';
 import { soundEngine } from './engine/SoundEngine';
 import { musicEngine } from './engine/MusicEngine';
 
@@ -39,6 +40,7 @@ export function App() {
 
   // Modals & Drawers
   const [isScriptStudioOpen, setIsScriptStudioOpen] = useState<boolean>(false);
+  const [isSpriteGalleryOpen, setIsSpriteGalleryOpen] = useState<boolean>(false);
   const [isCastDrawerOpen, setIsCastDrawerOpen] = useState<boolean>(false);
   const [isHelpOpen, setIsHelpOpen] = useState<boolean>(false);
   const [isMuted, setIsMuted] = useState<boolean>(false);
@@ -197,6 +199,7 @@ export function App() {
         currentEpisodeTitle={String(currentEpisodeIndex)}
         onSelectEpisode={handleSelectPresetEpisode}
         onOpenScriptStudio={() => setIsScriptStudioOpen(true)}
+        onOpenSpriteGallery={() => setIsSpriteGalleryOpen(true)}
         onToggleCastDrawer={() => setIsCastDrawerOpen(!isCastDrawerOpen)}
         onOpenHelp={() => setIsHelpOpen(true)}
         isCastDrawerOpen={isCastDrawerOpen}
@@ -263,6 +266,12 @@ export function App() {
           }}
         />
       )}
+
+      {/* Sprite Studio & Art Pipeline Modal */}
+      <SpriteGalleryModal
+        isOpen={isSpriteGalleryOpen}
+        onClose={() => setIsSpriteGalleryOpen(false)}
+      />
 
       {/* AI Script Studio Modal */}
       <ScriptStudio

@@ -3,6 +3,7 @@ import { TalkingHeadBeat } from '../types/script';
 import { CharacterDefinition, CharacterRuntimeState } from '../types/character';
 import { CharacterRenderer } from '../engine/CharacterRenderer';
 import { soundEngine } from '../engine/SoundEngine';
+import { spriteManager } from '../engine/SpriteManager';
 import { ArrowRight, Video } from 'lucide-react';
 
 interface TalkingHeadModalProps {
@@ -57,34 +58,74 @@ export const TalkingHeadModal: React.FC<TalkingHeadModalProps> = ({
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.imageSmoothingEnabled = false;
 
-      ctx.save();
-      // Scale up character for intimate talking-head portrait
-      ctx.scale(4.5, 4.5);
-      ctx.translate(28, 38);
+      const portrait = spriteManager.getPortrait(character.id, talkingHead.emotion);
 
-      const state: CharacterRuntimeState = {
-        id: character.id,
-        x: 0,
-        y: 0,
-        facing: 'down',
-        isMoving: false,
-        speed: 1,
-        animFrame: 0,
-        animTimer: 0,
-        currentAction: talkingHead.cameraLook ? 'jim_stare' : undefined,
-        currentSpeech: {
-          text: fullText,
-          displayedText: displayedText,
-          charIndex: displayedText.length,
-          timer: 0,
-          emotion: talkingHead.emotion || 'neutral',
-          totalDuration: 5000,
-          elapsed: 0,
-        },
-      };
+      if (portrait) {
+        // High-res pixel art bust portrait
+        const { canvas: pCanvas, rect } = portrait;
+        const now = Date.now();
+        const breathe = Math.sin(now / 450) * 1.5;
 
-      CharacterRenderer.drawCharacter(ctx, character, state, false);
-      ctx.restore();
+        const srcX = rect ? rect.x : 0;
+        const srcY = rect ? rect.y : 0;
+        const srcW = rect ? rect.w : pCanvas.width;
+        const srcH = rect ? rect.h : pCanvas.height;
+
+        ctx.save();
+        // Draw subtle vignette background
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw portrait fitted to canvas with subtle breathing
+        const pad = 4;
+        ctx.drawImage(
+          pCanvas,
+          srcX,
+          srcY,
+          srcW,
+          srcH,
+          pad,
+          pad + breathe,
+          canvas.width - pad * 2,
+          canvas.height - pad * 2
+        );
+
+        // Overlay scanlines
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
+        for (let y = 0; y < canvas.height; y += 4) {
+          ctx.fillRect(0, y, canvas.width, 2);
+        }
+        ctx.restore();
+      } else {
+        ctx.save();
+        // Scale up character for intimate talking-head portrait
+        ctx.scale(4.5, 4.5);
+        ctx.translate(28, 38);
+
+        const state: CharacterRuntimeState = {
+          id: character.id,
+          x: 0,
+          y: 0,
+          facing: 'down',
+          isMoving: false,
+          speed: 1,
+          animFrame: 0,
+          animTimer: 0,
+          currentAction: talkingHead.cameraLook ? 'jim_stare' : undefined,
+          currentSpeech: {
+            text: fullText,
+            displayedText: displayedText,
+            charIndex: displayedText.length,
+            timer: 0,
+            emotion: talkingHead.emotion || 'neutral',
+            totalDuration: 5000,
+            elapsed: 0,
+          },
+        };
+
+        CharacterRenderer.drawCharacter(ctx, character, state, false);
+        ctx.restore();
+      }
 
       animId = requestAnimationFrame(render);
     };

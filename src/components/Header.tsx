@@ -1,5 +1,5 @@
 import React from 'react';
-import { Volume2, VolumeX, Music, Sparkles, Users, HelpCircle, Film, Tv, Radio } from 'lucide-react';
+import { Volume2, VolumeX, Music, Sparkles, Users, HelpCircle, Film, Tv, Radio, Palette } from 'lucide-react';
 import { ALL_SETTINGS } from '../data/settings';
 import { PRESET_EPISODES } from '../data/episodes';
 import { soundEngine } from '../engine/SoundEngine';
@@ -11,6 +11,7 @@ interface HeaderProps {
   currentEpisodeTitle: string;
   onSelectEpisode: (index: number) => void;
   onOpenScriptStudio: () => void;
+  onOpenSpriteGallery: () => void;
   onToggleCastDrawer: () => void;
   onOpenHelp: () => void;
   isCastDrawerOpen: boolean;
@@ -26,6 +27,7 @@ export const Header: React.FC<HeaderProps> = ({
   currentEpisodeTitle,
   onSelectEpisode,
   onOpenScriptStudio,
+  onOpenSpriteGallery,
   onToggleCastDrawer,
   onOpenHelp,
   isCastDrawerOpen,
@@ -62,11 +64,18 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Mobile Quick Buttons */}
         <div className="flex sm:hidden items-center gap-1.5">
           <button
+            onClick={onOpenSpriteGallery}
+            className="p-1.5 bg-[#0b0f17] border border-emerald-500/50 rounded text-emerald-400"
+            title="Sprite Studio"
+          >
+            <Palette className="w-3.5 h-3.5" />
+          </button>
+          <button
             onClick={onOpenScriptStudio}
             className="pixel-btn btn-primary text-[8px] px-2 py-1.5 flex items-center gap-1 glow-active"
           >
             <Sparkles className="w-3 h-3 animate-spin" style={{ animationDuration: '4s' }} />
-            <span>AI PROMPT</span>
+            <span>AI SCRIPT</span>
           </button>
           <button
             onClick={onToggleBgmMute}
@@ -152,6 +161,15 @@ export const Header: React.FC<HeaderProps> = ({
         </button>
 
         <button
+          onClick={onOpenSpriteGallery}
+          className="pixel-btn text-[9px] px-2.5 py-1.5 flex items-center gap-1.5 bg-emerald-950/70 border-emerald-500 text-emerald-300 shadow-[0_0_8px_rgba(16,185,129,0.2)] hover:bg-emerald-900/80"
+          title="Open Sprite Studio & 16-Bit Art Pipeline"
+        >
+          <Palette className="w-3.5 h-3.5 text-emerald-400" />
+          <span className="hidden md:inline">SPRITE STUDIO</span>
+        </button>
+
+        <button
           onClick={onToggleCastDrawer}
           className={`pixel-btn text-[9px] px-2.5 py-1.5 ${isCastDrawerOpen ? 'bg-amber-600 border-amber-400 text-white' : ''}`}
           title="Inspect Characters"
@@ -166,7 +184,7 @@ export const Header: React.FC<HeaderProps> = ({
           title="Open AI Prompt Builder & Script Studio"
         >
           <Sparkles className="w-3.5 h-3.5 animate-spin" style={{ animationDuration: '4s' }} />
-          <span>AI PROMPT & SCRIPT</span>
+          <span>AI SCRIPT</span>
         </button>
 
         <button

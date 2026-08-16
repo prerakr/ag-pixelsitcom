@@ -22,6 +22,8 @@ import { soundEngine } from './SoundEngine';
 import { musicEngine } from './MusicEngine';
 import { particleSystem } from './ParticleSystem';
 import { lightingEngine } from './LightingEngine';
+import { spriteManager } from './SpriteManager';
+import { SPRITE_ATLAS_MANIFEST } from '../data/sprites/SpriteAtlas';
 
 export interface VisualizerCallbacks {
   onBeatChange?: (sceneIndex: number, beatIndex: number, currentBeat: ScriptBeat | null) => void;
@@ -89,6 +91,12 @@ export class VisualizerEngine {
     );
     if (callbacks) this.callbacks = callbacks;
     this.initCharacters();
+
+    // Initialize SpriteManager & listen for asset load / mode updates
+    spriteManager.loadManifest(SPRITE_ATLAS_MANIFEST).catch(console.error);
+    spriteManager.subscribe(() => {
+      this.isTileMapDirty = true;
+    });
   }
 
   public setCanvas(canvas: HTMLCanvasElement) {
