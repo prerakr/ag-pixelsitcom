@@ -184,6 +184,19 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
   const calibPreviewRef = useRef<HTMLCanvasElement | null>(null);
   const calibSheetRef = useRef<HTMLCanvasElement | null>(null);
 
+  // New states for interactive canvas & workflow
+  const [gridSnap, setGridSnap] = useState<number>(16);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
+  
+  const [bgColorMode, setBgColorMode] = useState<'dark' | 'light' | 'checker'>('dark');
+  const [isEyedropper, setIsEyedropper] = useState(false);
+  const [chromaHex, setChromaHex] = useState<string>('#00ff00');
+  
+  const [isPixelEdit, setIsPixelEdit] = useState(false);
+  const [pixelEditMode, setPixelEditMode] = useState<'pencil' | 'eraser'>('pencil');
+  const [pixelColor, setPixelColor] = useState<string>('#ffffff');
+
   useEffect(() => {
     const unsub = spriteManager.subscribe(() => {
       setArtMode(spriteManager.mode);
@@ -251,6 +264,136 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
       }
     }
   }, [calibCategory, calibPropId, calibCharId, calibTileId]);
+
+  // ─── Interactive Handlers ──────────────────────────────────────────────────
+  const handleSheetMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (isEyedropper || isPixelEdit) return;
+    const canvas = calibSheetRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    const img = spriteManager.getLoadedImages().get(calibImageKey);
+    if (!img) return;
+    const scale = img.width / canvas.width; 
+    
+    setIsDragging(true);
+    const snap = gridSnap || 1;
+    const startX = Math.round((x * scale) / snap) * snap;
+    const startY = Math.round((y * scale) / snap) * snap;
+    setDragStart({ x: startX, y: startY });
+    setCropX(startX);
+    setCropY(startY);
+    setCropW(snap);
+    setCropH(snap);
+  };
+
+  const handleSheetMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = calibSheetRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const img = spriteManager.getLoadedImages().get(calibImageKey);
+    if (!img) return;
+    const scale = img.width / canvas.width;
+
+    if (isDragging && dragStart) {
+      const snap = gridSnap || 1;
+      let curX = Math.round((x * scale) / snap) * snap;
+      let curY = Math.round((y * scale) / snap) * snap;
+      
+      setCropX(Math.min(dragStart.x, curX));
+      setCropY(Math.min(dragStart.y, curY));
+      setCropW(Math.max(Math.abs(curX - dragStart.x), snap));
+      setCropH(Math.max(Math.abs(curY - dragStart.y), snap));
+    }
+  };
+
+  const handleSheetMouseUp = () => {
+    setIsDragging(false);
+    setDragStart(null);
+  };
+
+  const handleSheetClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = calibSheetRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const img = spriteManager.getLoadedImages().get(calibImageKey);
+    if (!img) return;
+    const scale = img.width / canvas.width;
+    const imgX = Math.floor(x * scale);
+    const imgY = Math.floor(y * scale);
+
+    if (isEyedropper) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        const p = ctx.getImageData(x, y, 1, 1).data;
+        const hex = "#" + ("000000" + ((p[0] << 16) | (p[1] << 8) | p[2]).toString(16)).slice(-6);
+        setChromaHex(hex);
+        spriteManager.reprocessChromaKey(calibImageKey, hex);
+        setTriggerUpdate(n => n + 1);
+        setIsEyedropper(false);
+      }
+    } else if (isPixelEdit) {
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = img.width;
+      tempCanvas.height = img.height;
+      const tCtx = tempCanvas.getContext('2d');
+      if (tCtx) {
+        tCtx.imageSmoothingEnabled = false;
+        tCtx.drawImage(img, 0, 0);
+        
+        if (pixelEditMode === 'eraser') {
+          tCtx.clearRect(imgX, imgY, 1, 1);
+        } else {
+          tCtx.fillStyle = pixelColor;
+          tCtx.fillRect(imgX, imgY, 1, 1);
+        }
+        spriteManager.updateImageTexture(calibImageKey, tempCanvas);
+        setTriggerUpdate(n => n + 1);
+      }
+    }
+  };
+
+  const handleAutoFitBounds = () => {
+    const img = spriteManager.getLoadedImages().get(calibImageKey);
+    if (!img) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.drawImage(img, 0, 0);
+    
+    // Bounds check within current crop
+    const data = ctx.getImageData(cropX, cropY, cropW, cropH).data;
+    let minX = cropW, minY = cropH, maxX = 0, maxY = 0;
+    let found = false;
+    for (let y = 0; y < cropH; y++) {
+      for (let x = 0; x < cropW; x++) {
+        const alpha = data[(y * cropW + x) * 4 + 3];
+        if (alpha > 0) {
+          found = true;
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+    if (found) {
+      setCropX(cropX + minX);
+      setCropY(cropY + minY);
+      setCropW(maxX - minX + 1);
+      setCropH(maxY - minY + 1);
+    }
+  };
 
   // Apply Live Override
   const handleApplyOverride = () => {
@@ -548,7 +691,22 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-5 animate-in fade-in duration-200">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-5 animate-in fade-in duration-200"
+      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+      onDrop={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          const file = e.dataTransfer.files[0];
+          const newKey = file.name.split('.')[0];
+          spriteManager.addLocalImage(file, newKey).then(() => {
+             setCalibImageKey(newKey);
+             setTriggerUpdate(n => n + 1);
+          });
+        }
+      }}
+    >
       <div className="relative w-full max-w-6xl max-h-[94vh] bg-[#131b26] border-4 border-[#2a374a] shadow-2xl rounded-lg overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 bg-[#0c1017] border-b-2 border-[#2a374a]">
@@ -886,8 +1044,83 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
                   )}
                 </div>
 
+                {/* Workflow Tools */}
+                <div className="grid grid-cols-2 gap-2 pb-2 border-b border-[#2a374a]">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] text-slate-400">Grid Snap / Auto-Fit:</label>
+                    <div className="flex items-center gap-1">
+                      <select 
+                        value={gridSnap} 
+                        onChange={(e) => setGridSnap(Number(e.target.value))}
+                        className="flex-1 bg-[#131b26] border border-[#2a374a] text-amber-300 px-1 py-1 rounded text-[10px]"
+                      >
+                        <option value={1}>No Snap</option>
+                        <option value={8}>8px</option>
+                        <option value={16}>16px</option>
+                        <option value={32}>32px</option>
+                        <option value={64}>64px</option>
+                      </select>
+                      <button 
+                        onClick={handleAutoFitBounds}
+                        className="px-2 py-1 bg-[#1e293b] hover:bg-[#2a374a] text-slate-300 rounded text-[10px] font-bold transition-colors"
+                        title="Auto-Fit bounds to nearest non-transparent pixels"
+                      >
+                        AUTO-FIT
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] text-slate-400">Live Chroma Key:</label>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => { setIsEyedropper(!isEyedropper); setIsPixelEdit(false); }}
+                        className={`px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1 transition-colors ${isEyedropper ? 'bg-cyan-600 text-white shadow' : 'bg-[#1e293b] text-slate-300 hover:bg-[#2a374a]'}`}
+                        title="Pick color from image to turn transparent"
+                      >
+                        <Palette className="w-3 h-3" /> {isEyedropper ? 'PICKING...' : 'KEY'}
+                      </button>
+                      <button 
+                        onClick={() => { spriteManager.reprocessChromaKey(calibImageKey, ''); setTriggerUpdate(n => n + 1); }}
+                        className="px-2 py-1 bg-red-900/30 hover:bg-red-900/60 text-red-400 border border-red-900/50 rounded text-[10px] font-bold"
+                        title="Remove chroma-key"
+                      >
+                        RESET
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="col-span-2 flex items-center gap-1 justify-between bg-[#131b26] p-1.5 rounded border border-[#2a374a]">
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => { setIsPixelEdit(!isPixelEdit); setIsEyedropper(false); }}
+                        className={`px-2 py-1 rounded text-[10px] font-bold transition-colors ${isPixelEdit ? 'bg-purple-600 text-white' : 'bg-[#1e293b] text-slate-300'}`}
+                      >
+                        PIXEL EDIT
+                      </button>
+                      {isPixelEdit && (
+                        <>
+                          <button onClick={() => setPixelEditMode('pencil')} className={`px-1.5 py-1 rounded text-[10px] ${pixelEditMode === 'pencil' ? 'bg-slate-600 text-white' : 'text-slate-400'}`}>PENCIL</button>
+                          <button onClick={() => setPixelEditMode('eraser')} className={`px-1.5 py-1 rounded text-[10px] ${pixelEditMode === 'eraser' ? 'bg-slate-600 text-white' : 'text-slate-400'}`}>ERASE</button>
+                          {pixelEditMode === 'pencil' && (
+                            <input type="color" value={pixelColor} onChange={e => setPixelColor(e.target.value)} className="w-5 h-5 rounded cursor-pointer border-none bg-transparent" />
+                          )}
+                        </>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 text-[10px]">
+                      <span className="text-slate-500 mr-1">BG:</span>
+                      <button onClick={() => setBgColorMode('dark')} className={`w-4 h-4 rounded border ${bgColorMode === 'dark' ? 'border-amber-400 bg-[#070a0f]' : 'border-slate-600 bg-[#070a0f]'}`}></button>
+                      <button onClick={() => setBgColorMode('light')} className={`w-4 h-4 rounded border ${bgColorMode === 'light' ? 'border-amber-400 bg-slate-200' : 'border-slate-600 bg-slate-200'}`}></button>
+                      <button onClick={() => setBgColorMode('checker')} className={`w-4 h-4 rounded border relative overflow-hidden ${bgColorMode === 'checker' ? 'border-amber-400' : 'border-slate-600'}`}>
+                        <div className="absolute inset-0 bg-[url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAAXNSR0IArs4c6QAAACVJREFUKFNjZCASMDKgA2NjY/9Hk0FRMKoIqAWMXApGZcHoIuAAnKkI35fI/X4AAAAASUVORK5CYII=')]"></div>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Action Buttons */}
-                <div className="flex items-center gap-2 pt-2 border-t border-[#2a374a]">
+                <div className="flex items-center gap-2 pt-1">
                   <button
                     onClick={handleApplyOverride}
                     className="flex-1 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded text-xs transition-colors shadow"
@@ -917,7 +1150,11 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
                       ref={calibPreviewRef}
                       width={220}
                       height={220}
-                      className="border border-[#1e293b] rounded bg-[#070a0f] shadow-inner"
+                      className={`border border-[#1e293b] rounded shadow-inner ${
+                        bgColorMode === 'dark' ? 'bg-[#070a0f]' : 
+                        bgColorMode === 'light' ? 'bg-slate-200' : 
+                        "bg-[url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAX0lEQVQ4T2N88+bNfwYiAOOoQoZRRYyiYIYZ/kOQc+fOsQDF+IFCBlIFBw8e/E9MGBk4ceLEf2LDSCXDOQeRiMBxVMGoQkZRMJIK8Y3/8OFDEq1iZGRkINUKRg5qGAUAx6E/RfqgUfMAAAAASUVORK5CYII=')]"
+                      }`}
                       style={{ imageRendering: 'pixelated' }}
                     />
                   </div>
@@ -931,7 +1168,18 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
                       ref={calibSheetRef}
                       width={220}
                       height={220}
-                      className="border border-[#1e293b] rounded bg-[#070a0f] shadow-inner"
+                      onMouseDown={handleSheetMouseDown}
+                      onMouseMove={handleSheetMouseMove}
+                      onMouseUp={handleSheetMouseUp}
+                      onMouseLeave={handleSheetMouseUp}
+                      onClick={handleSheetClick}
+                      className={`border border-[#1e293b] rounded shadow-inner ${
+                        isEyedropper ? 'cursor-crosshair' : isPixelEdit ? 'cursor-cell' : 'cursor-crosshair'
+                      } ${
+                        bgColorMode === 'dark' ? 'bg-[#070a0f]' : 
+                        bgColorMode === 'light' ? 'bg-slate-200' : 
+                        "bg-[url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAX0lEQVQ4T2N88+bNfwYiAOOoQoZRRYyiYIYZ/kOQc+fOsQDF+IFCBlIFBw8e/E9MGBk4ceLEf2LDSCXDOQeRiMBxVMGoQkZRMJIK8Y3/8OFDEq1iZGRkINUKRg5qGAUAx6E/RfqgUfMAAAAASUVORK5CYII=')]"
+                      }`}
                       style={{ imageRendering: 'pixelated' }}
                     />
                   </div>

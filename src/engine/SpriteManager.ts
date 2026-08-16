@@ -11,6 +11,7 @@ import {
 
 export class SpriteManager {
   private images: Map<string, HTMLCanvasElement> = new Map();
+  private rawImages: Map<string, HTMLImageElement> = new Map();
   private characters: Map<string, CharacterSpriteDef> = new Map();
   private props: Map<string, PropSpriteDef> = new Map();
   private tiles: Map<string, TileSpriteDef> = new Map();
@@ -277,6 +278,7 @@ export class SpriteManager {
           const img = new Image();
           img.crossOrigin = 'anonymous';
           img.onload = () => {
+            this.rawImages.set(key, img);
             if (entry.chromaKey) {
               const processed = this.processChromaKey(img, entry.chromaKey, entry.tolerance || 45);
               this.images.set(key, processed);
@@ -306,6 +308,63 @@ export class SpriteManager {
     await Promise.all(loadPromises);
     this.isLoadedState = true;
     this.notifyListeners();
+  }
+
+  public updateImageTexture(imageKey: string, newCanvas: HTMLCanvasElement) {
+    this.images.set(imageKey, newCanvas);
+    this.notifyListeners();
+  }
+
+  public reprocessChromaKey(imageKey: string, chromaHex: string, tolerance: number = 45) {
+    const rawImg = this.rawImages.get(imageKey);
+    if (!rawImg) return;
+    
+    if (chromaHex) {
+      const processed = this.processChromaKey(rawImg, chromaHex, tolerance);
+      this.images.set(imageKey, processed);
+    } else {
+      const canvas = document.createElement('canvas');
+      canvas.width = rawImg.naturalWidth || rawImg.width;
+      canvas.height = rawImg.naturalHeight || rawImg.height;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(rawImg, 0, 0);
+      }
+      this.images.set(imageKey, canvas);
+    }
+    this.notifyListeners();
+  }
+
+  public async addLocalImage(file: File, key: string, chromaKey?: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
+      img.onload = () => {
+        this.rawImages.set(key, img);
+        if (chromaKey) {
+          const processed = this.processChromaKey(img, chromaKey, 45);
+          this.images.set(key, processed);
+        } else {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.naturalWidth || img.width;
+          canvas.height = img.naturalHeight || img.height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(img, 0, 0);
+          }
+          this.images.set(key, canvas);
+        }
+        this.notifyListeners();
+        resolve();
+      };
+      img.onerror = () => {
+        console.warn(`[SpriteManager] Failed to load local image for key "${key}"`);
+        reject(new Error("Failed to load local image"));
+      };
+      img.src = objectUrl;
+    });
   }
 
   public hasCharacter(characterId: string): boolean {
