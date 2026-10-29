@@ -20,6 +20,7 @@ export function mergeManifests(manifests: SpriteAtlasManifest[]): SpriteAtlasMan
     props: {},
     tiles: {},
     portraits: {},
+    tileThemes: {},
   };
 
   for (const m of manifests) {
@@ -28,6 +29,7 @@ export function mergeManifests(manifests: SpriteAtlasManifest[]): SpriteAtlasMan
     Object.assign(merged.props, m.props);
     Object.assign(merged.tiles, m.tiles);
     Object.assign(merged.portraits, m.portraits);
+    Object.assign(merged.tileThemes!, m.tileThemes || {});
   }
 
   return merged;

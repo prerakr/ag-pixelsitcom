@@ -1,0 +1,130 @@
+{
+  "$comment": "Source sheets for process_characters.py. 'rows' maps detected figure rows (top to bottom) to character ids; null skips a row. 'overrides' pins labels when the heuristics are wrong: a space separated list with one token per detected figure: d (front), u (back), sL / sR (side facing left / right), x (skip).",
+  "cell": {
+    "width": 48,
+    "height": 64,
+    "baseline": 62
+  },
+  "baseFigureHeight": 54,
+  "shows": {
+    "the_office": {
+      "atlas": "characters_office",
+      "sheets": [
+        {
+          "src": "art/source/characters/office_characters.jpg",
+          "rows": [
+            "michael",
+            "dwight",
+            "jim",
+            "pam"
+          ]
+        },
+        {
+          "src": "art/source/characters/office_characters_extended.png",
+          "rows": [
+            "angela",
+            "kevin",
+            "stanley",
+            "ryan",
+            "kelly",
+            "oscar"
+          ]
+        },
+        {
+          "src": "art/source/characters/office_characters_misc.png",
+          "rows": [
+            "toby",
+            "phyllis",
+            "meredith",
+            "creed"
+          ]
+        }
+      ]
+    },
+    "friends": {
+      "atlas": "characters_friends",
+      "sheets": [
+        {
+          "src": "art/source/characters/friends_characters.jpg",
+          "rows": [
+            "rachel",
+            "ross",
+            "monica",
+            "joey",
+            "phoebe",
+            "chandler"
+          ]
+        },
+        {
+          "src": "art/source/characters/friends_characters_extended.jpg",
+          "rows": [
+            "gunther",
+            "janice",
+            "mike",
+            null
+          ],
+          "$comment": "Mike's rows overlap in the source and are unusable; he always comes from regen/mike.png."
+        }
+      ]
+    },
+    "silicon_valley": {
+      "atlas": "characters_silicon",
+      "sheets": [
+        {
+          "src": "art/source/characters/silicon_characters.png",
+          "rows": [
+            "richard",
+            "gilfoyle",
+            "dinesh",
+            "erlich",
+            "jared",
+            "jianyang"
+          ]
+        },
+        {
+          "src": "art/source/characters/silicon_characters_extended.jpg",
+          "rows": [
+            "bighead",
+            "gavin",
+            "monica_hall",
+            "laurie"
+          ]
+        }
+      ]
+    },
+    "himym": {
+      "atlas": "characters_himym",
+      "sheets": [
+        {
+          "src": "art/source/characters/himym_characters.png",
+          "rows": [
+            "ted",
+            "barney",
+            "marshall",
+            "lily",
+            "robin",
+            "carl"
+          ]
+        },
+        {
+          "src": "art/source/characters/himym_characters_extended.jpg",
+          "rows": [
+            "ranjit",
+            "wendy",
+            "patrice",
+            "the_captain"
+          ]
+        }
+      ]
+    }
+  },
+  "overrides": {
+    "ross": "d u u sL sR x d u u sL sR sR",
+    "joey": "d u u sL sR x d u u sR sR x",
+    "phoebe": "d u u sL sR d d u u sR sR x",
+    "chandler": "d d u sR sR d d u u sR sR x"
+  },
+  "buildBase": 0.36,
+  "$buildComment": "buildBase: torso width (arms included) / height for a typical figure. Regenerated sheets are widened to buildBase x (original build relative to its sheet), clamped by bodyType. buildScale: optional per-character multiplier, e.g. {\"erlich\": 1.1}.",
+  "buildScale": {}
+}

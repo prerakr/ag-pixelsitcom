@@ -8,6 +8,7 @@ export const DUNDER_MIFFLIN_SCRANTON: SettingDefinition = {
   gridHeight: 24,
   tileSize: 32,
   backgroundColor: '#1a202c',
+  tileTheme: 'office',
   defaultCamera: {
     x: 608, // Center of 38 * 32 = 1216px
     y: 384, // Center of 24 * 32 = 768px
@@ -53,7 +54,8 @@ export const DUNDER_MIFFLIN_SCRANTON: SettingDefinition = {
         else if (x === 25 && y >= 2 && y <= 8) {
           tiles[`${x},${y}`] = y === 5 ? 'door_wood' : 'wall_office_side';
         } else if (y === 8 && x >= 25 && x <= 36) {
-          tiles[`${x},${y}`] = 'wall_office_top';
+          // The breakroom's way in: its west door opens onto the conference room's glass wall.
+          tiles[`${x},${y}`] = x === 30 ? 'door_wood' : 'wall_office_top';
         }
         // 5. Flooring Types
         else if (x >= 25 && x <= 36 && y >= 2 && y <= 8) {

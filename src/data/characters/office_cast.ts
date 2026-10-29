@@ -186,6 +186,7 @@ export const OFFICE_CAST: Record<string, CharacterDefinition> = {
       shoesColor: '#1c1917',
       facialHair: 'mustache', // Signature mustache
       heightScale: 1.0,
+      bodyType: 'large',
     },
     signatureQuotes: [
       "Did I stutter?",

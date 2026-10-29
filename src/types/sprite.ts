@@ -82,5 +82,30 @@ export interface SpriteAtlasManifest {
   props: Record<string, PropSpriteDef>;
   tiles: Record<string, TileSpriteDef>;
   portraits: Record<string, TalkingHeadPortraitDef>;
+  /** Themed tilesets used by the map baker, keyed by SettingDefinition.tileTheme. */
+  tileThemes?: Record<string, TileThemeAtlas>;
 }
 
+
+/** A 128x128 (4x4 tile) floor texture or a 4-variant strip of wall faces in a theme tileset. */
+export interface TileThemeBlock {
+  x: number;
+  y: number;
+  cols: number;
+  rows: number;
+}
+
+/** How the map baker draws the top of a wall seen from above (not part of the image). */
+export interface WallCapStyle {
+  fill: string;
+  light: string;
+  dark: string;
+  thickness: number;
+  core?: string;
+}
+
+export interface TileThemeAtlas {
+  imageKey: string;
+  tiles: Record<string, TileThemeBlock>;
+  caps: Record<string, WallCapStyle>;
+}

@@ -9,6 +9,7 @@ export const HACKER_HOSTEL: SettingDefinition = {
   gridHeight: 22,
   tileSize: 32,
   backgroundColor: '#0f172a',
+  tileTheme: 'hostel',
   defaultCamera: {
     x: 512,
     y: 350,

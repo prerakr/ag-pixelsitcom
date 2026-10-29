@@ -99,6 +99,7 @@ export const Viewport: React.FC<ViewportProps> = ({ engine, onInspectCharacter }
 
     return () => {
       observer.disconnect();
+      engine.stop();
     };
   }, [engine, autoFitCamera]);
 

@@ -9,6 +9,7 @@ export const MACLARENS_PUB: SettingDefinition = {
   gridHeight: 24,
   tileSize: 32,
   backgroundColor: '#0c0a09',
+  tileTheme: 'pub',
   defaultCamera: {
     x: 576,
     y: 384,

@@ -9,6 +9,7 @@ export const CENTRAL_COFFEE: SettingDefinition = {
   gridHeight: 22,
   tileSize: 32,
   backgroundColor: '#1c1008',
+  tileTheme: 'coffee',
   defaultCamera: {
     x: 500,
     y: 350,

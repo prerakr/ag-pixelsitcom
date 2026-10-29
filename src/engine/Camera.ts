@@ -11,6 +11,9 @@ export class Camera {
 
   public shakeTimer: number = 0;
   public shakeIntensity: number = 0;
+  /** Screen-space shake offset for the current frame, shared by every render pass. */
+  public shakeOffsetX: number = 0;
+  public shakeOffsetY: number = 0;
 
   constructor(initialX = 0, initialY = 0, initialZoom = 1.0) {
     this.x = initialX;
@@ -33,6 +36,13 @@ export class Camera {
       if (this.shakeTimer <= 0) {
         this.shakeIntensity = 0;
       }
+    }
+    if (this.shakeTimer > 0) {
+      this.shakeOffsetX = (Math.random() * 2 - 1) * this.shakeIntensity;
+      this.shakeOffsetY = (Math.random() * 2 - 1) * this.shakeIntensity;
+    } else {
+      this.shakeOffsetX = 0;
+      this.shakeOffsetY = 0;
     }
   }
 
@@ -103,14 +113,7 @@ export class Camera {
     const cx = viewportW / 2;
     const cy = viewportH / 2;
 
-    let offsetX = 0;
-    let offsetY = 0;
-    if (this.shakeTimer > 0) {
-      offsetX = (Math.random() * 2 - 1) * this.shakeIntensity;
-      offsetY = (Math.random() * 2 - 1) * this.shakeIntensity;
-    }
-
-    ctx.translate(cx + offsetX, cy + offsetY);
+    ctx.translate(cx + this.shakeOffsetX, cy + this.shakeOffsetY);
     ctx.scale(this.zoom, this.zoom);
     ctx.translate(-this.x, -this.y);
   }

@@ -16,21 +16,46 @@ npm run build
 
 # Preview production build locally
 npm run preview
+
+# Run the Vitest suite (headless: nav grid, script player, validator)
+npm test
 ```
 
-> **Note**: Always run `npm run build` to verify changes, as it runs both `tsc` (strict TypeScript validation) and the Vite production packager.
+> **Note**: Always run `npm run build` and `npm test` to verify changes. The build runs both `tsc` (strict TypeScript validation) and the Vite production packager; the tests play every preset episode headless.
+
+### Art Pipeline Commands
+```bash
+# One-time: Python deps for the sprite pipeline
+pip install -r scripts/sprites/requirements.txt
+
+# Rebuild character atlases from art/source/characters (+ regen/ sheets)
+python scripts/sprites/process_characters.py --preview <dir>
+
+# Rebuild themed tilesets (floors, wall faces, doors, windows)
+python scripts/sprites/generate_tiles.py --preview <dir>
+
+# Re-key prop sheets into transparent PNGs
+python scripts/sprites/process_static.py
+
+# Standalone sprite review page (walk cycles, lineups) -> art/review/sprite_review.html
+python scripts/sprites/build_review_page.py
+```
+Generated outputs (`public/sprites/**`, `src/data/sprites/generated/*`) are committed; never edit them by hand.
 
 ---
 
 ## 2. Project Architecture & Stack
 
 - **Stack**: React 18, TypeScript 5.5, Vite 5.4, Tailwind CSS v4, Lucide React, Canvas-confetti.
-- **Visuals**: Pure HTML5 Canvas 2D (`imageSmoothingEnabled = false`) with zero external image files. All tiles, furniture, character sprites, hair styles, and emotes are procedurally drawn.
+- **Visuals**: HTML5 Canvas 2D pixel art. Characters, props and tiles come from sprite atlases built offline by the Python art pipeline in `scripts/sprites/` (see `SPRITE_STUDIO.md`); every asset also has a procedural fallback drawn in code (`CharacterRenderer`, `TileRenderer`).
 - **Audio**: Web Audio API synthesizer (`src/engine/SoundEngine.ts`) generating multi-voice laugh tracks, stings, rimshots, and jingles procedurally with zero external audio assets.
 - **Data Engine**: Episodic scripts defined via `SitcomScript v1.0` JSON structure.
 
 ### Module Layout
-- `src/engine/`: Pure TypeScript simulation engine (`CanvasRenderer`, `CharacterRenderer`, `TileRenderer`, `SoundEngine`, `LightingEngine`, `ParticleSystem`, `Camera`, `SpeechBubble`).
+- `src/engine/`: Pure TypeScript simulation engine (`CanvasRenderer`, `ScriptPlayer`, `NavGrid`, `CharacterRenderer`, `TileRenderer`, `SoundEngine`, `LightingEngine`, `ParticleSystem`, `Camera`, `SpeechBubble`).
+  - `ScriptPlayer` owns the timeline, all character/prop state and beat execution, with no DOM or audio imports; side effects (sound, particles, camera, lighting) go through its `StageEffects` interface. Seeking resets to the episode opening and silently replays earlier beats.
+  - `NavGrid` is the half-tile walkability grid (walls block, doors open, solid props block their floor footprint) with A* routing; movement beats walk its routes.
+  - `VisualizerEngine` (`CanvasRenderer.ts`) only presents: canvas, camera, game loop, drawing, and the `StageEffects` implementation.
 - `src/types/`: Core type definitions (`script.ts`, `character.ts`, `environment.ts`).
 - `src/data/`: Static registries for characters (`characters/`), show settings (`settings/`), and episodes (`episodes/`).
 - `src/ai/`: AI script generation via Gemini/OpenAI APIs, prompt templates, and schema validator.
@@ -88,10 +113,12 @@ Episodes are structured as `SitcomScript` objects with `ScriptScene` arrays cont
 
 ### TypeScript & Typing
 - Maintain strict typing throughout the project. Avoid using `any` when defining beats, settings, or character state.
-- Ensure all new beat types or options are updated in `src/types/script.ts`, `src/ai/scriptValidator.ts`, and `src/engine/CanvasRenderer.ts`.
+- Ensure all new beat types or options are updated in `src/types/script.ts`, `src/ai/scriptValidator.ts`, and `src/engine/ScriptPlayer.ts`. Anything a beat does beyond changing state (sound, particles, camera) goes through `StageEffects` so seeking can replay it silently.
 
 ### Canvas 2D Rendering
+- **One art pixel = one world pixel**: Sprites are authored at native size (characters ~54px tall in 48x64 cells, 32px tiles) and drawn at scale 1. Never scale a sprite by a fractional factor; zoom is handled only by the engine's world buffer (`VisualizerEngine.render()`), which upscales by an integer and filters the fractional remainder.
 - **No Smoothing**: Maintain pixel sharpness by setting `ctx.imageSmoothingEnabled = false` whenever canvas dimensions or contexts change.
+- **Text on the overlay**: Name tags and speech bubbles are drawn in the high-resolution overlay pass, not into the pixel-art world buffer.
 - **Integer Coordinates**: Floor or round screen-space coordinates (`Math.floor(x)`) in `CharacterRenderer` and `TileRenderer` to avoid fuzzy sub-pixel anti-aliasing.
 - **Zero Allocations in Render Loop**: Avoid allocating temporary arrays or objects inside `VisualizerEngine.render()` or `TileRenderer.render()` to prevent garbage collection frame drops.
 
@@ -120,6 +147,7 @@ Episodes are structured as `SitcomScript` objects with `ScriptScene` arrays cont
 ### 3. Adding a New Setting
 1. Create `src/data/settings/<setting_name>.ts` with `gridWidth`, `gridHeight`, `tiles`, `props`, and `waypoints`.
 2. Register in `ALL_SETTINGS` in `src/data/settings/index.ts`.
+3. Run `npm test`: it fails if any waypoint or spawn point can't be reached on foot (a room with no door, a waypoint boxed in by furniture). New prop types that should not block walking go in `NON_BLOCKING` in `src/engine/NavGrid.ts`.
 
 ### 4. Adding a Sound Effect
 1. Add sound name to `SfxType` in `src/types/script.ts`.
@@ -130,5 +158,5 @@ Episodes are structured as `SitcomScript` objects with `ScriptScene` arrays cont
 ## 6. Verification Checklist Before Committing Changes
 
 1. Run `npm run build` and ensure clean exit with zero type errors.
-2. Verify visual playback in viewport without stutter or coordinate displacement.
-3. If changing scripts or validation rules, check that `parseAndValidateScript()` passes against all `PRESET_EPISODES`.
+2. Run `npm test` (covers `parseAndValidateScript()` against all `PRESET_EPISODES`, waypoint reachability, and seek consistency).
+3. Verify visual playback in viewport without stutter or coordinate displacement.

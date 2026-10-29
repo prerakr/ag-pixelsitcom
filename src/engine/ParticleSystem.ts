@@ -22,6 +22,12 @@ export class ParticleSystem {
   private particles: Particle[] = [];
   private puddles: { x: number; y: number; radius: number; maxRadius: number; alpha: number; age: number; lifespan: number }[] = [];
 
+  /** Removes every particle and puddle (used when the timeline jumps). */
+  public clear() {
+    this.particles.length = 0;
+    this.puddles.length = 0;
+  }
+
   public update(dt: number) {
     // 1. Update active flying/moving particles
     for (let i = this.particles.length - 1; i >= 0; i--) {

@@ -11,7 +11,10 @@ import { SoundstageTool } from './SoundstageToolbar';
 import { SnapLevel } from './SoundstageHeader';
 import { SelectedItem } from './SoundstageInspector';
 import { TileRenderer } from '../../engine/TileRenderer';
+import { TileMapBaker } from '../../engine/TileMapBaker';
+import { spriteManager } from '../../engine/SpriteManager';
 import { CharacterRenderer } from '../../engine/CharacterRenderer';
+import { advanceWalkCycle, faceAlong } from '../../engine/Locomotion';
 import { CharacterDefinition, CharacterRuntimeState } from '../../types/character';
 import { soundEngine } from '../../engine/SoundEngine';
 import { SoundstagePrefab } from './SoundstagePrefabs';
@@ -53,6 +56,19 @@ export const SoundstageCanvas: React.FC<SoundstageCanvasProps> = ({
   onZoomChange,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const tileCacheRef = useRef({
+    canvas: document.createElement('canvas'),
+    tiles: null as SettingDefinition['tiles'] | null,
+    theme: undefined as string | undefined,
+    width: 0,
+    height: 0,
+    spriteVersion: -1,
+  });
+  // Bumped whenever sprites load or toggle, so the tile cache re-bakes with the new art.
+  const spriteVersionRef = useRef(0);
+  useEffect(() => spriteManager.subscribe(() => {
+    spriteVersionRef.current++;
+  }), []);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   // Camera Pan State
@@ -253,21 +269,13 @@ export const SoundstageCanvas: React.FC<SoundstageCanvasProps> = ({
           actor.state.y += (dy / dist) * speed;
           actor.state.isMoving = true;
           actor.state.state = 'walking';
-          actor.state.animTimer = (actor.state.animTimer || 0) + dt;
-          if (actor.state.animTimer > 0.14) {
-            actor.state.animTimer = 0;
-            actor.state.animFrame = (actor.state.animFrame + 1) % 4;
-          }
-
-          if (Math.abs(dx) > Math.abs(dy)) {
-            actor.state.facing = dx > 0 ? 'right' : 'left';
-          } else {
-            actor.state.facing = dy > 0 ? 'down' : 'up';
-          }
+          advanceWalkCycle(actor.state, speed);
+          faceAlong(actor.state, dx, dy);
         } else {
           actor.state.isMoving = false;
           actor.state.state = 'idle';
           actor.state.animFrame = 0;
+          actor.state.animTimer = 0;
           actor.target = null;
         }
       }
@@ -308,14 +316,29 @@ export const SoundstageCanvas: React.FC<SoundstageCanvasProps> = ({
         ctx.fillRect(0, 0, worldW, worldH);
 
 
-      // 1. Draw Floor & Wall Tiles
-      for (let x = 0; x < setting.gridWidth; x++) {
-        for (let y = 0; y < setting.gridHeight; y++) {
-          const key = `${x},${y}`;
-          const tile = setting.tiles[key] || 'floor_carpet_grey';
-          TileRenderer.drawTile(ctx, tile, x * tileSize, y * tileSize, tileSize);
+      // 1. Draw Floor & Wall Tiles (baked once per tile edit, same autotiling as the game)
+      const tileCache = tileCacheRef.current;
+      if (
+        tileCache.tiles !== setting.tiles ||
+        tileCache.theme !== setting.tileTheme ||
+        tileCache.width !== worldW ||
+        tileCache.height !== worldH ||
+        tileCache.spriteVersion !== spriteVersionRef.current
+      ) {
+        tileCache.canvas.width = worldW;
+        tileCache.canvas.height = worldH;
+        const tileCtx = tileCache.canvas.getContext('2d');
+        if (tileCtx) {
+          tileCtx.imageSmoothingEnabled = false;
+          TileMapBaker.bake(tileCtx, setting);
         }
+        tileCache.tiles = setting.tiles;
+        tileCache.theme = setting.tileTheme;
+        tileCache.width = worldW;
+        tileCache.height = worldH;
+        tileCache.spriteVersion = spriteVersionRef.current;
       }
+      ctx.drawImage(tileCache.canvas, 0, 0);
 
       // Preview rectangle fill if dragging
       if (dragAction?.type === 'rect_tile') {

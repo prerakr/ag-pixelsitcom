@@ -1,0 +1,753 @@
+<title>PixelSitcom Model Sheet</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: an animator's light table. A sticky control rail drives every stage at once; a
+   lineup compares heights per show on one pixel ruler; cast cards pair a live stage with its
+   frame strip; a detail sheet shows all four directions. */
+:root {
+  --paper: #e7ecf2;     /* light-table surface */
+  --sheet: #f8fafc;     /* card / sheet */
+  --ink: #1b2230;
+  --muted: #5a6476;
+  --line: #c8d0db;
+  --accent: #2c5fd4;    /* blue pencil: selection, active controls */
+  --onion: #d8404f;     /* red pencil: guides and the current-frame marker */
+  --chip: #dde4ee;
+  --font-display: "Silkscreen", "Courier New", monospace;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --step--1: 0.8125rem;
+  --step-0: 0.9375rem;
+  --step-1: 1.125rem;
+  --step-2: 1.5rem;
+  --radius: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #11151c; --sheet: #192029; --ink: #e4e8ef; --muted: #98a2b3;
+    --line: #2b3441; --accent: #85a9ff; --onion: #ff6f7f; --chip: #222b37;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #11151c; --sheet: #192029; --ink: #e4e8ef; --muted: #98a2b3;
+  --line: #2b3441; --accent: #85a9ff; --onion: #ff6f7f; --chip: #222b37;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font: var(--step-0)/1.5 var(--font-body);
+  margin: 0;
+}
+body::before {
+  content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px);
+  z-index: 10; background: var(--paper);
+}
+.wrap {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+h1, h2 { font-family: var(--font-display); font-weight: 400; text-wrap: balance; margin: 0; letter-spacing: 0.02em; }
+h1 { font-size: var(--step-2); line-height: 1.15; }
+h2 { font-size: var(--step-1); }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* Masthead */
+.masthead { padding-block: 22px 14px; display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: baseline; justify-content: space-between; }
+.masthead p { margin: 0; color: var(--muted); font-size: var(--step--1); max-width: 70ch; }
+.specs { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: var(--step--1); color: var(--muted); }
+.specs b { color: var(--ink); font-weight: 600; }
+
+/* Control rail */
+.rail {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: color-mix(in srgb, var(--paper) 92%, transparent);
+  backdrop-filter: blur(6px);
+  border-block: 1px solid var(--line);
+}
+.rail .wrap { padding-block: 10px; display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
+.group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.group > .label {
+  font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted);
+}
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--sheet); }
+.seg button {
+  font: 600 var(--step--1)/1 var(--font-body); color: var(--ink); background: transparent;
+  border: 0; padding: 7px 10px; cursor: pointer; min-width: 34px;
+}
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--sheet); }
+.seg button:focus-visible, .btn:focus-visible, .toggle input:focus-visible + span, .card:focus-visible, select:focus-visible, input[type=range]:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+.btn {
+  font: 600 var(--step--1)/1 var(--font-body); color: var(--ink); background: var(--sheet);
+  border: 1px solid var(--line); border-radius: var(--radius); padding: 7px 11px; cursor: pointer;
+}
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--sheet); min-width: 64px; }
+.toggle { display: inline-flex; align-items: center; gap: 6px; font-size: var(--step--1); cursor: pointer; user-select: none; }
+.toggle input { accent-color: var(--accent); width: 15px; height: 15px; margin: 0; }
+select {
+  font: var(--step--1) var(--font-body); color: var(--ink); background: var(--sheet);
+  border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 8px;
+}
+input[type=range] { accent-color: var(--accent); width: 110px; }
+.fps-readout { min-width: 6.5ch; font-size: var(--step--1); }
+
+/* Sections */
+section { padding-block: 22px 6px; display: grid; gap: 12px; }
+.section-head { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: baseline; }
+.section-head p { margin: 0; color: var(--muted); font-size: var(--step--1); max-width: 72ch; }
+
+/* Lineup */
+.lineups { display: grid; gap: 10px; }
+.lineup {
+  background: var(--sheet); border: 1px solid var(--line); border-radius: var(--radius);
+  padding-block: 10px; padding-inline: 12px; display: grid; gap: 6px; min-width: 0;
+}
+.lineup header { display: flex; justify-content: space-between; gap: 12px; font-size: var(--step--1); color: var(--muted); }
+.lineup header strong { color: var(--ink); font-weight: 700; font-size: var(--step-0); }
+.lineup .scroller { overflow-x: auto; }
+.lineup canvas { display: block; image-rendering: pixelated; }
+
+/* Cast grid */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(268px, 1fr)); gap: 12px; }
+.card {
+  background: var(--sheet); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 12px; display: grid; gap: 10px; cursor: pointer; text-align: left; color: inherit; font: inherit;
+  min-width: 0;
+}
+.card:hover { border-color: var(--accent); }
+.card .top { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: end; }
+.stage { display: block; image-rendering: pixelated; border-radius: 3px; }
+.card .who { display: grid; gap: 4px; min-width: 0; }
+.card .name { font-weight: 700; font-size: var(--step-1); line-height: 1.2; }
+.card .show { color: var(--muted); font-size: var(--step--1); }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip {
+  font: 600 0.6875rem/1 var(--font-body); text-transform: uppercase; letter-spacing: 0.06em;
+  padding: 4px 6px; border-radius: 4px; background: var(--chip); color: var(--ink);
+}
+.chip.large { background: color-mix(in srgb, var(--onion) 18%, var(--chip)); }
+.chip.petite, .chip.slim { background: color-mix(in srgb, var(--accent) 16%, var(--chip)); }
+.measure { font-size: var(--step--1); color: var(--muted); }
+.strip { display: block; image-rendering: pixelated; max-width: 100%; }
+.empty { color: var(--muted); font-size: var(--step--1); }
+
+/* Detail sheet */
+dialog {
+  border: 1px solid var(--line); border-radius: 8px; background: var(--sheet); color: var(--ink);
+  width: min(980px, calc(100vw - 32px)); max-height: calc(100vh - 32px); padding: 0;
+}
+dialog::backdrop { background: color-mix(in srgb, var(--paper) 55%, #000 45%); }
+.sheet-head {
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
+  padding: 16px 18px 10px; border-bottom: 1px solid var(--line);
+}
+.sheet-head p { margin: 4px 0 0; color: var(--muted); font-size: var(--step--1); }
+.sheet-body { padding: 14px 18px 18px; display: grid; gap: 16px; overflow: auto; }
+.turnaround { display: flex; flex-wrap: wrap; gap: 14px; }
+.turnaround figure { margin: 0; display: grid; gap: 6px; justify-items: center; }
+.turnaround figcaption { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); }
+.strips { display: grid; gap: 12px; }
+.strips figure { margin: 0; display: grid; gap: 4px; min-width: 0; }
+.strips .scroller { overflow-x: auto; }
+.strips figcaption { font-size: var(--step--1); color: var(--muted); }
+.note { color: var(--muted); font-size: var(--step--1); margin: 0; max-width: 72ch; }
+footer { padding-block: 24px 32px; color: var(--muted); font-size: var(--step--1); }
+
+@media (max-width: 760px) {
+  .rail { position: static; }
+}
+@media (max-width: 520px) {
+  .card .top { grid-template-columns: 1fr; justify-items: start; }
+  input[type=range] { width: 90px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rail { backdrop-filter: none; }
+}
+</style>
+
+<header class="wrap masthead">
+  <div style="display:grid;gap:6px">
+    <h1>PixelSitcom Model Sheet</h1>
+    <p>Every character's in-game sprite frames from the generated atlases, played the way the engine plays them. Click a character for the full turnaround.</p>
+  </div>
+  <div class="specs mono" id="specs"></div>
+</header>
+
+<div class="rail">
+  <div class="wrap">
+    <div class="group" role="group" aria-label="Show">
+      <span class="label">Show</span>
+      <div class="seg" id="show-seg"></div>
+    </div>
+    <div class="group" role="group" aria-label="Facing">
+      <span class="label">Facing</span>
+      <div class="seg" id="dir-seg">
+        <button type="button" data-dir="down" title="Facing down (front)">Down</button>
+        <button type="button" data-dir="left" title="Facing left (mirrored from right)">Left</button>
+        <button type="button" data-dir="right" title="Facing right">Right</button>
+        <button type="button" data-dir="up" title="Facing up (back)">Up</button>
+        <button type="button" data-dir="turn" title="Cycle all four directions">Turn</button>
+      </div>
+    </div>
+    <div class="group" role="group" aria-label="Animation">
+      <span class="label">Pose</span>
+      <div class="seg" id="mode-seg">
+        <button type="button" data-mode="walk">Walk</button>
+        <button type="button" data-mode="idle">Idle</button>
+      </div>
+      <button type="button" class="btn primary" id="play">Pause</button>
+      <button type="button" class="btn" id="step" title="Advance one frame">Step</button>
+    </div>
+    <div class="group">
+      <label class="label" for="fps">Speed</label>
+      <input type="range" id="fps" min="2" max="16" step="1">
+      <span class="fps-readout mono" id="fps-readout"></span>
+    </div>
+    <div class="group">
+      <span class="label">Zoom</span>
+      <div class="seg" id="zoom-seg">
+        <button type="button" data-zoom="2">2×</button>
+        <button type="button" data-zoom="3">3×</button>
+        <button type="button" data-zoom="4">4×</button>
+      </div>
+    </div>
+    <div class="group">
+      <label class="label" for="stage-bg">Stage</label>
+      <select id="stage-bg">
+        <option value="carpet">Office carpet</option>
+        <option value="grid">Tile grid</option>
+        <option value="paper">Plain light</option>
+        <option value="ink">Plain dark</option>
+      </select>
+    </div>
+    <div class="group">
+      <label class="toggle"><input type="checkbox" id="opt-guides"><span>Guides</span></label>
+      <label class="toggle"><input type="checkbox" id="opt-onion"><span>Onion skin</span></label>
+      <label class="toggle"><input type="checkbox" id="opt-bob"><span>Walk bob</span></label>
+    </div>
+  </div>
+</div>
+
+<main class="wrap">
+  <section aria-labelledby="lineup-title">
+    <div class="section-head">
+      <h2 id="lineup-title">Lineup</h2>
+      <p>Each show's cast on one baseline at the same scale, for checking relative height and build. Ruler marks are art pixels; one floor tile is 32&nbsp;px.</p>
+    </div>
+    <div class="lineups" id="lineups"></div>
+  </section>
+
+  <section aria-labelledby="cast-title">
+    <div class="section-head">
+      <h2 id="cast-title">Cast</h2>
+      <p id="cast-note">Stage shows the selected facing; the strip below shows its idle frame (F0) and four walk frames (F1–F4), with the frame on stage outlined.</p>
+    </div>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <footer id="footer"></footer>
+</main>
+
+<dialog id="detail" aria-labelledby="detail-name">
+  <div class="sheet-head">
+    <div>
+      <h2 id="detail-name"></h2>
+      <p id="detail-meta" class="mono"></p>
+    </div>
+    <button type="button" class="btn" id="detail-close">Close</button>
+  </div>
+  <div class="sheet-body">
+    <div class="turnaround" id="turnaround"></div>
+    <div class="strips" id="detail-strips"></div>
+    <p class="note">Left-facing frames are the right-facing frames mirrored at runtime, so the two directions always match. Front and back walk cycles alternate the idle pose with a step and its mirror.</p>
+  </div>
+</dialog>
+
+<script>
+const DATA = /*__DATA__*/null;
+
+(function () {
+  "use strict";
+  const CW = DATA.cell.width, CH = DATA.cell.height, BASE = DATA.cell.baseline;
+  const PER_DIR = DATA.framesPerDirection;
+  const STORED = DATA.directions; // ["down","up","right"]
+  const TURN_ORDER = ["down", "right", "up", "left"];
+  const SIDE_LABELS = ["idle", "contact", "passing", "contact", "passing"];
+  const FRONT_LABELS = ["idle", "idle", "step", "idle", "step (mirror)"];
+  const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const defaults = { show: "all", dir: "down", mode: "walk", fps: 9, zoom: 3, stage: "carpet", guides: true, onion: false, bob: true };
+  const prefs = Object.assign({}, defaults, readPrefs());
+  let playing = !reduceMotion;
+  let tick = 0;           // walk frames elapsed
+  let acc = 0, last = 0;
+
+  function readPrefs() {
+    try { return JSON.parse(localStorage.getItem("pixelsitcom-model-sheet") || "{}"); } catch (e) { return {}; }
+  }
+  function savePrefs() {
+    try { localStorage.setItem("pixelsitcom-model-sheet", JSON.stringify(prefs)); } catch (e) { /* storage unavailable */ }
+  }
+
+  // ---------------------------------------------------------------- images & measurements
+  const images = {};
+  const floor = new Image();
+  function loadImage(img, src) {
+    return new Promise((resolve) => { img.onload = () => resolve(img); img.onerror = () => resolve(img); img.src = src; });
+  }
+
+  function measure() {
+    // Height and width of each character's front idle frame, in art pixels.
+    for (const ch of DATA.characters) {
+      const img = images[ch.atlas];
+      const c = document.createElement("canvas");
+      c.width = CW; c.height = CH;
+      const x = c.getContext("2d");
+      x.drawImage(img, 0, ch.row * CH, CW, CH, 0, 0, CW, CH);
+      let top = CH, left = CW, right = -1;
+      try {
+        const px = x.getImageData(0, 0, CW, CH).data;
+        for (let y = 0; y < CH; y++) for (let i = 0; i < CW; i++) {
+          if (px[(y * CW + i) * 4 + 3] > 0) { if (y < top) top = y; if (i < left) left = i; if (i > right) right = i; }
+        }
+      } catch (e) { /* unreadable canvas: leave measurements blank */ }
+      ch.heightPx = right >= 0 ? BASE - top : null;
+      ch.widthPx = right >= 0 ? right - left + 1 : null;
+    }
+  }
+
+  // ---------------------------------------------------------------- drawing helpers
+  const dpr = () => Math.max(1, window.devicePixelRatio || 1);
+  function unitFor(zoom) { return Math.max(1, Math.round(zoom * dpr())); } // device px per art px
+
+  function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || "#888"; }
+  let theme = {};
+  function readTheme() { theme = { ink: cssVar("--ink"), muted: cssVar("--muted"), line: cssVar("--line"), onion: cssVar("--onion"), accent: cssVar("--accent"), sheet: cssVar("--sheet") }; }
+
+  function frameSource(ch, dir, frame) {
+    const stored = dir === "left" ? "right" : dir;
+    const col = STORED.indexOf(stored) * PER_DIR + frame;
+    return { sx: col * CW, sy: ch.row * CH, flip: dir === "left" };
+  }
+
+  // Draw one cell (48x64 art px) at art-space position (ax, ay). ctx transform = art space.
+  function drawCell(ctx, ch, dir, frame, ax, ay, alpha, bob) {
+    const img = images[ch.atlas];
+    if (!img || !img.complete) return;
+    const s = frameSource(ch, dir, frame);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    if (s.flip) {
+      ctx.translate(ax + CW, ay + bob);
+      ctx.scale(-1, 1);
+      ctx.drawImage(img, s.sx, s.sy, CW, CH, 0, 0, CW, CH);
+    } else {
+      ctx.drawImage(img, s.sx, s.sy, CW, CH, ax, ay + bob, CW, CH);
+    }
+    ctx.restore();
+  }
+
+  function drawStageBackground(ctx, w, h) {
+    if (prefs.stage === "carpet" && floor.complete && floor.naturalWidth) {
+      const f = DATA.floor;
+      for (let y = 0; y < h; y += f.h) for (let x = 0; x < w; x += f.w) {
+        ctx.drawImage(floor, f.x, f.y, Math.min(f.w, w - x), Math.min(f.h, h - y), x, y, Math.min(f.w, w - x), Math.min(f.h, h - y));
+      }
+    } else if (prefs.stage === "grid") {
+      ctx.fillStyle = "#cfd5dc"; ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = "#c2c9d1";
+      for (let y = 0; y < h; y += 16) for (let x = (y / 16) % 2 ? 16 : 0; x < w; x += 32) ctx.fillRect(x, y, 16, 16);
+    } else if (prefs.stage === "ink") {
+      ctx.fillStyle = "#1a1e26"; ctx.fillRect(0, 0, w, h);
+    } else {
+      ctx.fillStyle = "#f1f3f6"; ctx.fillRect(0, 0, w, h);
+    }
+  }
+
+  function drawShadow(ctx, cx, cy) {
+    ctx.fillStyle = "rgba(0,0,0,0.28)";
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, 12, 4.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function currentDir(base) {
+    if (base !== "turn") return base;
+    return TURN_ORDER[Math.floor(tick / 8) % 4];
+  }
+  function currentFrame() { return prefs.mode === "idle" ? 0 : 1 + (tick % 4); }
+  function bobFor(frame) {
+    // Engine: sprites rise 1px on odd walk frames (the passing poses of the side cycle).
+    return prefs.bob && frame > 0 && (frame - 1) % 2 === 1 ? -1 : 0;
+  }
+
+  // ---------------------------------------------------------------- stages (single character)
+  function sizeCanvas(canvas, artW, artH, zoom) {
+    const u = unitFor(zoom);
+    if (canvas.width !== artW * u || canvas.height !== artH * u) {
+      canvas.width = artW * u; canvas.height = artH * u;
+    }
+    canvas.style.width = (artW * u / dpr()) + "px";
+    canvas.style.height = (artH * u / dpr()) + "px";
+    return u;
+  }
+
+  function renderStage(canvas, ch, dir, zoom) {
+    const u = sizeCanvas(canvas, CW, CH, zoom);
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(u, 0, 0, u, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    drawStageBackground(ctx, CW, CH);
+    if (prefs.guides) {
+      ctx.fillStyle = "rgba(216,64,79,0.55)";
+      ctx.fillRect(0, BASE, CW, 1 / u * Math.max(1, Math.round(u / 2)));
+      for (let y = 2; y < CH; y += 4) ctx.fillRect(CW / 2, y, 1 / u * Math.max(1, Math.round(u / 2)), 2);
+    }
+    drawShadow(ctx, CW / 2, BASE);
+    const frame = currentFrame();
+    if (prefs.onion && frame > 0) {
+      const prev = 1 + ((tick + 3) % 4);
+      drawCell(ctx, ch, dir, prev, 0, 0, 0.28, bobFor(prev));
+    }
+    drawCell(ctx, ch, dir, frame, 0, 0, 1, bobFor(frame));
+  }
+
+  // Strip: F0..F4 of one direction with labels and the live frame outlined.
+  const STRIP_LABEL_H = 15; // css px below cells
+  function renderStrip(canvas, ch, dir, zoom) {
+    const u = unitFor(zoom);
+    const d = dpr();
+    const w = PER_DIR * CW * u, labelH = Math.round(STRIP_LABEL_H * d);
+    if (canvas.width !== w || canvas.height !== CH * u + labelH) { canvas.width = w; canvas.height = CH * u + labelH; }
+    canvas.style.width = (w / d) + "px";
+    canvas.style.height = ((CH * u + labelH) / d) + "px";
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.setTransform(u, 0, 0, u, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    for (let f = 0; f < PER_DIR; f++) {
+      ctx.save();
+      ctx.beginPath(); ctx.rect(f * CW, 0, CW, CH); ctx.clip();
+      ctx.translate(f * CW, 0);
+      drawStageBackground(ctx, CW, CH);
+      drawShadow(ctx, CW / 2, BASE);
+      ctx.restore();
+      drawCell(ctx, ch, dir, f, f * CW, 0, 1, 0);
+    }
+    const live = currentFrame();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.strokeStyle = theme.onion; ctx.lineWidth = Math.max(2, Math.round(2 * d));
+    ctx.strokeRect(live * CW * u + ctx.lineWidth / 2, ctx.lineWidth / 2, CW * u - ctx.lineWidth, CH * u - ctx.lineWidth);
+    const labels = dir === "down" || dir === "up" ? FRONT_LABELS : SIDE_LABELS;
+    ctx.font = `${Math.round(10 * d)}px ${getComputedStyle(document.body).getPropertyValue("--font-mono") || "monospace"}`;
+    ctx.textBaseline = "top";
+    for (let f = 0; f < PER_DIR; f++) {
+      ctx.fillStyle = f === live ? theme.ink : theme.muted;
+      const text = `F${f} ${labels[f]}`;
+      const maxW = CW * u - 4 * d;
+      let t = text;
+      while (ctx.measureText(t).width > maxW && t.length > 3) t = t.slice(0, -1);
+      ctx.fillText(t, f * CW * u + 2 * d, CH * u + 3 * d);
+    }
+  }
+
+  // ---------------------------------------------------------------- lineup
+  const RULER = 22; // art px reserved left of the lineup for the ruler
+  const LABEL_H = 30; // css px of name/height text under the lineup
+  function renderLineup(canvas, chars, dir) {
+    const zoom = 2;
+    const u = unitFor(zoom), d = dpr();
+    const artW = RULER + chars.length * CW, artH = CH;
+    const labelH = Math.round(LABEL_H * d);
+    if (canvas.width !== artW * u || canvas.height !== artH * u + labelH) { canvas.width = artW * u; canvas.height = artH * u + labelH; }
+    canvas.style.width = (artW * u / d) + "px";
+    canvas.style.height = ((artH * u + labelH) / d) + "px";
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.setTransform(u, 0, 0, u, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    ctx.save();
+    ctx.translate(RULER, 0);
+    drawStageBackground(ctx, chars.length * CW, CH);
+    ctx.restore();
+    // height guides every 8 art px above the baseline
+    for (let h = 8; h <= 56; h += 8) {
+      ctx.fillStyle = h % 16 === 0 ? "rgba(216,64,79,0.35)" : "rgba(216,64,79,0.16)";
+      ctx.fillRect(RULER, BASE - h, chars.length * CW, 1 / u * Math.max(1, Math.round(u / 2)));
+    }
+    ctx.fillStyle = "rgba(216,64,79,0.7)";
+    ctx.fillRect(RULER, BASE, chars.length * CW, 1 / u * Math.max(1, Math.round(u / 2)));
+    const frame = currentFrame();
+    chars.forEach((ch, i) => {
+      drawShadow(ctx, RULER + i * CW + CW / 2, BASE);
+      drawCell(ctx, ch, dir, frame, RULER + i * CW, 0, 1, bobFor(frame));
+    });
+    // text in device pixels
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.textBaseline = "middle";
+    ctx.font = `${Math.round(10 * d)}px ${getComputedStyle(document.body).getPropertyValue("--font-mono") || "monospace"}`;
+    ctx.fillStyle = theme.muted;
+    ctx.textAlign = "right";
+    for (let h = 16; h <= 48; h += 16) ctx.fillText(String(h), (RULER - 3) * u, (BASE - h) * u);
+    ctx.fillText("0", (RULER - 3) * u, BASE * u);
+    ctx.textAlign = "center";
+    chars.forEach((ch, i) => {
+      const cx = (RULER + i * CW + CW / 2) * u;
+      ctx.fillStyle = theme.ink;
+      ctx.font = `600 ${Math.round(11 * d)}px ${getComputedStyle(document.body).fontFamily}`;
+      let name = ch.short;
+      while (ctx.measureText(name).width > CW * u - 4 && name.length > 3) name = name.slice(0, -1);
+      ctx.fillText(name, cx, CH * u + 9 * d);
+      ctx.fillStyle = theme.muted;
+      ctx.font = `${Math.round(10 * d)}px ${getComputedStyle(document.body).getPropertyValue("--font-mono") || "monospace"}`;
+      ctx.fillText(ch.heightPx ? ch.heightPx + " px" : "", cx, CH * u + 22 * d);
+    });
+  }
+
+  // ---------------------------------------------------------------- DOM
+  const showSeg = document.getElementById("show-seg");
+  const grid = document.getElementById("grid");
+  const lineupsEl = document.getElementById("lineups");
+  const cards = [];   // {ch, el, stage, strip}
+  const lineups = []; // {show, el, canvas, chars}
+
+  function shortName(ch) {
+    return ch.nickname || ch.name.split(" ")[0];
+  }
+
+  function buildShowButtons() {
+    const items = [{ id: "all", name: "All" }].concat(DATA.shows.map((s) => ({ id: s.id, name: s.name })));
+    for (const it of items) {
+      const b = document.createElement("button");
+      b.type = "button"; b.dataset.show = it.id; b.textContent = it.name;
+      showSeg.appendChild(b);
+    }
+  }
+
+  function chip(text, cls) {
+    const s = document.createElement("span");
+    s.className = "chip" + (cls ? " " + cls : "");
+    s.textContent = text;
+    return s;
+  }
+
+  function buildCards() {
+    for (const ch of DATA.characters) {
+      ch.short = shortName(ch);
+      const el = document.createElement("button");
+      el.type = "button"; el.className = "card"; el.id = "card-" + ch.id;
+      el.setAttribute("aria-label", `${ch.name}, open turnaround`);
+      const top = document.createElement("div"); top.className = "top";
+      const stage = document.createElement("canvas"); stage.className = "stage";
+      stage.setAttribute("aria-hidden", "true");
+      const who = document.createElement("div"); who.className = "who";
+      const name = document.createElement("div"); name.className = "name"; name.textContent = ch.name;
+      const show = document.createElement("div"); show.className = "show"; show.textContent = ch.showName;
+      const chips = document.createElement("div"); chips.className = "chips";
+      chips.appendChild(chip(ch.bodyType, ch.bodyType));
+      chips.appendChild(chip(ch.source === "regen" ? "regenerated" : "original art"));
+      const m = document.createElement("div"); m.className = "measure mono";
+      m.textContent = ch.heightPx ? `${ch.heightPx} × ${ch.widthPx} px · height ×${ch.heightScale.toFixed(2)}` : `height ×${ch.heightScale.toFixed(2)}`;
+      who.append(name, show, chips, m);
+      top.append(stage, who);
+      const strip = document.createElement("canvas"); strip.className = "strip";
+      strip.setAttribute("aria-hidden", "true");
+      el.append(top, strip);
+      el.addEventListener("click", () => openDetail(ch));
+      grid.appendChild(el);
+      cards.push({ ch, el, stage, strip });
+    }
+  }
+
+  function buildLineups() {
+    for (const s of DATA.shows) {
+      const chars = DATA.characters.filter((c) => c.show === s.id);
+      const el = document.createElement("div"); el.className = "lineup"; el.dataset.show = s.id;
+      const head = document.createElement("header");
+      const title = document.createElement("strong"); title.textContent = s.name;
+      const info = document.createElement("span"); info.className = "mono";
+      const heights = chars.map((c) => c.heightPx).filter(Boolean);
+      info.textContent = heights.length ? `${chars.length} characters · ${Math.min(...heights)}–${Math.max(...heights)} px tall` : `${chars.length} characters`;
+      head.append(title, info);
+      const scroller = document.createElement("div"); scroller.className = "scroller";
+      const canvas = document.createElement("canvas");
+      canvas.setAttribute("role", "img");
+      canvas.setAttribute("aria-label", `${s.name} cast lineup: ` + chars.map((c) => `${c.name} ${c.heightPx || "?"} px`).join(", "));
+      scroller.appendChild(canvas);
+      el.append(head, scroller);
+      lineupsEl.appendChild(el);
+      lineups.push({ show: s.id, el, canvas, chars });
+    }
+  }
+
+  // ---------------------------------------------------------------- detail sheet
+  const dialog = document.getElementById("detail");
+  const turnaround = document.getElementById("turnaround");
+  const detailStrips = document.getElementById("detail-strips");
+  let detailChar = null;
+  const detailStages = []; // {dir, canvas}
+  const detailStripCanvases = []; // {dir, canvas}
+
+  function openDetail(ch) {
+    detailChar = ch;
+    document.getElementById("detail-name").textContent = ch.name;
+    document.getElementById("detail-meta").textContent =
+      `${ch.showName} · ${ch.bodyType} · ${ch.heightPx ? ch.heightPx + " × " + ch.widthPx + " px" : ""} · height ×${ch.heightScale.toFixed(2)} · atlas row ${ch.row} (${ch.atlas}) · ${ch.source === "regen" ? "regenerated sheet" : "original art"}`;
+    turnaround.textContent = ""; detailStrips.textContent = "";
+    detailStages.length = 0; detailStripCanvases.length = 0;
+    for (const dir of TURN_ORDER) {
+      const fig = document.createElement("figure");
+      const c = document.createElement("canvas"); c.className = "stage";
+      const cap = document.createElement("figcaption"); cap.textContent = dir === "left" ? "left (mirrored)" : dir;
+      fig.append(c, cap); turnaround.appendChild(fig);
+      detailStages.push({ dir, canvas: c });
+    }
+    for (const dir of ["down", "right", "up"]) {
+      const fig = document.createElement("figure");
+      const cap = document.createElement("figcaption");
+      cap.textContent = { down: "Front (down)", right: "Side (right; left mirrors it)", up: "Back (up)" }[dir];
+      const sc = document.createElement("div"); sc.className = "scroller";
+      const c = document.createElement("canvas"); c.className = "strip";
+      sc.appendChild(c); fig.append(cap, sc); detailStrips.appendChild(fig);
+      detailStripCanvases.push({ dir, canvas: c });
+    }
+    if (location.hash.slice(1) !== ch.id) history.replaceState(null, "", "#" + ch.id);
+    if (typeof dialog.showModal === "function") dialog.showModal(); else dialog.setAttribute("open", "");
+    render();
+  }
+  function closeDetail() {
+    if (dialog.open) dialog.close();
+  }
+  dialog.addEventListener("close", () => {
+    detailChar = null;
+    if (DATA.characters.some((c) => c.id === location.hash.slice(1))) {
+      history.replaceState(null, "", prefs.show === "all" ? location.pathname + location.search : "#" + prefs.show);
+    }
+  });
+  document.getElementById("detail-close").addEventListener("click", closeDetail);
+  dialog.addEventListener("click", (e) => { if (e.target === dialog) closeDetail(); });
+
+  // ---------------------------------------------------------------- controls
+  function syncControls() {
+    for (const b of showSeg.querySelectorAll("button")) b.setAttribute("aria-pressed", String(b.dataset.show === prefs.show));
+    for (const b of document.querySelectorAll("#dir-seg button")) b.setAttribute("aria-pressed", String(b.dataset.dir === prefs.dir));
+    for (const b of document.querySelectorAll("#mode-seg button")) b.setAttribute("aria-pressed", String(b.dataset.mode === prefs.mode));
+    for (const b of document.querySelectorAll("#zoom-seg button")) b.setAttribute("aria-pressed", String(Number(b.dataset.zoom) === prefs.zoom));
+    document.getElementById("fps").value = String(prefs.fps);
+    document.getElementById("fps-readout").textContent = `${prefs.fps} fps`;
+    document.getElementById("fps").title = `${prefs.fps} frames per second (in game: walking at 110 px/s with a 12 px stride is about 9 fps)`;
+    document.getElementById("stage-bg").value = prefs.stage;
+    document.getElementById("opt-guides").checked = prefs.guides;
+    document.getElementById("opt-onion").checked = prefs.onion;
+    document.getElementById("opt-bob").checked = prefs.bob;
+    document.getElementById("play").textContent = playing ? "Pause" : "Play";
+    for (const c of cards) c.el.hidden = prefs.show !== "all" && c.ch.show !== prefs.show;
+    for (const l of lineups) l.el.hidden = prefs.show !== "all" && l.show !== prefs.show;
+  }
+
+  function setPref(key, value) {
+    prefs[key] = value; savePrefs(); syncControls(); render();
+  }
+
+  showSeg.addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    setPref("show", b.dataset.show);
+    history.replaceState(null, "", b.dataset.show === "all" ? location.pathname + location.search : "#" + b.dataset.show);
+  });
+  document.getElementById("dir-seg").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) setPref("dir", b.dataset.dir); });
+  document.getElementById("mode-seg").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) setPref("mode", b.dataset.mode); });
+  document.getElementById("zoom-seg").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) setPref("zoom", Number(b.dataset.zoom)); });
+  document.getElementById("fps").addEventListener("input", (e) => setPref("fps", Number(e.target.value)));
+  document.getElementById("stage-bg").addEventListener("change", (e) => setPref("stage", e.target.value));
+  document.getElementById("opt-guides").addEventListener("change", (e) => setPref("guides", e.target.checked));
+  document.getElementById("opt-onion").addEventListener("change", (e) => setPref("onion", e.target.checked));
+  document.getElementById("opt-bob").addEventListener("change", (e) => setPref("bob", e.target.checked));
+  document.getElementById("play").addEventListener("click", () => { playing = !playing; syncControls(); });
+  document.getElementById("step").addEventListener("click", () => { playing = false; tick++; syncControls(); render(); });
+
+  // ---------------------------------------------------------------- render loop
+  function render() {
+    const baseDir = prefs.dir;
+    const dir = currentDir(baseDir);
+    for (const c of cards) {
+      if (c.el.hidden) continue;
+      renderStage(c.stage, c.ch, dir, prefs.zoom);
+      renderStrip(c.strip, c.ch, dir, 1);
+    }
+    for (const l of lineups) if (!l.el.hidden) renderLineup(l.canvas, l.chars, dir);
+    if (detailChar) {
+      for (const s of detailStages) renderStage(s.canvas, detailChar, s.dir, 4);
+      for (const s of detailStripCanvases) renderStrip(s.canvas, detailChar, s.dir, 2);
+    }
+  }
+
+  function loop(now) {
+    if (!last) last = now;
+    const dt = Math.min(0.25, (now - last) / 1000);
+    last = now;
+    if (playing && !document.hidden) {
+      acc += dt;
+      const interval = 1 / prefs.fps;
+      if (acc >= interval) {
+        acc %= interval;
+        tick++;
+        render();
+      }
+    }
+    requestAnimationFrame(loop);
+  }
+
+  function applyHash() {
+    const token = location.hash.slice(1);
+    if (DATA.shows.some((s) => s.id === token)) { prefs.show = token; syncControls(); render(); }
+    const ch = DATA.characters.find((c) => c.id === token);
+    if (ch) openDetail(ch);
+  }
+
+  // ---------------------------------------------------------------- boot
+  async function start() {
+    readTheme();
+    const loads = Object.entries(DATA.atlases).map(([key, src]) => {
+      const img = new Image(); images[key] = img; return loadImage(img, src);
+    });
+    loads.push(loadImage(floor, DATA.floor.src));
+    await Promise.all(loads);
+    measure();
+    document.getElementById("specs").innerHTML =
+      `<span><b>${DATA.characters.length}</b> characters</span>` +
+      `<span><b>${DATA.shows.length}</b> shows</span>` +
+      `<span>cell <b>${CW}×${CH}</b> px</span>` +
+      `<span>feet on <b>y=${BASE}</b></span>` +
+      `<span>walk <b>12 px</b>/frame</span>`;
+    document.getElementById("footer").textContent =
+      `Built ${DATA.generated} from public/sprites/characters by scripts/sprites/build_review_page.py. Rebuild after changing the art: python scripts/sprites/build_review_page.py`;
+    buildShowButtons();
+    buildLineups();
+    buildCards();
+    syncControls();
+    render();
+    applyHash();
+    window.addEventListener("hashchange", applyHash);
+    window.addEventListener("resize", render);
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const retheme = () => { readTheme(); render(); };
+    if (mq.addEventListener) mq.addEventListener("change", retheme);
+    new MutationObserver(retheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    requestAnimationFrame(loop);
+  }
+  start();
+})();
+</script>

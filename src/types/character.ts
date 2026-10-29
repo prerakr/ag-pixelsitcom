@@ -70,8 +70,12 @@ export interface CharacterRuntimeState {
   id: string;
   x: number; // pixel coords
   y: number; // pixel coords
-  targetX?: number;
+  targetX?: number; // final destination of the current walk
   targetY?: number;
+  /** Points of the current walk in order (pixel coords); the last one is the destination. */
+  route?: { x: number; y: number }[];
+  /** Index into `route` of the point being walked towards. */
+  routeIndex?: number;
   facing: Direction;
   targetFacing?: Direction;
   isMoving: boolean;

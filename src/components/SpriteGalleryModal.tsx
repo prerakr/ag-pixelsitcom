@@ -159,6 +159,11 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
   const [selectedChar, setSelectedChar] = useState<string>('michael');
   const [selectedDirection, setSelectedDirection] = useState<Direction>('down');
   const [isWalking, setIsWalking] = useState(true);
+  const [previewFrame, setPreviewFrame] = useState(0);
+  const [isPreviewPlaying, setIsPreviewPlaying] = useState(true);
+  const [castShowFilter, setCastShowFilter] = useState<string>('all');
+  const [showGuides, setShowGuides] = useState<boolean>(true);
+  const [autoRotate, setAutoRotate] = useState<boolean>(false);
   const [artMode, setArtMode] = useState<'sprites' | 'procedural'>(spriteManager.mode);
   const [triggerUpdate, setTriggerUpdate] = useState(0);
 
@@ -186,6 +191,7 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
   const [calibImageKey, setCalibImageKey] = useState<string>('office_props_topdown');
 
   const previewCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const previewFrameRef = useRef(0);
   const calibPreviewRef = useRef<HTMLCanvasElement | null>(null);
   const calibSheetRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -207,8 +213,14 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
       setArtMode(spriteManager.mode);
       setTriggerUpdate((n) => n + 1);
     });
+    // The game only loads textures on demand; the studio browses all of them.
+    spriteManager.preloadAll().then(() => setTriggerUpdate((n) => n + 1));
     return unsub;
   }, []);
+
+  useEffect(() => {
+    previewFrameRef.current = previewFrame;
+  }, [previewFrame]);
 
   const atlasCharacters = useMemo(() => Object.keys(SPRITE_ATLAS_MANIFEST.characters), [triggerUpdate]);
   const atlasProps = useMemo(() => Object.keys(SPRITE_ATLAS_MANIFEST.props), [triggerUpdate]);
@@ -478,19 +490,64 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    let frame = 0;
+    let frame = previewFrameRef.current;
     let animTimer = 0;
+    let rotateTimer = 0;
     let animId: number;
+
+    const directions: Direction[] = ['down', 'right', 'up', 'left'];
 
     const render = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.imageSmoothingEnabled = false;
 
       animTimer += 16;
-      if (animTimer > 180) {
+      if (isPreviewPlaying && animTimer > 180) {
         animTimer = 0;
         frame = (frame + 1) % 4;
+        previewFrameRef.current = frame;
+        setPreviewFrame(frame);
       }
+
+      if (autoRotate) {
+        rotateTimer += 16;
+        if (rotateTimer > 1000) {
+          rotateTimer = 0;
+          setSelectedDirection((prev) => {
+            const nextIdx = (directions.indexOf(prev) + 1) % directions.length;
+            return directions[nextIdx];
+          });
+        }
+      }
+
+      const centerX = canvas.width / 2;
+      const groundY = canvas.height / 2 + 65;
+
+      if (showGuides) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(245, 158, 11, 0.35)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        // Center vertical alignment axis
+        ctx.beginPath();
+        ctx.moveTo(centerX, 20);
+        ctx.lineTo(centerX, canvas.height - 20);
+        ctx.stroke();
+        // Ground horizontal plane
+        ctx.beginPath();
+        ctx.moveTo(25, groundY);
+        ctx.lineTo(canvas.width - 25, groundY);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Ground Shadow
+      ctx.save();
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+      ctx.beginPath();
+      ctx.ellipse(centerX, groundY, 32, 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
 
       const spriteFrame = spriteManager.getCharacterFrame(
         selectedChar,
@@ -500,34 +557,46 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
         false
       );
 
-      ctx.save();
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
-      ctx.beginPath();
-      ctx.ellipse(canvas.width / 2, canvas.height / 2 + 58, 42, 14, 0, 0, Math.PI * 2);
-      ctx.fill();
-
       if (spriteFrame) {
         const { canvas: sc, rect, scale: charScale, offsetX, offsetY } = spriteFrame;
-        const scale = charScale * 4.5;
+        const previewZoom = 3.2;
+        const scale = charScale * previewZoom;
         const dw = Math.round(rect.w * scale);
         const dh = Math.round(rect.h * scale);
-        const dx = Math.round(canvas.width / 2 - dw / 2 + (offsetX || 0));
-        const dy = Math.round(canvas.height / 2 - dh / 2 + 10 + (offsetY || 0));
-        ctx.drawImage(sc, rect.x, rect.y, rect.w, rect.h, dx, dy, dw, dh);
+        const anchorX = rect.anchorX ?? 0.5;
+        const anchorY = rect.anchorY ?? 0.95;
+
+        const totalOffsetX = ((offsetX || 0) + (rect.offsetX || 0)) * previewZoom;
+        const totalOffsetY = ((offsetY || 0) + (rect.offsetY || 0)) * previewZoom;
+        const destY = Math.round(groundY - anchorY * dh + totalOffsetY);
+
+        if (rect.flipX) {
+          ctx.save();
+          ctx.translate(centerX, 0);
+          ctx.scale(-1, 1);
+          const drawX = Math.round(-anchorX * dw - totalOffsetX);
+          ctx.drawImage(sc, rect.x, rect.y, rect.w, rect.h, drawX, destY, dw, dh);
+          ctx.restore();
+        } else {
+          ctx.save();
+          ctx.translate(centerX, 0);
+          const drawX = Math.round(-anchorX * dw + totalOffsetX);
+          ctx.drawImage(sc, rect.x, rect.y, rect.w, rect.h, drawX, destY, dw, dh);
+          ctx.restore();
+        }
       } else {
         ctx.fillStyle = '#94a3b8';
-        ctx.font = '12px monospace';
+        ctx.font = '11px monospace';
         ctx.textAlign = 'center';
-        ctx.fillText('No sprite loaded (procedural active)', canvas.width / 2, canvas.height / 2);
+        ctx.fillText('No sprite loaded (procedural active)', centerX, canvas.height / 2);
       }
 
-      ctx.restore();
       animId = requestAnimationFrame(render);
     };
 
     render();
     return () => cancelAnimationFrame(animId);
-  }, [isOpen, activeTab, selectedChar, selectedDirection, isWalking, triggerUpdate]);
+  }, [isOpen, activeTab, selectedChar, selectedDirection, isWalking, isPreviewPlaying, autoRotate, showGuides, triggerUpdate]);
 
   // Calibrator Preview Render (Entity preview + Spritesheet crop box)
   useEffect(() => {
@@ -1264,7 +1333,9 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
                 const settingProps = settingId ? collectPropTypesForSetting(settingId) : new Set<string>();
                 const settingTiles = settingId ? collectTileTypesForSetting(settingId) : new Set<string>();
 
-                const charsSprited = chars.filter((c) => !!SPRITE_ATLAS_MANIFEST.characters[c.id]);
+                // Respect per-asset enablement so a quarantined atlas entry is shown as
+                // procedural rather than being counted as healthy sprite coverage.
+                const charsSprited = chars.filter((c) => spriteManager.isAssetEnabled('character', c.id));
                 const propsSprited = [...settingProps].filter((t) => !!SPRITE_ATLAS_MANIFEST.props[t as any]);
                 const tilesSprited = [...settingTiles].filter((t) => !!SPRITE_ATLAS_MANIFEST.tiles[t as any]);
                 const portraitsSprited = chars.filter((c) => !!SPRITE_ATLAS_MANIFEST.portraits[c.id]);
@@ -1305,7 +1376,7 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
                         </h4>
                         <div className="space-y-1">
                           {chars.map((c) => {
-                            const hasSprite = !!SPRITE_ATLAS_MANIFEST.characters[c.id];
+                            const hasSprite = spriteManager.isAssetEnabled('character', c.id);
                             const hasPortrait = !!SPRITE_ATLAS_MANIFEST.portraits[c.id];
                             return (
                               <div key={c.id} className="flex items-center justify-between text-[11px] font-mono py-0.5 px-1.5 rounded bg-[#131b26]">
@@ -1381,25 +1452,61 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
           {/* ═══════════════════ CAST TAB ═══════════════════ */}
           {activeTab === 'cast' && (
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-              <div className="md:col-span-4 flex flex-col gap-3 bg-[#0a0e14] p-3 rounded-lg border border-[#2a374a]">
+              <div className="md:col-span-5 flex flex-col gap-3 bg-[#0a0e14] p-3.5 rounded-lg border border-[#2a374a]">
+                {/* Show Filter Pills */}
                 <div>
                   <label className="text-[10px] font-mono text-amber-400 uppercase tracking-wider block mb-1.5">
-                    Select Character:
+                    Filter by Show:
                   </label>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {atlasCharacters.map((cId) => (
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {[
+                      { id: 'all', label: 'All (43)' },
+                      { id: 'the_office', label: 'Office (14)' },
+                      { id: 'friends', label: 'Friends (9)' },
+                      { id: 'silicon_valley', label: 'Silicon (10)' },
+                      { id: 'himym', label: 'HIMYM (10)' },
+                    ].map((f) => (
                       <button
-                        key={cId}
-                        onClick={() => setSelectedChar(cId)}
-                        className={`px-2 py-1.5 text-xs font-mono rounded capitalize text-left transition-all ${
-                          selectedChar === cId
+                        key={f.id}
+                        onClick={() => setCastShowFilter(f.id)}
+                        className={`px-2 py-0.5 text-[10px] font-mono rounded font-semibold transition-all ${
+                          castShowFilter === f.id
                             ? 'bg-amber-500 text-slate-950 font-bold shadow'
-                            : 'bg-[#131b26] text-slate-300 hover:bg-[#1a2332]'
+                            : 'bg-[#131b26] text-slate-400 hover:text-white'
                         }`}
                       >
-                        {cId}
+                        {f.label}
                       </button>
                     ))}
+                  </div>
+
+                  <label className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block mb-1">
+                    Select Character:
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-56 overflow-y-auto pr-1">
+                    {atlasCharacters
+                      .filter((cId) => {
+                        if (castShowFilter === 'all') return true;
+                        const charDef = ALL_CHARACTERS[cId];
+                        return charDef?.showId === castShowFilter;
+                      })
+                      .map((cId) => (
+                        <button
+                          key={cId}
+                          onClick={() => {
+                            setSelectedChar(cId);
+                            setPreviewFrame(0);
+                          }}
+                          className={`px-2 py-1 text-[11px] font-mono rounded capitalize text-left truncate transition-all ${
+                            selectedChar === cId
+                              ? 'bg-amber-500 text-slate-950 font-bold shadow'
+                              : 'bg-[#131b26] text-slate-300 hover:bg-[#1a2332]'
+                          }`}
+                          title={ALL_CHARACTERS[cId]?.name || cId}
+                        >
+                          {ALL_CHARACTERS[cId]?.name.split(' ')[0] || cId}
+                        </button>
+                      ))}
                   </div>
                 </div>
 
@@ -1411,10 +1518,13 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
                     {(['down', 'left', 'right', 'up'] as Direction[]).map((d) => (
                       <button
                         key={d}
-                        onClick={() => setSelectedDirection(d)}
+                        onClick={() => {
+                          setSelectedDirection(d);
+                          setAutoRotate(false);
+                        }}
                         className={`py-1 text-[10px] font-mono uppercase rounded text-center transition-all ${
                           selectedDirection === d
-                            ? 'bg-blue-600 text-white font-bold'
+                            ? 'bg-blue-600 text-white font-bold shadow'
                             : 'bg-[#131b26] text-slate-400 hover:bg-[#1a2332]'
                         }`}
                       >
@@ -1424,30 +1534,89 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-2 border-t border-[#2a374a]">
-                  <span className="text-xs font-mono text-slate-300">Walk Cycle:</span>
-                  <button
-                    onClick={() => setIsWalking(!isWalking)}
-                    className={`px-2.5 py-1 text-[10px] font-mono rounded font-bold ${
-                      isWalking ? 'bg-green-600 text-white' : 'bg-slate-700 text-slate-300'
-                    }`}
-                  >
-                    {isWalking ? 'WALKING (ON)' : 'IDLE (OFF)'}
-                  </button>
+                <div className="flex flex-col gap-2 pt-2 border-t border-[#2a374a]">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-mono text-slate-300">Frame:</span>
+                    <div className="flex items-center gap-1">
+                      {[0, 1, 2, 3].map((frame) => (
+                        <button
+                          key={frame}
+                          onClick={() => {
+                            setPreviewFrame(frame);
+                            setIsPreviewPlaying(false);
+                          }}
+                          className={`w-6 py-0.5 text-[10px] font-mono rounded font-bold transition-all ${
+                            previewFrame === frame
+                              ? 'bg-blue-600 text-white shadow'
+                              : 'bg-[#131b26] text-slate-400 hover:bg-[#1a2332]'
+                          }`}
+                          title={`Inspect frame ${frame}`}
+                        >
+                          {frame}
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => setIsPreviewPlaying(!isPreviewPlaying)}
+                        className={`ml-1 px-2 py-0.5 text-[10px] font-mono rounded font-bold transition-all ${
+                          isPreviewPlaying ? 'bg-cyan-600 text-white' : 'bg-slate-800 text-slate-400'
+                        }`}
+                      >
+                        {isPreviewPlaying ? 'PAUSE' : 'PLAY'}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-mono text-slate-300">Walk Cycle:</span>
+                    <button
+                      onClick={() => setIsWalking(!isWalking)}
+                      className={`px-2.5 py-0.5 text-[10px] font-mono rounded font-bold transition-all ${
+                        isWalking ? 'bg-emerald-600 text-white' : 'bg-slate-700 text-slate-300'
+                      }`}
+                    >
+                      {isWalking ? 'WALKING (ON)' : 'IDLE (OFF)'}
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-mono text-slate-300">Auto-Rotate 360°:</span>
+                    <button
+                      onClick={() => setAutoRotate(!autoRotate)}
+                      className={`px-2.5 py-0.5 text-[10px] font-mono rounded font-bold transition-all ${
+                        autoRotate ? 'bg-cyan-600 text-white shadow' : 'bg-slate-800 text-slate-400'
+                      }`}
+                    >
+                      {autoRotate ? 'ROTATING (ON)' : 'OFF'}
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-mono text-slate-300">Ground & Center Guides:</span>
+                    <button
+                      onClick={() => setShowGuides(!showGuides)}
+                      className={`px-2.5 py-0.5 text-[10px] font-mono rounded font-bold transition-all ${
+                        showGuides ? 'bg-amber-600 text-slate-950' : 'bg-slate-800 text-slate-400'
+                      }`}
+                    >
+                      {showGuides ? 'SHOWN' : 'HIDDEN'}
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              <div className="md:col-span-8 flex flex-col items-center justify-center bg-[#070b10] border-2 border-[#2a374a] rounded-lg p-4 relative overflow-hidden">
+              <div className="md:col-span-7 flex flex-col items-center justify-center bg-[#070b10] border-2 border-[#2a374a] rounded-lg p-4 relative overflow-hidden">
                 <div className="absolute top-2 left-3 flex items-center gap-1.5 text-[10px] font-mono text-slate-400">
                   <Eye className="w-3.5 h-3.5 text-amber-400" />
-                  <span>PREVIEW: {selectedChar.toUpperCase()} ({selectedDirection.toUpperCase()})</span>
+                  <span className="font-bold text-amber-300">{ALL_CHARACTERS[selectedChar]?.name || selectedChar}</span>
+                  <span className="text-slate-500">· {selectedDirection.toUpperCase()}</span>
+                </div>
+
+                <div className="absolute top-2 right-3 text-[9px] font-mono text-slate-500">
+                  Ground $y = 14$ · Shadow Pinned
                 </div>
 
                 <canvas
                   ref={previewCanvasRef}
                   width={280}
                   height={280}
-                  className="w-64 h-64 border border-[#1e293b] rounded bg-[#0b1017] shadow-inner"
+                  className="w-72 h-72 border border-[#1e293b] rounded bg-[#0b1017] shadow-2xl mt-4"
                   style={{ imageRendering: 'pixelated' }}
                 />
               </div>
@@ -1552,31 +1721,40 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
                   {/* Character Spritesheet */}
                   <div className="bg-[#131b26] p-3 rounded border border-[#2a374a]">
                     <span className="text-amber-300 font-bold block mb-1.5">
-                      1. 4-Direction Walk-Cycle Character Spritesheet (8-column grid)
+                      1. Walk-Cycle Character Sheet (8 poses, one row)
                     </span>
                     <p className="text-[10px] text-slate-500 mb-1.5">
-                      Generates an 8-column horizontal grid. Cols 0-3: stride A (front/back/left/right), Cols 4-7: stride B.
+                      Matches the layout scripts/sprites/regen_characters.py expects. Attach the character's current front/back art and art/source/characters/layout_reference_silhouettes.png as references, save the result to art/source/characters/regen/&lt;id&gt;.png and run process_characters.py.
                     </p>
                     <div className="relative">
                       <code className="text-[10px] text-emerald-400 block bg-[#080d14] p-2.5 rounded whitespace-pre-wrap leading-relaxed">
-{`16-bit retro pixel art sprite sheet of [CHARACTER NAME] from [SHOW], [OUTFIT DESCRIPTION]. 
-Organized as a precise 8-column horizontal grid for 4-direction RPG walk cycles:
+{`16-bit SNES-era RPG pixel art character sprite sheet of [CHARACTER NAME] from [SHOW]: [OUTFIT DESCRIPTION]. Top-down 3/4 view, chunky pixels, clean dark 1-pixel outlines, flat shading, no anti-aliasing, no blur.
 
-Column layout:
-- Col 0: Front-facing walk stride A (left foot forward)
-- Col 1: Back-facing walk stride A
-- Col 2: Left-facing walk stride A
-- Col 3: Left-facing walk stride B
-- Col 4: Front-facing walk stride B (right foot forward)
-- Col 5: Back-facing walk stride B
-- Col 6: Right-facing walk stride A
-- Col 7: Right-facing walk stride B
-
-Style: Top-down 3/4 RPG view, SNES-era crisp pixel art, clean black outlines, no anti-aliasing.
-Background: Solid bright green chroma-key #00FF00 filling all empty space.
-Important: Each character must be centered in their cell with consistent proportions across all 8 poses.`}
+Layout: ONE horizontal row of 8 full-body figures, evenly spaced, same size and scale, feet on one ground line, clear space between figures. No text, labels, grid lines, borders, shadows or floor.
+1. Front, standing still.
+2. Back, standing still.
+3. Facing RIGHT in profile, walking: right leg forward (contact pose).
+4. Facing RIGHT in profile, walking: passing pose, legs together.
+5. Facing RIGHT in profile, walking: left leg forward (contact pose).
+6. Facing RIGHT in profile, walking: passing pose, legs together.
+7. Front, mid-step: left foot lifted slightly.
+8. Back, mid-step: right foot lifted slightly.
+Every profile (3-6) faces RIGHT. Arms swing opposite to the legs.
+Background: flat solid pure chroma green #00FF00. No green in the character.`}
                       </code>
-                      <CopyButton text={`16-bit retro pixel art sprite sheet of [CHARACTER NAME] from [SHOW], [OUTFIT DESCRIPTION].\nOrganized as a precise 8-column horizontal grid for 4-direction RPG walk cycles:\n\nColumn layout:\n- Col 0: Front-facing walk stride A (left foot forward)\n- Col 1: Back-facing walk stride A\n- Col 2: Left-facing walk stride A\n- Col 3: Left-facing walk stride B\n- Col 4: Front-facing walk stride B (right foot forward)\n- Col 5: Back-facing walk stride B\n- Col 6: Right-facing walk stride A\n- Col 7: Right-facing walk stride B\n\nStyle: Top-down 3/4 RPG view, SNES-era crisp pixel art, clean black outlines, no anti-aliasing.\nBackground: Solid bright green chroma-key #00FF00 filling all empty space.\nImportant: Each character must be centered in their cell with consistent proportions across all 8 poses.`} />
+                      <CopyButton text={`16-bit SNES-era RPG pixel art character sprite sheet of [CHARACTER NAME] from [SHOW]: [OUTFIT DESCRIPTION]. Top-down 3/4 view, chunky pixels, clean dark 1-pixel outlines, flat shading, no anti-aliasing, no blur.
+
+Layout: ONE horizontal row of 8 full-body figures, evenly spaced, same size and scale, feet on one ground line, clear space between figures. No text, labels, grid lines, borders, shadows or floor.
+1. Front, standing still.
+2. Back, standing still.
+3. Facing RIGHT in profile, walking: right leg forward (contact pose).
+4. Facing RIGHT in profile, walking: passing pose, legs together.
+5. Facing RIGHT in profile, walking: left leg forward (contact pose).
+6. Facing RIGHT in profile, walking: passing pose, legs together.
+7. Front, mid-step: left foot lifted slightly.
+8. Back, mid-step: right foot lifted slightly.
+Every profile (3-6) faces RIGHT. Arms swing opposite to the legs.
+Background: flat solid pure chroma green #00FF00. No green in the character.`} />
                     </div>
                   </div>
 

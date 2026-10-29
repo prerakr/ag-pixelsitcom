@@ -7,7 +7,16 @@ import {
   PropSpriteDef,
   TileSpriteDef,
   TalkingHeadPortraitDef,
+  ImageManifestEntry,
+  TileThemeAtlas,
 } from '../types/sprite';
+
+export interface CharacterAtlasIssue {
+  characterId: string;
+  imageKey: string;
+  frame: string;
+  reason: string;
+}
 
 export class SpriteManager {
   private images: Map<string, HTMLCanvasElement> = new Map();
@@ -16,6 +25,9 @@ export class SpriteManager {
   private props: Map<string, PropSpriteDef> = new Map();
   private tiles: Map<string, TileSpriteDef> = new Map();
   private portraits: Map<string, TalkingHeadPortraitDef> = new Map();
+  private imageEntries: Map<string, ImageManifestEntry> = new Map();
+  private tileThemes: Map<string, TileThemeAtlas> = new Map();
+  private pendingLoads: Map<string, Promise<void>> = new Map();
 
   private isLoadedState = false;
   private loadPromise: Promise<void> | null = null;
@@ -41,7 +53,9 @@ export class SpriteManager {
 
   public subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
   }
 
   private notifyListeners() {
@@ -94,17 +108,19 @@ export class SpriteManager {
       let isChroma = false;
 
       if (isGreenKey) {
-        // Pure chroma green background detection (#00ff00): high green with low red and blue
-        const isPureGreen = g > 150 && r < 100 && b < 100;
-        const isCloseChroma = distSq < 55 * 55;
-        if (isPureGreen || isCloseChroma) {
+        // Pure chroma green background detection (#00ff00), compression noise & dark grid borders
+        const isPureGreen = g > 140 && r < 115 && b < 115;
+        const isCloseChroma = distSq < 60 * 60;
+        const isGreenDominant = g > 65 && g > r * 1.35 && g > b * 1.35;
+        if (isPureGreen || isCloseChroma || isGreenDominant) {
           isChroma = true;
         }
       } else if (isMagentaKey) {
-        // Pure chroma magenta background detection (#ff00ff): high red and blue with low green
-        const isPureMagenta = r > 150 && b > 150 && g < 100;
-        const isCloseChroma = distSq < 55 * 55;
-        if (isPureMagenta || isCloseChroma) {
+        // Pure chroma magenta background detection (#ff00ff) & compression noise
+        const isPureMagenta = r > 140 && b > 140 && g < 115;
+        const isCloseChroma = distSq < 60 * 60;
+        const isMagentaDominant = r > 65 && b > 65 && (r + b) > g * 2.4;
+        if (isPureMagenta || isCloseChroma || isMagentaDominant) {
           isChroma = true;
         }
       } else if (distSq < tolSq) {
@@ -257,78 +273,163 @@ export class SpriteManager {
   }
 
   /**
-   * Loads all images and atlas definitions in a manifest or array of manifests.
+   * Registers atlas definitions and image sources from one or more manifests.
+   *
+   * Only the character atlases are fetched up front (they are small and every scene needs
+   * them). Prop, tile and portrait textures load the first time something asks for them, so
+   * a scene only pays for the art it actually shows.
    */
   public async loadManifest(manifestOrList: SpriteAtlasManifest | SpriteAtlasManifest[]): Promise<void> {
     const manifests = Array.isArray(manifestOrList) ? manifestOrList : [manifestOrList];
-    const loadPromises: Promise<void>[] = [];
-    
-    // Auto-discover public sprites using Vite glob
-    const publicSprites = (import.meta as any).glob('../../public/sprites/*.{png,jpg,jpeg}', { query: '?url', import: 'default', eager: true });
-    
-    const imagesToLoad: Record<string, { url: string, chromaKey?: string, tolerance?: number }> = {};
 
     for (const manifest of manifests) {
-      // Register definitions
       Object.values(manifest.characters).forEach((c) => this.characters.set(c.characterId, c));
       Object.values(manifest.props).forEach((p) => this.props.set(p.propType, p));
       Object.values(manifest.tiles).forEach((t) => this.tiles.set(t.tileType, t));
       Object.values(manifest.portraits).forEach((pt) => this.portraits.set(pt.characterId, pt));
-
-      // Collect image textures
       for (const [key, entry] of Object.entries(manifest.images)) {
-        imagesToLoad[key] = entry;
+        this.imageEntries.set(key, entry);
+      }
+      for (const [theme, atlas] of Object.entries(manifest.tileThemes || {})) {
+        this.tileThemes.set(theme, atlas);
       }
     }
 
-    // Add auto-discovered sprites (do not overwrite if already defined in manifest)
-    for (const [path, url] of Object.entries(publicSprites)) {
-      const match = path.match(/\/([^/]+)\.(png|jpg|jpeg)$/);
-      if (match) {
-        const key = match[1];
-        if (!imagesToLoad[key]) {
-          imagesToLoad[key] = { url: url as string }; // Default no chromakey
-        }
-      }
-    }
+    const characterImages = new Set<string>();
+    this.characters.forEach((def) => characterImages.add(def.imageKey));
+    await Promise.all(Array.from(characterImages, (key) => this.loadImage(key)));
 
-    // Load and process image textures
-    for (const [key, entry] of Object.entries(imagesToLoad)) {
-      if (this.images.has(key)) continue; // Already loaded
-
-      const p = new Promise<void>((resolve) => {
-          const img = new Image();
-          img.crossOrigin = 'anonymous';
-          img.onload = () => {
-            this.rawImages.set(key, img);
-            if (entry.chromaKey) {
-              const processed = this.processChromaKey(img, entry.chromaKey, entry.tolerance || 45);
-              this.images.set(key, processed);
-            } else {
-              const canvas = document.createElement('canvas');
-              canvas.width = img.naturalWidth || img.width;
-              canvas.height = img.naturalHeight || img.height;
-              const ctx = canvas.getContext('2d');
-              if (ctx) {
-                ctx.imageSmoothingEnabled = false;
-                ctx.drawImage(img, 0, 0);
-              }
-              this.images.set(key, canvas);
-            }
-            resolve();
-          };
-          img.onerror = () => {
-            console.warn(`[SpriteManager] Failed to load image texture "${key}" from ${entry.url}`);
-            resolve(); // Resolve anyway so other assets can continue
-          };
-          img.src = entry.url;
-        });
-        loadPromises.push(p);
-      }
-
-    await Promise.all(loadPromises);
     this.isLoadedState = true;
+    const issues = this.validateCharacterAtlas();
+    if (issues.length > 0) {
+      console.warn('[SpriteManager] Character atlas validation failed:', issues);
+    }
     this.notifyListeners();
+  }
+
+  /** Loads every registered texture (used by the Sprite Studio, which browses them all). */
+  public preloadAll(): Promise<void> {
+    return Promise.all(Array.from(this.imageEntries.keys(), (key) => this.loadImage(key))).then(() => undefined);
+  }
+
+  /**
+   * Returns a texture if it is ready, otherwise starts loading it and returns undefined.
+   * Listeners are notified when it arrives, so callers simply fall back for a frame or two.
+   */
+  private ensureImage(key: string): HTMLCanvasElement | undefined {
+    const canvas = this.images.get(key);
+    if (canvas) return canvas;
+    if (this.imageEntries.has(key)) {
+      void this.loadImage(key).then(() => this.notifyListeners());
+    }
+    return undefined;
+  }
+
+  private loadImage(key: string): Promise<void> {
+    if (this.images.has(key)) return Promise.resolve();
+    const inFlight = this.pendingLoads.get(key);
+    if (inFlight) return inFlight;
+    const entry = this.imageEntries.get(key);
+    if (!entry) return Promise.resolve();
+
+    const promise = new Promise<void>((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        this.rawImages.set(key, img);
+        if (entry.chromaKey) {
+          this.images.set(key, this.processChromaKey(img, entry.chromaKey, entry.tolerance || 45));
+        } else {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.naturalWidth || img.width;
+          canvas.height = img.naturalHeight || img.height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(img, 0, 0);
+          }
+          this.images.set(key, canvas);
+        }
+        this.pendingLoads.delete(key);
+        resolve();
+      };
+      img.onerror = () => {
+        console.warn(`[SpriteManager] Failed to load image texture "${key}" from ${entry.url}`);
+        this.pendingLoads.delete(key);
+        resolve(); // Resolve anyway so other assets can continue
+      };
+      img.src = entry.url;
+    });
+    this.pendingLoads.set(key, promise);
+    return promise;
+  }
+
+  /**
+   * Checks every registered character rectangle against its loaded texture.
+   * Runtime drawing still degrades gracefully, but this exposes a bad crop as
+   * data to fix instead of quietly masking it with a clipped frame.
+   */
+  public validateCharacterAtlas(): CharacterAtlasIssue[] {
+    const issues: CharacterAtlasIssue[] = [];
+    const checkSequence = (
+      def: CharacterSpriteDef,
+      frame: string,
+      rects: SpriteRect | SpriteRect[] | undefined,
+      canvas: HTMLCanvasElement,
+    ) => {
+      if (!rects) return;
+      const frames = Array.isArray(rects) ? rects : [rects];
+      if (frames.length === 0) {
+        issues.push({ characterId: def.characterId, imageKey: def.imageKey, frame, reason: 'Frame sequence is empty.' });
+      }
+      frames.forEach((rect, index) => {
+        const label = frames.length > 1 ? `${frame}[${index}]` : frame;
+        if (rect.w <= 0 || rect.h <= 0 || rect.x < 0 || rect.y < 0) {
+          issues.push({ characterId: def.characterId, imageKey: def.imageKey, frame: label, reason: 'Frame has invalid dimensions or a negative origin.' });
+        } else if (rect.x + rect.w > canvas.width || rect.y + rect.h > canvas.height) {
+          issues.push({
+            characterId: def.characterId,
+            imageKey: def.imageKey,
+            frame: label,
+            reason: `Frame ${rect.x},${rect.y} ${rect.w}x${rect.h} exceeds ${canvas.width}x${canvas.height}.`,
+          });
+        }
+      });
+    };
+
+    this.characters.forEach((def) => {
+      const canvas = this.ensureImage(def.imageKey);
+      if (!canvas) {
+        issues.push({
+          characterId: def.characterId,
+          imageKey: def.imageKey,
+          frame: 'image',
+          reason: 'Referenced texture was not loaded.',
+        });
+        return;
+      }
+
+      const animation = def.animations;
+      checkSequence(def, 'down', animation.down, canvas);
+      checkSequence(def, 'up', animation.up, canvas);
+      checkSequence(def, 'left', animation.left, canvas);
+      checkSequence(def, 'right', animation.right, canvas);
+
+      Object.entries(animation.idle || {}).forEach(([direction, rects]) =>
+        checkSequence(def, `idle.${direction}`, rects, canvas),
+      );
+      Object.entries(animation.run || {}).forEach(([direction, rects]) =>
+        checkSequence(def, `run.${direction}`, rects, canvas),
+      );
+      Object.entries(animation.sitting || {}).forEach(([direction, rect]) =>
+        checkSequence(def, `sitting.${direction}`, rect, canvas),
+      );
+      Object.entries(animation.actions || {}).forEach(([action, rects]) =>
+        checkSequence(def, `actions.${action}`, rects, canvas),
+      );
+    });
+
+    return issues;
   }
 
   public updateImageTexture(imageKey: string, newCanvas: HTMLCanvasElement) {
@@ -392,7 +493,7 @@ export class SpriteManager {
     if (this.artStyleMode === 'procedural') return false;
     if (!this.isAssetEnabled('character', characterId)) return false;
     const def = this.characters.get(characterId);
-    return !!def && this.images.has(def.imageKey);
+    return !!def && !!this.ensureImage(def.imageKey);
   }
 
   public getCharacterFrame(
@@ -415,17 +516,20 @@ export class SpriteManager {
       def = { ...def, ...override };
     }
 
-    const canvas = this.images.get(def.imageKey);
+    const canvas = this.ensureImage(def.imageKey);
     if (!canvas || canvas.width <= 0 || canvas.height <= 0) return null;
 
     const scale = def.scale || 1.0;
     const offsetX = def.offsetX || 0;
     const offsetY = def.offsetY || 0;
 
-    const isValidRect = (r?: SpriteRect): boolean => {
-      if (!r || r.w <= 0 || r.h <= 0 || r.x < 0 || r.y < 0) return false;
-      if (r.x + r.w > canvas.width || r.y + r.h > canvas.height) return false;
-      return true;
+    const clampRect = (r?: SpriteRect): SpriteRect | null => {
+      if (!r || r.w <= 0 || r.h <= 0 || r.x < 0 || r.y < 0) return null;
+      if (r.x >= canvas.width || r.y >= canvas.height) return null;
+      const w = Math.min(r.w, canvas.width - r.x);
+      const h = Math.min(r.h, canvas.height - r.y);
+      if (w <= 0 || h <= 0) return null;
+      return w === r.w && h === r.h ? r : { ...r, w, h };
     };
 
     // 1. Check specific action overrides (by explicit action name or character state)
@@ -433,18 +537,20 @@ export class SpriteManager {
     if (effectiveAction && def.animations.actions && def.animations.actions[effectiveAction]) {
       const act = def.animations.actions[effectiveAction];
       const frameIdx = Math.floor(Math.abs(animFrame || 0)) % (Array.isArray(act) ? act.length : 1);
-      const rect = Array.isArray(act) ? act[frameIdx] : act;
-      if (isValidRect(rect)) {
-        return { canvas, rect: rect!, scale, offsetX, offsetY };
+      const rawRect = Array.isArray(act) ? act[frameIdx] : act;
+      const rect = clampRect(rawRect);
+      if (rect) {
+        return { canvas, rect, scale, offsetX, offsetY };
       }
     }
 
     // 2. Check sitting frames
     const sittingState = isSitting || characterState === 'sitting_desk' || characterState === 'sitting_couch';
     if (sittingState && def.animations.sitting) {
-      const sitRect = def.animations.sitting[facing] || def.animations.sitting.down;
-      if (isValidRect(sitRect)) {
-        return { canvas, rect: sitRect!, scale, offsetX, offsetY };
+      const sitRaw = def.animations.sitting[facing] || def.animations.sitting.down;
+      const sitRect = clampRect(sitRaw);
+      if (sitRect) {
+        return { canvas, rect: sitRect, scale, offsetX, offsetY };
       }
     }
 
@@ -453,9 +559,10 @@ export class SpriteManager {
       const idleFrames = def.animations.idle[facing] || def.animations.idle.down;
       if (idleFrames) {
         const frameIdx = Math.floor(Math.abs(animFrame || 0)) % (Array.isArray(idleFrames) ? idleFrames.length : 1);
-        const rect = Array.isArray(idleFrames) ? idleFrames[frameIdx] : idleFrames;
-        if (isValidRect(rect)) {
-          return { canvas, rect: rect!, scale, offsetX, offsetY };
+        const rawRect = Array.isArray(idleFrames) ? idleFrames[frameIdx] : idleFrames;
+        const rect = clampRect(rawRect);
+        if (rect) {
+          return { canvas, rect, scale, offsetX, offsetY };
         }
       }
     }
@@ -465,9 +572,9 @@ export class SpriteManager {
       const runFrames = def.animations.run[facing] || def.animations.run.down;
       if (runFrames && runFrames.length > 0) {
         const frameIdx = Math.floor(Math.abs(animFrame || 0)) % runFrames.length;
-        const rect = runFrames[frameIdx];
-        if (isValidRect(rect)) {
-          return { canvas, rect: rect!, scale, offsetX, offsetY };
+        const rect = clampRect(runFrames[frameIdx]);
+        if (rect) {
+          return { canvas, rect, scale, offsetX, offsetY };
         }
       }
     }
@@ -476,9 +583,12 @@ export class SpriteManager {
     let frames = def.animations[facing];
     let autoFlipX = false;
 
-    // Automatic fallback: If facing left and no left frames, use right with flipX
+    // Automatic fallback: If facing left/right and no frames defined, mirror the opposite side
     if ((!frames || frames.length === 0) && facing === 'left' && def.animations.right) {
       frames = def.animations.right;
+      autoFlipX = true;
+    } else if ((!frames || frames.length === 0) && facing === 'right' && def.animations.left) {
+      frames = def.animations.left;
       autoFlipX = true;
     }
 
@@ -490,8 +600,9 @@ export class SpriteManager {
 
     // If standing still, use frame 0 (idle pose); if moving, cycle frame
     const frameIndex = isMoving ? Math.floor(Math.abs(animFrame || 0)) % frames.length : 0;
-    let rect = frames[frameIndex] || frames[0];
-    if (!isValidRect(rect)) return null;
+    let rawRect = frames[frameIndex] || frames[0];
+    let rect = clampRect(rawRect);
+    if (!rect) return null;
 
     if (autoFlipX && !rect.flipX) {
       rect = { ...rect, flipX: true };
@@ -505,7 +616,7 @@ export class SpriteManager {
     if (this.artStyleMode === 'procedural') return false;
     if (!this.isAssetEnabled('prop', propType as string)) return false;
     const def = this.props.get(propType as string);
-    return !!def && this.images.has(def.imageKey);
+    return !!def && !!this.ensureImage(def.imageKey);
   }
 
   public getPropSprite(
@@ -523,7 +634,7 @@ export class SpriteManager {
       def = { ...def, ...override };
     }
 
-    const canvas = this.images.get(def.imageKey);
+    const canvas = this.ensureImage(def.imageKey);
     if (!canvas || canvas.width <= 0 || canvas.height <= 0) return null;
 
     let rect = def.rect;
@@ -543,7 +654,7 @@ export class SpriteManager {
     if (this.artStyleMode === 'procedural') return false;
     if (!this.isAssetEnabled('tile', tileType as string)) return false;
     const def = this.tiles.get(tileType as string);
-    return !!def && this.images.has(def.imageKey);
+    return !!def && !!this.ensureImage(def.imageKey);
   }
 
   public getTileSprite(
@@ -560,7 +671,7 @@ export class SpriteManager {
       def = { ...def, ...override };
     }
 
-    const canvas = this.images.get(def.imageKey);
+    const canvas = this.ensureImage(def.imageKey);
     if (!canvas || canvas.width <= 0 || canvas.height <= 0) return null;
 
     const rect = def.rect;
@@ -570,6 +681,23 @@ export class SpriteManager {
     return { canvas, rect };
   }
 
+  /** True when the Sprite Studio calibrator is overriding this tile's crop. */
+  public hasTileOverride(tileType: string): boolean {
+    return this.tileOverrides.has(tileType);
+  }
+
+  /**
+   * The themed tileset for a set (falls back to the office theme), or null while it loads or
+   * when procedural art is selected.
+   */
+  public getTileTheme(theme: string | undefined): { canvas: HTMLCanvasElement; atlas: TileThemeAtlas } | null {
+    if (this.artStyleMode === 'procedural') return null;
+    const atlas = this.tileThemes.get(theme || 'office') || this.tileThemes.get('office');
+    if (!atlas) return null;
+    const canvas = this.ensureImage(atlas.imageKey);
+    return canvas ? { canvas, atlas } : null;
+  }
+
   public getImageKeys(): string[] {
     return Array.from(this.images.keys());
   }
@@ -577,7 +705,7 @@ export class SpriteManager {
   public hasPortrait(characterId: string): boolean {
     if (!this.isAssetEnabled('portrait', characterId)) return false;
     const def = this.portraits.get(characterId);
-    return !!def && this.images.has(def.imageKey);
+    return !!def && !!this.ensureImage(def.imageKey);
   }
 
   public getPortrait(
@@ -588,7 +716,7 @@ export class SpriteManager {
     const def = this.portraits.get(characterId);
     if (!def) return null;
 
-    const canvas = this.images.get(def.imageKey);
+    const canvas = this.ensureImage(def.imageKey);
     if (!canvas || canvas.width <= 0 || canvas.height <= 0) return null;
 
     let rect = def.rect;

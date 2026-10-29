@@ -38,9 +38,6 @@ export class CharacterRenderer {
 
     ctx.save();
     ctx.translate(Math.round(x), Math.round(y));
-    if (visual.heightScale && visual.heightScale > 0) {
-      ctx.scale(1, Math.max(0.85, Math.min(1.15, visual.heightScale)));
-    }
 
     const now = gameTime !== undefined ? gameTime : Date.now();
     // Unique seed based on character name length to desynchronize animations
@@ -114,35 +111,47 @@ export class CharacterRenderer {
       const { canvas, rect, scale, offsetX, offsetY } = spriteFrame;
       const destW = Math.round(rect.w * scale);
       const destH = Math.round(rect.h * scale);
-      const destX = Math.round(-destW / 2 + (offsetX || 0));
-      const destY = Math.round(-destH + 15 + walkBob + (isSittingState ? 5 : 0) + (offsetY || 0));
+
+      const anchorX = rect.anchorX ?? 0.5;
+      const anchorY = rect.anchorY ?? 0.95;
+      const groundY = 14; // Feet ground baseline matching shadow center at y=14
+
+      const totalOffsetX = (offsetX || 0) + (rect.offsetX || 0);
+      const totalOffsetY = (offsetY || 0) + (rect.offsetY || 0);
+
+      // Subtle walk bob for sprites (calibrated so frames don't lurch)
+      const spriteBob = isMoving ? (animFrame % 2 === 1 ? -1 : 0) : idleBreathing;
+      const destY = Math.round(-anchorY * destH + groundY + spriteBob + (isSittingState ? 5 : 0) + totalOffsetY);
 
       ctx.imageSmoothingEnabled = false;
 
       // Handle horizontal mirroring for one-way sprite sheets (e.g. left facing)
+      // When scaled by -1 horizontally, drawing at -anchorX * destW maps the anchor point to world x = 0
       if (rect.flipX) {
         ctx.save();
         ctx.scale(-1, 1);
+        const drawX = Math.round(-anchorX * destW - totalOffsetX);
         ctx.drawImage(
           canvas,
           rect.x,
           rect.y,
           rect.w,
           rect.h,
-          -destX - destW,
+          drawX,
           destY,
           destW,
           destH
         );
         ctx.restore();
       } else {
+        const drawX = Math.round(-anchorX * destW + totalOffsetX);
         ctx.drawImage(
           canvas,
           rect.x,
           rect.y,
           rect.w,
           rect.h,
-          destX,
+          drawX,
           destY,
           destW,
           destH
@@ -162,29 +171,19 @@ export class CharacterRenderer {
         CharacterRenderer.drawEmoteBubble(ctx, currentEmote.icon, 0, headY - 14, now);
       }
 
-      // Draw Name Tag
       if (showNameTag && !isFallen) {
-        ctx.font = '7px "Press Start 2P", monospace';
-        ctx.textAlign = 'center';
-        const displayName = character.nickname || character.name.split(' ')[0];
-        const textMetrics = ctx.measureText(displayName);
-        const tagW = textMetrics.width + 6;
-        const tagY = headY - 8;
-
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
-        ctx.fillRect(-tagW / 2, tagY - 8, tagW, 10);
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-        ctx.strokeRect(-tagW / 2, tagY - 8, tagW, 10);
-
-        ctx.fillStyle = '#ffffff';
-        ctx.fillText(displayName, 0, tagY);
+        CharacterRenderer.drawNameTagAt(ctx, character, headY - 8);
       }
 
       ctx.restore();
       return;
     }
 
-    // 4. Procedural Rendering (scaled to match sprite character proportion)
+    // 4. Procedural Rendering (scaled to match sprite character proportion).
+    // Sprite atlases bake heightScale in at build time; procedural art applies it here.
+    if (visual.heightScale && visual.heightScale > 0) {
+      ctx.scale(1, Math.max(0.85, Math.min(1.15, visual.heightScale)));
+    }
     ctx.scale(1.4, 1.4);
 
     const strideMult = isRunning ? 1.4 : isSneaking ? 0.6 : 1.0;
@@ -680,23 +679,57 @@ export class CharacterRenderer {
 
     // 10. Name Tag
     if (showNameTag && !isFallen) {
-      ctx.font = '7px "Press Start 2P", monospace';
-      ctx.textAlign = 'center';
-      const displayName = character.nickname || character.name.split(' ')[0];
-      const textMetrics = ctx.measureText(displayName);
-      const tagW = textMetrics.width + 6;
-      const tagY = headY - 8;
-
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
-      ctx.fillRect(-tagW / 2, tagY - 8, tagW, 10);
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-      ctx.strokeRect(-tagW / 2, tagY - 8, tagW, 10);
-
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText(displayName, 0, tagY);
+      CharacterRenderer.drawNameTagAt(ctx, character, headY - 8);
     }
 
     ctx.restore();
+  }
+
+  /**
+   * Draws a character's name tag above their head, in world coordinates. Used by the
+   * engine's high-resolution overlay pass so the text stays crisp when the pixel-art world
+   * layer is upscaled.
+   */
+  public static drawNameTag(ctx: CanvasRenderingContext2D, character: CharacterDefinition, state: CharacterRuntimeState) {
+    if (state.state === 'fallen') return;
+    const isSitting = state.isSitting || state.state === 'sitting_desk' || state.state === 'sitting_couch';
+    const frame = spriteManager.getCharacterFrame(
+      character.id,
+      state.facing,
+      state.animFrame,
+      state.isMoving,
+      isSitting,
+      state.currentAction,
+      state.state
+    );
+    let tagY: number;
+    if (frame) {
+      const destH = Math.round(frame.rect.h * frame.scale);
+      const destY = Math.round(-(frame.rect.anchorY ?? 0.95) * destH + 14 + (isSitting ? 5 : 0) + (frame.offsetY || 0) + (frame.rect.offsetY || 0));
+      tagY = destY + 5 - 8;
+    } else {
+      // Procedural figures draw their head at y = -19 inside a 1.4x scale.
+      tagY = (-19 - 8) * 1.4;
+    }
+    ctx.save();
+    ctx.translate(Math.round(state.x), Math.round(state.y));
+    CharacterRenderer.drawNameTagAt(ctx, character, tagY);
+    ctx.restore();
+  }
+
+  private static drawNameTagAt(ctx: CanvasRenderingContext2D, character: CharacterDefinition, tagY: number) {
+    ctx.font = '7px "Press Start 2P", monospace';
+    ctx.textAlign = 'center';
+    const displayName = character.nickname || character.name.split(' ')[0];
+    const tagW = ctx.measureText(displayName).width + 6;
+
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+    ctx.fillRect(-tagW / 2, tagY - 8, tagW, 10);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.strokeRect(-tagW / 2, tagY - 8, tagW, 10);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(displayName, 0, tagY);
   }
 
   // Draw floating animated emote bubble with smooth bounce

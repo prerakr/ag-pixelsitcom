@@ -92,6 +92,8 @@ export interface SettingDefinition {
   gridHeight: number; // e.g. 24 cells
   tileSize: number; // e.g. 32px
   backgroundColor: string;
+  /** Tileset palette for floors and walls ('office', 'coffee', 'hostel', 'pub'). Defaults to 'office'. */
+  tileTheme?: string;
   zones?: RoomZone[];
   tiles: { [key: string]: TileType }; // "x,y" => TileType
   props: PropInstance[];

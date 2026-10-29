@@ -40,10 +40,12 @@ The most critical developer tool in the Sprite Studio. It allows real-time visua
 - **Global Drag & Drop Testing**: Drag any image file directly from your computer and drop it anywhere into the Sprite Gallery modal to immediately load it as a dynamic source texture without needing to restart the server.
 
 ### 🏃 Cast Preview
-An isolated testing environment for character animations.
-- Select any character from the roster.
-- Preview their 4-direction sprite (Up, Down, Left, Right).
-- Toggle between Idle and Walk cycle animations to verify frame pacing and stride alignment.
+An isolated testing environment for character animations and anchor alignment.
+- **Show Filters**: Quickly filter roster by show (*All (43)*, *The Office (14)*, *Friends (9)*, *Silicon Valley (10)*, *HIMYM (10)*).
+- **Direction Controls**: Preview sprites across all 4 directions (Up, Down, Left, Right) with authentic stride flipping.
+- **360° Auto-Rotate**: Automates periodic directional shifts (Down → Right → Up → Left) to test walking transitions and frame symmetry.
+- **Ground & Center Guidelines**: Toggleable dashed crosshair overlay displaying character center-of-mass and the floor contact plane ($y=14$) to verify foot pinning and eliminate floating/sinking.
+- **Idle vs. Walk Cycles**: Toggle animation states to verify frame pacing, stride lengths, and walk bobbing.
 
 ### 🪑 Props & 🧱 Tiles Galleries
 Visual galleries displaying all currently integrated static assets.
@@ -82,3 +84,33 @@ The Sprite Studio interacts with the core engine primarily through the **`Sprite
 5. Use the sliders to dial in the crop box and center the anchor point on the grid.
 6. Click **Apply Live In-Game** to verify it looks correct in the scene.
 7. Copy the generated TypeScript snippet and paste it into `SPRITE_ATLAS_MANIFEST` to finalize the asset.
+
+---
+
+## 5. Offline Art Pipeline (`scripts/sprites/`)
+
+Raw AI-generated sheets are never loaded by the game. They live in `art/source/` and are turned
+into clean, native-resolution atlases by Python scripts (`pip install -r scripts/sprites/requirements.txt`).
+
+| Script | Input | Output |
+|---|---|---|
+| `process_characters.py` | `art/source/characters/*` + `regen/<id>.png`, config in `character_sheets.json` | `public/sprites/characters/characters_<show>.png`, `src/data/sprites/generated/characterAtlas.ts` |
+| `generate_tiles.py` | palettes defined in the script, per set theme | `public/sprites/tiles/tiles_<theme>.png`, `src/data/sprites/generated/tileAtlas.ts` |
+| `process_static.py` | `art/source/props/*.jpg` | `public/sprites/props/*.png` (transparent, same coordinates) |
+| `build_review_page.py` | generated atlases + cast data | `art/review/sprite_review.html`: a standalone, self-contained model sheet (lineups per show, walk cycles in all four directions, frame strips). Open it straight from disk |
+| `regen_characters.py` | current art as likeness reference | `art/source/characters/regen/<id>.png` via OpenRouter, spend capped and logged in `art/source/generation_ledger.jsonl` |
+
+### Characters
+- Figures are found by segmentation, not grid maths, so uneven AI layouts are fine.
+- Each figure is labelled front / back / side from head symmetry and face colour; side facing is detected from where the face sits in the head. Every side view is mirrored to face **right**, and the game mirrors right for left, so the two directions can never disagree.
+- Frames are downsampled once per character (area filter, shared palette) to ~54px tall, scaled by `visual.heightScale`, then pinned to one feet baseline and torso centre line.
+- Atlas layout: one 64px row per character; columns = `down`, `up`, `right` blocks of `[idle, walk0..3]` in 48px cells. `characterAtlasAnimations()` in `atlasLayout.ts` turns a row into animation frames.
+- Wrong labels are fixed with `overrides` in `character_sheets.json` (`d u sL sR x` per detected figure). Run with `--preview <dir>` and check the contact sheets after any change.
+- The walk cycle advances by distance travelled (`src/engine/Locomotion.ts`), about 12px per frame.
+- Builds: regenerated sheets tend to share one body shape, so the build step widens bodies (below the neck) to each character's build in their original art, relative to the rest of that sheet. `bodyType: 'large'` characters are regenerated against heavy mannequins (`make_heavy_layout.py` -> `layout_reference_silhouettes_heavy.png`) and never narrowed. Tune with `buildBase` / `buildScale` in `character_sheets.json`.
+- Generated sheets are validated (one row, 8 figures, profiles in columns 3-6). When the model repeats the figures in a second row, the top row is salvaged instead of paying for a retry.
+
+### Tiles
+- Floors are 128x128 seamless textures (4x4 tiles); the map baker picks the tile by grid position modulo 4.
+- Wall faces, doors and windows are 4-variant strips. Wall tops ("caps"), doorways and contact shadows are drawn by `src/engine/TileMapBaker.ts` from each tile's neighbours: walls with floor to the south show their face, others are seen from above.
+- Each set chooses a palette with `tileTheme` (`office`, `coffee`, `hostel`, `pub`).
