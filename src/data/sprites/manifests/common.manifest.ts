@@ -1,10 +1,13 @@
 import { ImageManifestEntry, SpriteAtlasManifest, TileSpriteDef } from '../../../types/sprite';
 import { TILE_THEME_ATLAS, TILE_THEME_IMAGES } from '../generated/tileAtlas';
+import { ISO_CHARACTER_IMAGE } from '../generated/isoCharacterAtlas';
+import { isoCharacterSprites } from '../characterDefs';
 
 const images: Record<string, ImageManifestEntry> = {};
 for (const [key, url] of Object.entries(TILE_THEME_IMAGES)) {
   images[key] = { url };
 }
+images.characters_iso = { url: ISO_CHARACTER_IMAGE };
 
 /**
  * Tile entries for the Sprite Studio galleries and per-tile toggles. In game, the map baker
@@ -24,7 +27,7 @@ for (const [tileType, block] of Object.entries(office.tiles)) {
 export const COMMON_MANIFEST: SpriteAtlasManifest = {
   showId: 'common',
   images,
-  characters: {},
+  characters: isoCharacterSprites(),
   props: {},
   tiles,
   portraits: {},

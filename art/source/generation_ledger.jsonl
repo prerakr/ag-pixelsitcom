@@ -94,3 +94,5 @@
 {"time": "2026-10-30T01:39:06", "model": "google/gemini-3.1-flash-image", "out": "art\\source\\characters\\regen\\_work\\the_captain_try1.png", "status": 200, "cost_usd": 0.0686665, "seconds": 21.8}
 {"time": "2026-10-30T01:40:23", "model": "google/gemini-3.1-flash-image", "out": "art\\source\\characters\\regen\\_work\\patrice_try2.png", "status": 200, "cost_usd": 0.06918, "seconds": 26.0}
 {"time": "2026-10-30T01:49:25", "model": "google/gemini-3.1-flash-image", "out": "art\\source\\characters\\regen\\_work\\phyllis_try1.png", "status": 200, "cost_usd": 0.0685765, "seconds": 14.5}
+{"time": "2026-11-05T02:40:18", "model": "google/gemini-3.1-flash-image", "out": "art\\source\\characters\\iso\\_work\\rachel_try1.png", "status": 200, "cost_usd": 0.068563, "seconds": 12.7}
+{"time": "2026-11-05T02:40:41", "model": "google/gemini-3.1-flash-image", "out": "art\\source\\characters\\iso\\_work\\joey_try1.png", "status": 200, "cost_usd": 0.068564, "seconds": 10.6}

@@ -109,3 +109,45 @@ export interface TileThemeAtlas {
   tiles: Record<string, TileThemeBlock>;
   caps: Record<string, WallCapStyle>;
 }
+
+/** One prop view in an isometric atlas. (ox, oy) is the sprite pixel of the footprint's north-west floor corner. */
+export interface IsoFrame {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  ox: number;
+  oy: number;
+}
+
+/** A strip of wall-face variants, 32px per tile and `wallHeight` tall, lit for the north (n) and west (w) walls. */
+export interface IsoWallFace {
+  variants: number;
+  n: { x: number; y: number };
+  w: { x: number; y: number };
+}
+
+/** Isometric atlas for one set theme, built by scripts/sprites/iso_assets.py. */
+export interface IsoThemeAtlas {
+  imageKey: string;
+  wallHeight: number;
+  wallThickness: number;
+  caps: { fill: string; light: string; dark: string };
+  /** Keyed `${propType}:${facing}`. */
+  frames: Record<string, IsoFrame>;
+  walls: Record<string, IsoWallFace>;
+  /** Top-down floor textures (rugs) laid into the floor before it is projected. */
+  decals: Record<string, { x: number; y: number; w: number; h: number }>;
+}
+
+/**
+ * Real-world size of an isometric prop, in tiles (1 tile = 1 m) for the 'down' facing; height in
+ * world px. 'floor' props block their footprint, 'seat' props are sat in, 'wall' props hang on a
+ * back wall.
+ */
+export interface IsoPropCatalogEntry {
+  width: number;
+  depth: number;
+  height: number;
+  kind: 'floor' | 'seat' | 'wall';
+}

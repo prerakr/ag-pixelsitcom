@@ -13,6 +13,8 @@ import { lightingEngine } from './LightingEngine';
 import { spriteManager } from './SpriteManager';
 import { ScriptPlayer, StageEffects } from './ScriptPlayer';
 import { PathPoint } from './NavGrid';
+import { IsoStage } from './iso/IsoStage';
+import { ISO, TOPDOWN } from './iso/IsoProjection';
 import { SPRITE_ATLAS_MANIFEST } from '../data/sprites/SpriteAtlas';
 
 export interface VisualizerCallbacks {
@@ -74,6 +76,7 @@ export class VisualizerEngine {
   private worldCanvas: HTMLCanvasElement | null = null;
   private worldCtx: CanvasRenderingContext2D | null = null;
   private unsubscribeSprites: (() => void) | null = null;
+  private readonly isoStage = new IsoStage();
 
   constructor(
     setting: SettingDefinition,
@@ -82,6 +85,8 @@ export class VisualizerEngine {
   ) {
     this.charactersMap = characters;
     this.camera = new Camera(setting.defaultCamera.x, setting.defaultCamera.y, setting.defaultCamera.zoom);
+    this.camera.projection = setting.projection === 'iso' ? ISO : TOPDOWN;
+    this.camera.snapTo(setting.defaultCamera.x, setting.defaultCamera.y, setting.defaultCamera.zoom);
     if (callbacks) this.callbacks = callbacks;
     this.player = new ScriptPlayer(setting, characters, this.createEffects(), {
       onBeatChange: (scene, beat, current) => this.callbacks.onBeatChange?.(scene, beat, current),
@@ -153,11 +158,12 @@ export class VisualizerEngine {
         const worldW = this.setting.gridWidth * this.setting.tileSize;
         const worldH = this.setting.gridHeight * this.setting.tileSize;
         if (cam.style === 'cut') {
+          const b = this.camera.projection.bounds(worldW, worldH);
           const fitZoom = Math.max(
             this.camera.minZoom,
-            Math.min(1.4, Math.min((rectW * 0.92) / worldW, (rectH * 0.92) / worldH))
+            Math.min(1.4, Math.min((rectW * 0.92) / (b.x1 - b.x0), (rectH * 0.92) / (b.y1 - b.y0)))
           );
-          this.camera.snapTo(worldW / 2, worldH / 2, fitZoom);
+          this.camera.snapToView((b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2, fitZoom);
         } else {
           this.camera.fitToViewport(rectW, rectH, worldW, worldH);
         }
@@ -215,6 +221,7 @@ export class VisualizerEngine {
 
   public setSetting(setting: SettingDefinition) {
     this.isTileMapDirty = true;
+    this.camera.projection = setting.projection === 'iso' ? ISO : TOPDOWN;
     this.camera.snapTo(setting.defaultCamera.x, setting.defaultCamera.y, setting.defaultCamera.zoom);
     this.player.setSetting(setting);
     musicEngine.playTheme(setting.id);
@@ -377,69 +384,77 @@ export class VisualizerEngine {
 
     ctx.save();
     try {
-      // 1. Draw Cached Static Tilemap & Floor Rugs (zero per-frame string formatting)
-      if (this.isTileMapDirty || !this.tileCanvas) {
-        this.renderTileMapToCache();
-      }
-      if (this.tileCanvas) {
-        ctx.drawImage(this.tileCanvas, 0, 0);
-      }
-
-      // 2. Draw Floor Liquid Puddles & Coffee Stains
-      particleSystem.drawFloorPuddles(ctx);
-
-      // 3. Collect props and characters into the reused render queue, sorted by baseline
-      let queued = 0;
-      for (let i = 0; i < this.setting.props.length; i++) {
-        const prop = this.setting.props[i];
-        if (prop.type === 'rug') continue;
-        const propH = prop.height || 1;
-
-        // Base depth offset:
-        // - Couches and chairs: 0.2 (sort near backrest so sitting characters are drawn in front)
-        // - Flat low tables / coffee tables: 0.35
-        // - Tall desks / counters: 0.75
-        let baseFactor = 0.75;
-        if (prop.type === 'sofa_leather' || prop.type === 'chair_office' || prop.type === 'chair_conference') {
-          baseFactor = 0.2;
-        } else if (prop.type === 'desk_wood' && prop.name?.toLowerCase().includes('coffee')) {
-          baseFactor = 0.35;
-        } else if (prop.type === 'trash_can' || prop.type === 'potted_plant') {
-          baseFactor = 0.7;
+      if (this.setting.projection === 'iso') {
+        if (this.isTileMapDirty) {
+          this.isoStage.invalidate();
+          this.isTileMapDirty = false;
         }
-        const item = this.renderItem(queued++);
-        item.kind = RENDER_PROP;
-        item.index = i;
-        item.yOrder = (prop.y + propH * baseFactor) * tileSize + (prop.zIndexOffset || 0);
-      }
-      for (let i = 0; i < this.player.states.length; i++) {
-        const state = this.player.states[i];
-        if (!this.charactersMap[state.id]) continue;
-        const item = this.renderItem(queued++);
-        item.kind = RENDER_CHARACTER;
-        item.index = i;
-        item.yOrder = state.y + 8;
-      }
-      const queue = this.renderQueue;
-      queue.length = queued;
-      queue.sort(compareRenderItems);
-
-      for (let i = 0; i < queued; i++) {
-        const item = queue[i];
-        if (item.kind === RENDER_PROP) {
-          const prop = this.setting.props[item.index];
-          TileRenderer.drawProp(ctx, prop, tileSize, this.player.propStates.get(prop.id), this.gameTime);
-        } else {
-          const state = this.player.states[item.index];
-          CharacterRenderer.drawCharacter(ctx, this.charactersMap[state.id], state, false, this.gameTime);
+        this.isoStage.draw(ctx, this.setting, this.player.states, this.charactersMap, this.gameTime);
+      } else {
+        // 1. Draw Cached Static Tilemap & Floor Rugs (zero per-frame string formatting)
+        if (this.isTileMapDirty || !this.tileCanvas) {
+          this.renderTileMapToCache();
         }
+        if (this.tileCanvas) {
+          ctx.drawImage(this.tileCanvas, 0, 0);
+        }
+
+        // 2. Draw Floor Liquid Puddles & Coffee Stains
+        particleSystem.drawFloorPuddles(ctx);
+
+        // 3. Collect props and characters into the reused render queue, sorted by baseline
+        let queued = 0;
+        for (let i = 0; i < this.setting.props.length; i++) {
+          const prop = this.setting.props[i];
+          if (prop.type === 'rug') continue;
+          const propH = prop.height || 1;
+
+          // Base depth offset:
+          // - Couches and chairs: 0.2 (sort near backrest so sitting characters are drawn in front)
+          // - Flat low tables / coffee tables: 0.35
+          // - Tall desks / counters: 0.75
+          let baseFactor = 0.75;
+          if (prop.type === 'sofa_leather' || prop.type === 'chair_office' || prop.type === 'chair_conference') {
+            baseFactor = 0.2;
+          } else if (prop.type === 'desk_wood' && prop.name?.toLowerCase().includes('coffee')) {
+            baseFactor = 0.35;
+          } else if (prop.type === 'trash_can' || prop.type === 'potted_plant') {
+            baseFactor = 0.7;
+          }
+          const item = this.renderItem(queued++);
+          item.kind = RENDER_PROP;
+          item.index = i;
+          item.yOrder = (prop.y + propH * baseFactor) * tileSize + (prop.zIndexOffset || 0);
+        }
+        for (let i = 0; i < this.player.states.length; i++) {
+          const state = this.player.states[i];
+          if (!this.charactersMap[state.id]) continue;
+          const item = this.renderItem(queued++);
+          item.kind = RENDER_CHARACTER;
+          item.index = i;
+          item.yOrder = state.y + 8;
+        }
+        const queue = this.renderQueue;
+        queue.length = queued;
+        queue.sort(compareRenderItems);
+
+        for (let i = 0; i < queued; i++) {
+          const item = queue[i];
+          if (item.kind === RENDER_PROP) {
+            const prop = this.setting.props[item.index];
+            TileRenderer.drawProp(ctx, prop, tileSize, this.player.propStates.get(prop.id), this.gameTime);
+          } else {
+            const state = this.player.states[item.index];
+            CharacterRenderer.drawCharacter(ctx, this.charactersMap[state.id], state, false, this.gameTime);
+          }
+        }
+
+        // 4. Draw Airborne Flying Particles (Paper Airplanes, Foam, Coffee Droplets, Confetti)
+        particleSystem.drawParticles(ctx);
+
+        // 5. Dynamic Ambient Lighting & Light Rays
+        lightingEngine.drawLighting(ctx, this.setting, worldW, worldH, this.gameTime);
       }
-
-      // 4. Draw Airborne Flying Particles (Paper Airplanes, Foam, Coffee Droplets, Confetti)
-      particleSystem.drawParticles(ctx);
-
-      // 5. Dynamic Ambient Lighting & Light Rays
-      lightingEngine.drawLighting(ctx, this.setting, worldW, worldH, this.gameTime);
     } finally {
       ctx.restore();
     }
@@ -467,12 +482,14 @@ export class VisualizerEngine {
       screen.setTransform(dpr, 0, 0, dpr, 0, 0);
       screen.imageSmoothingEnabled = false;
       this.camera.applyTransform(screen, logicalW, logicalH);
+      const iso = this.setting.projection === 'iso';
+      const proj = this.camera.projection;
 
       if (this.showWaypoints) {
         for (const id in this.setting.waypoints) {
           const wp = this.setting.waypoints[id];
-          const wx = wp.x * tileSize;
-          const wy = wp.y * tileSize;
+          const wx = proj.toViewX(wp.x * tileSize, wp.y * tileSize);
+          const wy = proj.toViewY(wp.x * tileSize, wp.y * tileSize);
           screen.fillStyle = 'rgba(239, 68, 68, 0.4)';
           screen.beginPath();
           screen.arc(wx, wy, 6, 0, Math.PI * 2);
@@ -487,7 +504,7 @@ export class VisualizerEngine {
         for (let i = 0; i < this.player.states.length; i++) {
           const state = this.player.states[i];
           const char = this.charactersMap[state.id];
-          if (char) CharacterRenderer.drawNameTag(screen, char, state);
+          if (char) CharacterRenderer.drawNameTag(screen, char, iso ? this.isoStage.project(state) : state);
         }
       }
 
@@ -496,12 +513,13 @@ export class VisualizerEngine {
         const state = this.player.states[i];
         if (state.currentSpeech && state.currentSpeech.displayedText.length > 0) {
           const char = this.charactersMap[state.id];
+          const view = iso ? this.isoStage.project(state) : state;
           SpeechBubbleRenderer.drawBubble(screen, {
             speakerName: char?.nickname || char?.name || state.id,
             text: state.currentSpeech.text,
             displayedText: state.currentSpeech.displayedText,
-            x: state.x,
-            y: state.y,
+            x: view.x,
+            y: view.y,
             emotion: state.currentSpeech.emotion,
             maxWidth: 240,
           });

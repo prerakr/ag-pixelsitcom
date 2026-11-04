@@ -39,6 +39,12 @@ python scripts/sprites/process_static.py
 
 # Standalone sprite review page (walk cycles, lineups) -> art/review/sprite_review.html
 python scripts/sprites/build_review_page.py
+
+# Isometric sets: props (modelled at real size, all 4 facings), wall faces, rugs -> public/sprites/iso
+python scripts/sprites/iso_assets.py --preview <dir>
+
+# Isometric character views: layout (mannequin ref) | generate --only id1,id2 (paid) | build
+python scripts/sprites/iso_characters.py build --preview <dir>
 ```
 Generated outputs (`public/sprites/**`, `src/data/sprites/generated/*`) are committed; never edit them by hand.
 
@@ -56,6 +62,7 @@ Generated outputs (`public/sprites/**`, `src/data/sprites/generated/*`) are comm
   - `ScriptPlayer` owns the timeline, all character/prop state and beat execution, with no DOM or audio imports; side effects (sound, particles, camera, lighting) go through its `StageEffects` interface. Seeking resets to the episode opening and silently replays earlier beats.
   - `NavGrid` is the half-tile walkability grid (walls block, doors open, solid props block their floor footprint) with A* routing; movement beats walk its routes.
   - `VisualizerEngine` (`CanvasRenderer.ts`) only presents: canvas, camera, game loop, drawing, and the `StageEffects` implementation.
+  - `iso/` draws sets with `projection: 'iso'` (2:1 cut-away stage, test set `central_perk_iso`). The simulation stays in world coordinates; `Camera` works in view space through a `ViewProjection`, so camera targets are always given in world coordinates. Iso props come from `ISO_PROP_CATALOG` (real-size footprints that `NavGrid` blocks exactly); characters with iso art are registered as `<id>@iso`, others fall back to their top-down frames.
 - `src/types/`: Core type definitions (`script.ts`, `character.ts`, `environment.ts`).
 - `src/data/`: Static registries for characters (`characters/`), show settings (`settings/`), and episodes (`episodes/`).
 - `src/ai/`: AI script generation via Gemini/OpenAI APIs, prompt templates, and schema validator.

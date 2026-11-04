@@ -1,4 +1,5 @@
 import { PropInstance, PropType, SettingDefinition } from '../types/environment';
+import { ISO_PROP_CATALOG } from '../data/sprites/generated/isoAtlas';
 
 /** A character's feet sit this far below its position (CharacterRenderer's ground line). */
 export const FOOT_OFFSET_PX = 14;
@@ -65,6 +66,12 @@ export function propFootprint(prop: PropInstance): { x0: number; y0: number; x1:
   if (NON_BLOCKING.has(prop.type)) return null;
   const w = prop.width || 1;
   const h = prop.height || 1;
+  const iso = ISO_PROP_CATALOG[prop.type];
+  if (iso) {
+    // Isometric props are modelled at real size, so their rectangle is their floor contact.
+    if (iso.kind !== 'floor') return null;
+    return { x0: prop.x + FOOTPRINT_INSET, x1: prop.x + w - FOOTPRINT_INSET, y0: prop.y + FOOTPRINT_INSET, y1: prop.y + h - FOOTPRINT_INSET };
+  }
   const share = UPRIGHT.has(prop.type) ? UPRIGHT_FLOOR_SHARE : FLAT_FLOOR_SHARE;
   const depth = Math.max(Math.min(h, 0.5), h * share);
   return {

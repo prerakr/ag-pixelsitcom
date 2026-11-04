@@ -3,6 +3,7 @@ import { DUNDER_MIFFLIN_SCRANTON } from './dunder_mifflin';
 import { CENTRAL_COFFEE } from './central_coffee';
 import { HACKER_HOSTEL } from './hacker_hostel';
 import { MACLARENS_PUB } from './maclarens_pub';
+import { CENTRAL_PERK_ISO } from './central_perk_iso';
 import { loadCustomSettings } from './customStore';
 
 export const ALL_SETTINGS: Record<string, SettingDefinition> = {
@@ -10,6 +11,7 @@ export const ALL_SETTINGS: Record<string, SettingDefinition> = {
   central_coffee: CENTRAL_COFFEE,
   hacker_hostel: HACKER_HOSTEL,
   maclarens_pub: MACLARENS_PUB,
+  central_perk_iso: CENTRAL_PERK_ISO,
 };
 
 export const DEFAULT_SETTING_ID = 'dunder_mifflin_scranton';
@@ -19,6 +21,7 @@ export const SETTING_TO_SHOW_MAP: Record<string, string> = {
   central_coffee: 'friends',
   hacker_hostel: 'silicon_valley',
   maclarens_pub: 'himym',
+  central_perk_iso: 'friends',
 };
 
 export function getMergedSettings(): Record<string, SettingDefinition> {

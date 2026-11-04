@@ -1,4 +1,11 @@
+import { TOPDOWN, ViewProjection } from './iso/IsoProjection';
+
+/**
+ * Follows the action in view space. Targets are given in world coordinates and projected, so
+ * the same calls work for top-down and isometric sets; `x`/`y` themselves are view coordinates.
+ */
 export class Camera {
+  public projection: ViewProjection = TOPDOWN;
   public x: number = 0;
   public y: number = 0;
   public targetX: number = 0;
@@ -52,14 +59,19 @@ export class Camera {
   }
 
   public setTarget(x: number, y: number, zoom?: number) {
-    this.targetX = x;
-    this.targetY = y;
+    this.targetX = this.projection.toViewX(x, y);
+    this.targetY = this.projection.toViewY(x, y);
     if (zoom !== undefined) {
       this.targetZoom = Math.max(this.minZoom, Math.min(this.maxZoom, zoom));
     }
   }
 
   public snapTo(x: number, y: number, zoom?: number) {
+    this.snapToView(this.projection.toViewX(x, y), this.projection.toViewY(x, y), zoom);
+  }
+
+  /** Like snapTo, but for a point already in view coordinates. */
+  public snapToView(x: number, y: number, zoom?: number) {
     this.x = x;
     this.y = y;
     this.targetX = x;
@@ -76,11 +88,14 @@ export class Camera {
     worldW: number,
     worldH: number
   ) {
-    const scaleX = (viewportW * 0.92) / worldW;
-    const scaleY = (viewportH * 0.92) / worldH;
+    const b = this.projection.bounds(worldW, worldH);
+    const scaleX = (viewportW * 0.92) / (b.x1 - b.x0);
+    const scaleY = (viewportH * 0.92) / (b.y1 - b.y0);
     const fitZoom = Math.max(this.minZoom, Math.min(1.4, Math.min(scaleX, scaleY)));
 
-    this.setTarget(worldW / 2, worldH / 2, fitZoom);
+    this.targetX = (b.x0 + b.x1) / 2;
+    this.targetY = (b.y0 + b.y1) / 2;
+    this.targetZoom = fitZoom;
   }
 
   public screenToWorld(
@@ -91,9 +106,9 @@ export class Camera {
   ): { x: number; y: number } {
     const cx = viewportW / 2;
     const cy = viewportH / 2;
-    const worldX = (screenX - cx) / this.zoom + this.x;
-    const worldY = (screenY - cy) / this.zoom + this.y;
-    return { x: worldX, y: worldY };
+    const viewX = (screenX - cx) / this.zoom + this.x;
+    const viewY = (screenY - cy) / this.zoom + this.y;
+    return { x: this.projection.toWorldX(viewX, viewY), y: this.projection.toWorldY(viewX, viewY) };
   }
 
   public worldToScreen(
@@ -104,8 +119,8 @@ export class Camera {
   ): { x: number; y: number } {
     const cx = viewportW / 2;
     const cy = viewportH / 2;
-    const screenX = (worldX - this.x) * this.zoom + cx;
-    const screenY = (worldY - this.y) * this.zoom + cy;
+    const screenX = (this.projection.toViewX(worldX, worldY) - this.x) * this.zoom + cx;
+    const screenY = (this.projection.toViewY(worldX, worldY) - this.y) * this.zoom + cy;
     return { x: screenX, y: screenY };
   }
 

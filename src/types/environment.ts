@@ -48,7 +48,24 @@ export type PropType =
   | 'liquor_shelf'
   | 'pub_fireplace'
   | 'framed_art'
-  | 'fire_hazard';
+  | 'fire_hazard'
+  // Isometric set props (catalogue in src/data/sprites/generated/isoAtlas.ts)
+  | 'sofa_orange'
+  | 'armchair_green'
+  | 'armchair_gold'
+  | 'coffee_table_low'
+  | 'cafe_counter'
+  | 'back_counter'
+  | 'cafe_table_round'
+  | 'cafe_chair'
+  | 'bar_stool'
+  | 'floor_lamp'
+  | 'plant_tall'
+  | 'upright_piano'
+  | 'menu_board'
+  | 'wall_shelf'
+  | 'framed_art_warm'
+  | 'framed_art_cool';
 
 export interface PropInstance {
   id: string;
@@ -94,6 +111,12 @@ export interface SettingDefinition {
   backgroundColor: string;
   /** Tileset palette for floors and walls ('office', 'coffee', 'hostel', 'pub'). Defaults to 'office'. */
   tileTheme?: string;
+  /**
+   * How the set is drawn. 'topdown' (default) is the 3/4 overhead view. 'iso' draws it as a 2:1
+   * isometric stage: north and west walls stand at full height, south and east walls are cut
+   * away, and props come from the isometric atlas for `tileTheme`. Simulation is unchanged.
+   */
+  projection?: 'topdown' | 'iso';
   zones?: RoomZone[];
   tiles: { [key: string]: TileType }; // "x,y" => TileType
   props: PropInstance[];
