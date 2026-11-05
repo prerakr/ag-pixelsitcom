@@ -4,6 +4,7 @@ import { IsoPropCatalogEntry, IsoThemeAtlas } from '../../../types/sprite';
 export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
   "coffee": {
     "imageKey": "iso_coffee",
+    "glowImageKey": "iso_coffee_glow",
     "wallHeight": 96,
     "wallThickness": 6,
     "caps": {
@@ -305,6 +306,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "floor_lamp:down": {
         "ox": 8,
         "oy": 52,
+        "glow": {
+          "x": 8,
+          "y": 10,
+          "r": 248,
+          "g": 215,
+          "b": 141,
+          "n": 246
+        },
         "x": 68,
         "y": 345,
         "w": 16,
@@ -313,6 +322,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "floor_lamp:right": {
         "ox": 8,
         "oy": 52,
+        "glow": {
+          "x": 8,
+          "y": 10,
+          "r": 248,
+          "g": 215,
+          "b": 141,
+          "n": 246
+        },
         "x": 85,
         "y": 345,
         "w": 16,
@@ -321,6 +338,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "floor_lamp:up": {
         "ox": 8,
         "oy": 52,
+        "glow": {
+          "x": 8,
+          "y": 10,
+          "r": 248,
+          "g": 215,
+          "b": 141,
+          "n": 246
+        },
         "x": 102,
         "y": 345,
         "w": 16,
@@ -329,6 +354,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "floor_lamp:left": {
         "ox": 8,
         "oy": 52,
+        "glow": {
+          "x": 8,
+          "y": 10,
+          "r": 248,
+          "g": 215,
+          "b": 141,
+          "n": 246
+        },
         "x": 119,
         "y": 345,
         "w": 16,
@@ -574,6 +607,7 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
   },
   "office": {
     "imageKey": "iso_office",
+    "glowImageKey": "iso_office_glow",
     "wallHeight": 96,
     "wallThickness": 6,
     "caps": {
@@ -603,6 +637,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_jim:up": {
         "ox": 24,
         "oy": 33,
+        "glow": {
+          "x": 39,
+          "y": 13,
+          "r": 41,
+          "g": 109,
+          "b": 158,
+          "n": 225
+        },
         "x": 182,
         "y": 398,
         "w": 72,
@@ -611,6 +653,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_jim:left": {
         "ox": 48,
         "oy": 33,
+        "glow": {
+          "x": 32,
+          "y": 13,
+          "r": 41,
+          "g": 109,
+          "b": 158,
+          "n": 225
+        },
         "x": 255,
         "y": 398,
         "w": 72,
@@ -635,6 +685,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_dwight:up": {
         "ox": 24,
         "oy": 33,
+        "glow": {
+          "x": 39,
+          "y": 13,
+          "r": 42,
+          "g": 112,
+          "b": 161,
+          "n": 225
+        },
         "x": 328,
         "y": 398,
         "w": 72,
@@ -643,6 +701,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_dwight:left": {
         "ox": 48,
         "oy": 33,
+        "glow": {
+          "x": 32,
+          "y": 13,
+          "r": 42,
+          "g": 112,
+          "b": 161,
+          "n": 225
+        },
         "x": 401,
         "y": 398,
         "w": 72,
@@ -667,6 +733,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_stanley:up": {
         "ox": 24,
         "oy": 33,
+        "glow": {
+          "x": 39,
+          "y": 13,
+          "r": 40,
+          "g": 109,
+          "b": 158,
+          "n": 225
+        },
         "x": 474,
         "y": 398,
         "w": 72,
@@ -675,6 +749,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_stanley:left": {
         "ox": 48,
         "oy": 33,
+        "glow": {
+          "x": 32,
+          "y": 13,
+          "r": 40,
+          "g": 109,
+          "b": 158,
+          "n": 225
+        },
         "x": 547,
         "y": 398,
         "w": 72,
@@ -699,6 +781,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_phyllis:up": {
         "ox": 24,
         "oy": 33,
+        "glow": {
+          "x": 39,
+          "y": 13,
+          "r": 42,
+          "g": 111,
+          "b": 161,
+          "n": 225
+        },
         "x": 620,
         "y": 398,
         "w": 72,
@@ -707,6 +797,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_phyllis:left": {
         "ox": 48,
         "oy": 33,
+        "glow": {
+          "x": 32,
+          "y": 13,
+          "r": 42,
+          "g": 112,
+          "b": 161,
+          "n": 225
+        },
         "x": 693,
         "y": 398,
         "w": 72,
@@ -731,6 +829,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_angela:up": {
         "ox": 24,
         "oy": 33,
+        "glow": {
+          "x": 39,
+          "y": 13,
+          "r": 42,
+          "g": 112,
+          "b": 161,
+          "n": 225
+        },
         "x": 766,
         "y": 398,
         "w": 72,
@@ -739,6 +845,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_angela:left": {
         "ox": 48,
         "oy": 33,
+        "glow": {
+          "x": 32,
+          "y": 13,
+          "r": 42,
+          "g": 112,
+          "b": 161,
+          "n": 225
+        },
         "x": 839,
         "y": 398,
         "w": 72,
@@ -763,6 +877,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_kevin:up": {
         "ox": 24,
         "oy": 33,
+        "glow": {
+          "x": 39,
+          "y": 13,
+          "r": 41,
+          "g": 111,
+          "b": 161,
+          "n": 225
+        },
         "x": 912,
         "y": 398,
         "w": 72,
@@ -771,6 +893,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_kevin:left": {
         "ox": 48,
         "oy": 33,
+        "glow": {
+          "x": 32,
+          "y": 13,
+          "r": 41,
+          "g": 111,
+          "b": 161,
+          "n": 225
+        },
         "x": 0,
         "y": 472,
         "w": 72,
@@ -795,6 +925,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_oscar:up": {
         "ox": 24,
         "oy": 33,
+        "glow": {
+          "x": 39,
+          "y": 13,
+          "r": 42,
+          "g": 112,
+          "b": 162,
+          "n": 225
+        },
         "x": 73,
         "y": 472,
         "w": 72,
@@ -803,6 +941,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_oscar:left": {
         "ox": 48,
         "oy": 33,
+        "glow": {
+          "x": 32,
+          "y": 13,
+          "r": 42,
+          "g": 112,
+          "b": 162,
+          "n": 225
+        },
         "x": 146,
         "y": 472,
         "w": 72,
@@ -827,6 +973,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_creed:up": {
         "ox": 24,
         "oy": 33,
+        "glow": {
+          "x": 39,
+          "y": 13,
+          "r": 41,
+          "g": 110,
+          "b": 160,
+          "n": 225
+        },
         "x": 219,
         "y": 472,
         "w": 72,
@@ -835,6 +989,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_creed:left": {
         "ox": 48,
         "oy": 33,
+        "glow": {
+          "x": 32,
+          "y": 13,
+          "r": 41,
+          "g": 110,
+          "b": 160,
+          "n": 225
+        },
         "x": 292,
         "y": 472,
         "w": 72,
@@ -859,6 +1021,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_meredith:up": {
         "ox": 24,
         "oy": 33,
+        "glow": {
+          "x": 39,
+          "y": 13,
+          "r": 41,
+          "g": 111,
+          "b": 161,
+          "n": 225
+        },
         "x": 365,
         "y": 472,
         "w": 72,
@@ -867,6 +1037,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_meredith:left": {
         "ox": 48,
         "oy": 33,
+        "glow": {
+          "x": 32,
+          "y": 13,
+          "r": 41,
+          "g": 111,
+          "b": 161,
+          "n": 225
+        },
         "x": 438,
         "y": 472,
         "w": 72,
@@ -891,6 +1069,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_toby:up": {
         "ox": 24,
         "oy": 33,
+        "glow": {
+          "x": 39,
+          "y": 13,
+          "r": 41,
+          "g": 111,
+          "b": 161,
+          "n": 225
+        },
         "x": 511,
         "y": 472,
         "w": 72,
@@ -899,6 +1085,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_toby:left": {
         "ox": 48,
         "oy": 33,
+        "glow": {
+          "x": 32,
+          "y": 13,
+          "r": 41,
+          "g": 111,
+          "b": 161,
+          "n": 225
+        },
         "x": 584,
         "y": 472,
         "w": 72,
@@ -923,6 +1117,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_kelly:up": {
         "ox": 24,
         "oy": 33,
+        "glow": {
+          "x": 39,
+          "y": 13,
+          "r": 41,
+          "g": 111,
+          "b": 160,
+          "n": 225
+        },
         "x": 657,
         "y": 472,
         "w": 72,
@@ -931,6 +1133,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_kelly:left": {
         "ox": 48,
         "oy": 33,
+        "glow": {
+          "x": 32,
+          "y": 13,
+          "r": 41,
+          "g": 111,
+          "b": 160,
+          "n": 225
+        },
         "x": 730,
         "y": 472,
         "w": 72,
@@ -955,6 +1165,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_ryan:up": {
         "ox": 24,
         "oy": 24,
+        "glow": {
+          "x": 39,
+          "y": 11,
+          "r": 68,
+          "g": 143,
+          "b": 191,
+          "n": 168
+        },
         "x": 0,
         "y": 736,
         "w": 72,
@@ -963,6 +1181,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_ryan:left": {
         "ox": 48,
         "oy": 25,
+        "glow": {
+          "x": 34,
+          "y": 11,
+          "r": 68,
+          "g": 143,
+          "b": 191,
+          "n": 168
+        },
         "x": 677,
         "y": 673,
         "w": 72,
@@ -987,6 +1213,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_pam_spare:up": {
         "ox": 24,
         "oy": 33,
+        "glow": {
+          "x": 39,
+          "y": 13,
+          "r": 42,
+          "g": 112,
+          "b": 161,
+          "n": 225
+        },
         "x": 803,
         "y": 472,
         "w": 72,
@@ -995,6 +1229,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_pam_spare:left": {
         "ox": 48,
         "oy": 33,
+        "glow": {
+          "x": 32,
+          "y": 13,
+          "r": 42,
+          "g": 111,
+          "b": 161,
+          "n": 225
+        },
         "x": 876,
         "y": 472,
         "w": 72,
@@ -1019,6 +1261,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_plain:up": {
         "ox": 24,
         "oy": 33,
+        "glow": {
+          "x": 39,
+          "y": 13,
+          "r": 42,
+          "g": 112,
+          "b": 162,
+          "n": 225
+        },
         "x": 949,
         "y": 472,
         "w": 72,
@@ -1027,6 +1277,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_plain:left": {
         "ox": 48,
         "oy": 33,
+        "glow": {
+          "x": 32,
+          "y": 13,
+          "r": 42,
+          "g": 112,
+          "b": 162,
+          "n": 225
+        },
         "x": 0,
         "y": 541,
         "w": 72,
@@ -1051,6 +1309,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_exec:up": {
         "ox": 29,
         "oy": 33,
+        "glow": {
+          "x": 46,
+          "y": 14,
+          "r": 40,
+          "g": 110,
+          "b": 161,
+          "n": 240
+        },
         "x": 595,
         "y": 313,
         "w": 87,
@@ -1059,6 +1325,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_exec:left": {
         "ox": 58,
         "oy": 31,
+        "glow": {
+          "x": 37,
+          "y": 13,
+          "r": 40,
+          "g": 110,
+          "b": 160,
+          "n": 244
+        },
         "x": 871,
         "y": 313,
         "w": 87,
@@ -1083,6 +1357,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_reception:up": {
         "ox": 29,
         "oy": 40,
+        "glow": {
+          "x": 47,
+          "y": 28,
+          "r": 38,
+          "g": 106,
+          "b": 155,
+          "n": 228
+        },
         "x": 907,
         "y": 130,
         "w": 93,
@@ -1091,6 +1373,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_reception:left": {
         "ox": 64,
         "oy": 36,
+        "glow": {
+          "x": 49,
+          "y": 22,
+          "r": 38,
+          "g": 106,
+          "b": 155,
+          "n": 228
+        },
         "x": 55,
         "y": 313,
         "w": 93,
@@ -1355,6 +1645,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "photocopier:down": {
         "ox": 22,
         "oy": 30,
+        "glow": {
+          "x": 31,
+          "y": 22,
+          "r": 79,
+          "g": 163,
+          "b": 214,
+          "n": 10
+        },
         "x": 73,
         "y": 736,
         "w": 55,
@@ -1363,6 +1661,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "photocopier:right": {
         "ox": 33,
         "oy": 30,
+        "glow": {
+          "x": 49,
+          "y": 10,
+          "r": 79,
+          "g": 163,
+          "b": 214,
+          "n": 12
+        },
         "x": 129,
         "y": 736,
         "w": 55,
@@ -1419,6 +1725,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "vending_snack:down": {
         "ox": 25,
         "oy": 57,
+        "glow": {
+          "x": 24,
+          "y": 32,
+          "r": 79,
+          "g": 224,
+          "b": 122,
+          "n": 8
+        },
         "x": 616,
         "y": 227,
         "w": 54,
@@ -1427,6 +1741,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "vending_snack:right": {
         "ox": 29,
         "oy": 57,
+        "glow": {
+          "x": 50,
+          "y": 22,
+          "r": 79,
+          "g": 224,
+          "b": 122,
+          "n": 8
+        },
         "x": 671,
         "y": 227,
         "w": 54,
@@ -1451,6 +1773,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "vending_soda:down": {
         "ox": 25,
         "oy": 57,
+        "glow": {
+          "x": 11,
+          "y": 38,
+          "r": 194,
+          "g": 200,
+          "b": 201,
+          "n": 555
+        },
         "x": 836,
         "y": 227,
         "w": 54,
@@ -1459,6 +1789,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "vending_soda:right": {
         "ox": 29,
         "oy": 57,
+        "glow": {
+          "x": 36,
+          "y": 41,
+          "r": 194,
+          "g": 200,
+          "b": 201,
+          "n": 555
+        },
         "x": 891,
         "y": 227,
         "w": 54,
@@ -2015,6 +2353,7 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
   },
   "pub": {
     "imageKey": "iso_pub",
+    "glowImageKey": "iso_pub_glow",
     "wallHeight": 96,
     "wallThickness": 6,
     "caps": {
@@ -2252,6 +2591,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "jukebox:down": {
         "ox": 22,
         "oy": 38,
+        "glow": {
+          "x": 14,
+          "y": 31,
+          "r": 198,
+          "g": 149,
+          "b": 157,
+          "n": 452
+        },
         "x": 69,
         "y": 430,
         "w": 49,
@@ -2260,6 +2607,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "jukebox:right": {
         "ox": 27,
         "oy": 38,
+        "glow": {
+          "x": 34,
+          "y": 31,
+          "r": 198,
+          "g": 149,
+          "b": 157,
+          "n": 452
+        },
         "x": 119,
         "y": 430,
         "w": 49,
@@ -2508,6 +2863,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "wall_sconce:down": {
         "ox": 3,
         "oy": 60,
+        "glow": {
+          "x": 3,
+          "y": 5,
+          "r": 247,
+          "g": 215,
+          "b": 143,
+          "n": 34
+        },
         "x": 935,
         "y": 499,
         "w": 8,
@@ -2516,6 +2879,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "wall_sconce:right": {
         "ox": 5,
         "oy": 60,
+        "glow": {
+          "x": 4,
+          "y": 5,
+          "r": 247,
+          "g": 215,
+          "b": 143,
+          "n": 34
+        },
         "x": 944,
         "y": 499,
         "w": 8,
@@ -2524,6 +2895,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "wall_sconce:up": {
         "ox": 3,
         "oy": 60,
+        "glow": {
+          "x": 4,
+          "y": 4,
+          "r": 249,
+          "g": 218,
+          "b": 147,
+          "n": 27
+        },
         "x": 917,
         "y": 499,
         "w": 8,
@@ -2532,6 +2911,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "wall_sconce:left": {
         "ox": 5,
         "oy": 60,
+        "glow": {
+          "x": 3,
+          "y": 4,
+          "r": 249,
+          "g": 218,
+          "b": 147,
+          "n": 27
+        },
         "x": 926,
         "y": 499,
         "w": 8,
@@ -2572,6 +2959,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "neon_beer:down": {
         "ox": 2,
         "oy": 73,
+        "glow": {
+          "x": 11,
+          "y": 11,
+          "r": 107,
+          "g": 58,
+          "b": 26,
+          "n": 252
+        },
         "x": 717,
         "y": 499,
         "w": 24,
@@ -2580,6 +2975,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "neon_beer:right": {
         "ox": 22,
         "oy": 73,
+        "glow": {
+          "x": 12,
+          "y": 11,
+          "r": 107,
+          "g": 58,
+          "b": 26,
+          "n": 252
+        },
         "x": 742,
         "y": 499,
         "w": 24,
@@ -2588,6 +2991,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "neon_beer:up": {
         "ox": 2,
         "oy": 73,
+        "glow": {
+          "x": 12,
+          "y": 11,
+          "r": 78,
+          "g": 31,
+          "b": 4,
+          "n": 252
+        },
         "x": 767,
         "y": 499,
         "w": 24,
@@ -2596,6 +3007,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "neon_beer:left": {
         "ox": 22,
         "oy": 73,
+        "glow": {
+          "x": 11,
+          "y": 11,
+          "r": 78,
+          "g": 31,
+          "b": 4,
+          "n": 252
+        },
         "x": 792,
         "y": 499,
         "w": 24,
@@ -2604,6 +3023,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "neon_open:down": {
         "ox": 2,
         "oy": 73,
+        "glow": {
+          "x": 11,
+          "y": 11,
+          "r": 109,
+          "g": 42,
+          "b": 75,
+          "n": 252
+        },
         "x": 817,
         "y": 499,
         "w": 24,
@@ -2612,6 +3039,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "neon_open:right": {
         "ox": 22,
         "oy": 73,
+        "glow": {
+          "x": 12,
+          "y": 11,
+          "r": 109,
+          "g": 42,
+          "b": 75,
+          "n": 252
+        },
         "x": 842,
         "y": 499,
         "w": 24,
@@ -2620,6 +3055,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "neon_open:up": {
         "ox": 2,
         "oy": 73,
+        "glow": {
+          "x": 12,
+          "y": 11,
+          "r": 78,
+          "g": 15,
+          "b": 47,
+          "n": 252
+        },
         "x": 867,
         "y": 499,
         "w": 24,
@@ -2628,6 +3071,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "neon_open:left": {
         "ox": 22,
         "oy": 73,
+        "glow": {
+          "x": 11,
+          "y": 11,
+          "r": 78,
+          "g": 15,
+          "b": 47,
+          "n": 252
+        },
         "x": 892,
         "y": 499,
         "w": 24,
@@ -2690,6 +3141,7 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
   },
   "hostel": {
     "imageKey": "iso_hostel",
+    "glowImageKey": "iso_hostel_glow",
     "wallHeight": 96,
     "wallThickness": 6,
     "caps": {
@@ -2711,6 +3163,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_richard:down": {
         "ox": 24,
         "oy": 26,
+        "glow": {
+          "x": 61,
+          "y": 51,
+          "r": 111,
+          "g": 171,
+          "b": 245,
+          "n": 15
+        },
         "x": 0,
         "y": 669,
         "w": 75,
@@ -2727,6 +3187,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_richard:up": {
         "ox": 24,
         "oy": 32,
+        "glow": {
+          "x": 42,
+          "y": 13,
+          "r": 41,
+          "g": 111,
+          "b": 161,
+          "n": 214
+        },
         "x": 357,
         "y": 597,
         "w": 75,
@@ -2735,6 +3203,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_richard:left": {
         "ox": 51,
         "oy": 32,
+        "glow": {
+          "x": 31,
+          "y": 16,
+          "r": 46,
+          "g": 115,
+          "b": 166,
+          "n": 229
+        },
         "x": 433,
         "y": 597,
         "w": 75,
@@ -2743,6 +3219,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_gilfoyle:down": {
         "ox": 24,
         "oy": 31,
+        "glow": {
+          "x": 61,
+          "y": 56,
+          "r": 111,
+          "g": 171,
+          "b": 245,
+          "n": 15
+        },
         "x": 545,
         "y": 597,
         "w": 75,
@@ -2759,6 +3243,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_gilfoyle:up": {
         "ox": 24,
         "oy": 37,
+        "glow": {
+          "x": 42,
+          "y": 18,
+          "r": 20,
+          "g": 81,
+          "b": 39,
+          "n": 425
+        },
         "x": 148,
         "y": 521,
         "w": 75,
@@ -2767,6 +3259,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_gilfoyle:left": {
         "ox": 51,
         "oy": 37,
+        "glow": {
+          "x": 32,
+          "y": 19,
+          "r": 24,
+          "g": 84,
+          "b": 46,
+          "n": 440
+        },
         "x": 224,
         "y": 521,
         "w": 75,
@@ -2775,6 +3275,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_dinesh:down": {
         "ox": 24,
         "oy": 31,
+        "glow": {
+          "x": 61,
+          "y": 56,
+          "r": 111,
+          "g": 171,
+          "b": 245,
+          "n": 15
+        },
         "x": 697,
         "y": 597,
         "w": 75,
@@ -2791,6 +3299,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_dinesh:up": {
         "ox": 24,
         "oy": 37,
+        "glow": {
+          "x": 42,
+          "y": 18,
+          "r": 41,
+          "g": 110,
+          "b": 160,
+          "n": 425
+        },
         "x": 300,
         "y": 521,
         "w": 75,
@@ -2799,6 +3315,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "desk_dinesh:left": {
         "ox": 51,
         "oy": 37,
+        "glow": {
+          "x": 32,
+          "y": 19,
+          "r": 43,
+          "g": 112,
+          "b": 163,
+          "n": 440
+        },
         "x": 376,
         "y": 521,
         "w": 75,
@@ -2887,6 +3411,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "coffee_table_modern:up": {
         "ox": 19,
         "oy": 16,
+        "glow": {
+          "x": 23,
+          "y": 7,
+          "r": 84,
+          "g": 166,
+          "b": 216,
+          "n": 65
+        },
         "x": 596,
         "y": 669,
         "w": 57,
@@ -2895,6 +3427,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "coffee_table_modern:left": {
         "ox": 38,
         "oy": 13,
+        "glow": {
+          "x": 15,
+          "y": 13,
+          "r": 84,
+          "g": 166,
+          "b": 216,
+          "n": 65
+        },
         "x": 0,
         "y": 732,
         "w": 57,
@@ -2935,6 +3475,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "server_rack:down": {
         "ox": 32,
         "oy": 70,
+        "glow": {
+          "x": 10,
+          "y": 61,
+          "r": 198,
+          "g": 235,
+          "b": 195,
+          "n": 47
+        },
         "x": 258,
         "y": 339,
         "w": 51,
@@ -2943,6 +3491,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "server_rack:right": {
         "ox": 19,
         "oy": 70,
+        "glow": {
+          "x": 43,
+          "y": 60,
+          "r": 203,
+          "g": 230,
+          "b": 194,
+          "n": 38
+        },
         "x": 310,
         "y": 339,
         "w": 51,
@@ -2967,6 +3523,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "server_rack_b:down": {
         "ox": 32,
         "oy": 70,
+        "glow": {
+          "x": 8,
+          "y": 55,
+          "r": 210,
+          "g": 228,
+          "b": 187,
+          "n": 44
+        },
         "x": 362,
         "y": 339,
         "w": 51,
@@ -2975,6 +3539,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "server_rack_b:right": {
         "ox": 19,
         "oy": 70,
+        "glow": {
+          "x": 42,
+          "y": 52,
+          "r": 209,
+          "g": 225,
+          "b": 192,
+          "n": 45
+        },
         "x": 414,
         "y": 339,
         "w": 51,
@@ -2999,6 +3571,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "ups_box:down": {
         "ox": 20,
         "oy": 16,
+        "glow": {
+          "x": 7,
+          "y": 17,
+          "r": 20,
+          "g": 130,
+          "b": 50,
+          "n": 28
+        },
         "x": 182,
         "y": 732,
         "w": 34,
@@ -3007,6 +3587,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "ups_box:right": {
         "ox": 14,
         "oy": 16,
+        "glow": {
+          "x": 26,
+          "y": 17,
+          "r": 20,
+          "g": 130,
+          "b": 50,
+          "n": 28
+        },
         "x": 217,
         "y": 732,
         "w": 34,
@@ -3047,6 +3635,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "workbench:up": {
         "ox": 21,
         "oy": 44,
+        "glow": {
+          "x": 26,
+          "y": 12,
+          "r": 40,
+          "g": 110,
+          "b": 160,
+          "n": 192
+        },
         "x": 572,
         "y": 436,
         "w": 79,
@@ -3055,6 +3651,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "workbench:left": {
         "ox": 58,
         "oy": 29,
+        "glow": {
+          "x": 20,
+          "y": 14,
+          "r": 40,
+          "g": 110,
+          "b": 160,
+          "n": 194
+        },
         "x": 929,
         "y": 597,
         "w": 79,
@@ -3095,6 +3699,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "smart_fridge:down": {
         "ox": 24,
         "oy": 57,
+        "glow": {
+          "x": 21,
+          "y": 40,
+          "r": 101,
+          "g": 179,
+          "b": 224,
+          "n": 132
+        },
         "x": 356,
         "y": 436,
         "w": 53,
@@ -3103,6 +3715,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "smart_fridge:right": {
         "ox": 29,
         "oy": 57,
+        "glow": {
+          "x": 46,
+          "y": 32,
+          "r": 101,
+          "g": 178,
+          "b": 223,
+          "n": 115
+        },
         "x": 410,
         "y": 436,
         "w": 53,
@@ -3351,6 +3971,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "pool:down": {
         "ox": 80,
         "oy": 2,
+        "glow": {
+          "x": 104,
+          "y": 52,
+          "r": 22,
+          "g": 95,
+          "b": 138,
+          "n": 8354
+        },
         "x": 209,
         "y": 129,
         "w": 208,
@@ -3359,6 +3987,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "pool:right": {
         "ox": 128,
         "oy": 8,
+        "glow": {
+          "x": 103,
+          "y": 58,
+          "r": 22,
+          "g": 95,
+          "b": 138,
+          "n": 8354
+        },
         "x": 0,
         "y": 129,
         "w": 208,
@@ -3367,6 +4003,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "pool:up": {
         "ox": 80,
         "oy": 2,
+        "glow": {
+          "x": 104,
+          "y": 52,
+          "r": 22,
+          "g": 95,
+          "b": 138,
+          "n": 8318
+        },
         "x": 418,
         "y": 129,
         "w": 208,
@@ -3375,6 +4019,14 @@ export const ISO_THEME_ATLAS: Record<string, IsoThemeAtlas> = {
       "pool:left": {
         "ox": 128,
         "oy": 2,
+        "glow": {
+          "x": 104,
+          "y": 52,
+          "r": 22,
+          "g": 95,
+          "b": 138,
+          "n": 8275
+        },
         "x": 627,
         "y": 129,
         "w": 208,
@@ -4375,7 +5027,11 @@ export type IsoPropType =
 
 export const ISO_THEME_IMAGES: Record<string, string> = {
   iso_coffee: '/sprites/iso/iso_coffee.png',
+  iso_coffee_glow: '/sprites/iso/iso_coffee_glow.png',
   iso_office: '/sprites/iso/iso_office.png',
+  iso_office_glow: '/sprites/iso/iso_office_glow.png',
   iso_pub: '/sprites/iso/iso_pub.png',
+  iso_pub_glow: '/sprites/iso/iso_pub_glow.png',
   iso_hostel: '/sprites/iso/iso_hostel.png',
+  iso_hostel_glow: '/sprites/iso/iso_hostel_glow.png',
 };

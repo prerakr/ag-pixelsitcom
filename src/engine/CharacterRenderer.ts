@@ -125,6 +125,19 @@ export class CharacterRenderer {
 
       ctx.imageSmoothingEnabled = false;
 
+      // Isometric views (`<id>@iso`) are diagonal: world right/up face the screen's right, down/left
+      // its left, and up/left are back views, where a carried item is in front of the body and
+      // so partly hidden behind it.
+      const isoView = character.id.endsWith('@iso');
+      const isoBack = isoView && (facing === 'up' || facing === 'left');
+      const itemX = isoView
+        ? facing === 'right' || facing === 'up' ? 10 : -10
+        : facing === 'left' ? -11 : facing === 'right' ? 11 : 9;
+      const itemY = 1 + walkBob;
+      if (state.heldItem && isoBack) {
+        CharacterRenderer.drawHeldItem(ctx, state.heldItem, itemX, itemY - 2, facing, now);
+      }
+
       // Handle horizontal mirroring for one-way sprite sheets (e.g. left facing)
       // When scaled by -1 horizontally, drawing at -anchorX * destW maps the anchor point to world x = 0
       if (rect.flipX) {
@@ -158,10 +171,8 @@ export class CharacterRenderer {
         );
       }
 
-      // Draw Held Item if present
-      if (state.heldItem) {
-        const itemX = facing === 'left' ? -11 : facing === 'right' ? 11 : 9;
-        const itemY = 1 + walkBob;
+      // Draw Held Item if present (in front of the body unless seen from behind)
+      if (state.heldItem && !isoBack) {
         CharacterRenderer.drawHeldItem(ctx, state.heldItem, itemX, itemY, facing, now);
       }
 

@@ -118,6 +118,17 @@ export interface IsoFrame {
   h: number;
   ox: number;
   oy: number;
+  /** Set when part of the prop emits light: the glow's centre (sprite px), mean colour and size in pixels. */
+  glow?: IsoLight;
+}
+
+export interface IsoLight {
+  x: number;
+  y: number;
+  r: number;
+  g: number;
+  b: number;
+  n: number;
 }
 
 /** A strip of wall-face variants, 32px per tile and `wallHeight` tall, lit for the north (n) and west (w) walls. */
@@ -130,6 +141,8 @@ export interface IsoWallFace {
 /** Isometric atlas for one set theme, built by scripts/sprites/iso_assets.py. */
 export interface IsoThemeAtlas {
   imageKey: string;
+  /** Same layout as `imageKey`, holding only the light-emitting pixels. */
+  glowImageKey: string;
   wallHeight: number;
   wallThickness: number;
   caps: IsoCap;

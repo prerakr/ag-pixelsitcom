@@ -58,6 +58,7 @@ def build_theme(theme: str):
     images: list[tuple[str, np.ndarray]] = []
     frames: dict[str, dict] = {}
     catalog: dict[str, dict] = {}
+    glows: dict[str, np.ndarray] = {}
     for prop_id, (make, kind) in mod.CATALOGUE.items():
         model = make()
         height = max(p.hi[2] for p in model.prims)
@@ -67,6 +68,9 @@ def build_theme(theme: str):
             key = f"{prop_id}:{facing}"
             images.append((key, spr.rgba))
             frames[key] = {"ox": spr.ox, "oy": spr.oy}
+            if spr.glow is not None and spr.glow.any():
+                glows[key] = spr.glow
+                frames[key]["glow"] = light_of(spr.rgba, spr.glow)
 
     face_counts: dict[str, int] = {}
     for tile, variants in mod.wall_faces().items():
@@ -83,6 +87,13 @@ def build_theme(theme: str):
 
     sheet, pos = pack(images)
     sizes = {k: v.shape[:2] for k, v in images}
+    # The glowing pixels alone, at the same positions: what stays lit when the set goes dark.
+    glow_sheet = np.zeros_like(sheet)
+    for key, mask in glows.items():
+        x, y = pos[key]
+        h, w = mask.shape
+        region = sheet[y:y + h, x:x + w]
+        glow_sheet[y:y + h, x:x + w][mask] = region[mask]
     for key in frames:
         x, y = pos[key]
         h, w = sizes[key]
@@ -94,6 +105,7 @@ def build_theme(theme: str):
     rect = lambda key: {"x": pos[key][0], "y": pos[key][1], "w": sizes[key][1], "h": sizes[key][0]}  # noqa: E731
     atlas = {
         "imageKey": f"iso_{theme}",
+        "glowImageKey": f"iso_{theme}_glow",
         "wallHeight": WALL_H,
         "wallThickness": WALL_T,
         "caps": mod.CAPS,
@@ -104,7 +116,14 @@ def build_theme(theme: str):
         "decals": {k: rect(f"decal:{k}") for k in decals},
         "floors": {k: {"x": pos[f"floor:{k}"][0], "y": pos[f"floor:{k}"][1]} for k in floors},
     }
-    return sheet, atlas, catalog
+    return sheet, glow_sheet, atlas, catalog
+
+
+def light_of(rgba: np.ndarray, glow: np.ndarray) -> dict:
+    """A prop's light: centre of its glowing pixels (sprite px), their mean colour and pixel count."""
+    ys, xs = np.nonzero(glow)
+    r, g, b = (int(round(c)) for c in rgba[glow][:, :3].astype(np.float32).mean(axis=0))
+    return {"x": int(round(xs.mean())), "y": int(round(ys.mean())), "r": r, "g": g, "b": b, "n": int(glow.sum())}
 
 
 def contact_sheet(sheet: np.ndarray, atlas: dict, out: Path, backdrop=(126, 92, 58, 255)) -> None:
@@ -137,8 +156,9 @@ def main() -> None:
     for theme in THEMES:
         if not (Path(__file__).parent / "iso_themes" / f"{theme}.py").exists():
             continue
-        sheet, atlas, cat = build_theme(theme)
+        sheet, glow_sheet, atlas, cat = build_theme(theme)
         Image.fromarray(sheet, "RGBA").save(OUT_DIR / f"{atlas['imageKey']}.png")
+        Image.fromarray(glow_sheet, "RGBA").save(OUT_DIR / f"{atlas['glowImageKey']}.png")
         print(f"wrote public/sprites/iso/{atlas['imageKey']}.png {sheet.shape[1]}x{sheet.shape[0]}, {len(cat)} props")
         atlases[theme] = atlas
         for k, v in cat.items():
@@ -167,7 +187,7 @@ def write_ts(atlases: dict, catalog: dict) -> None:
         f"  | '{sorted(catalog)[-1]}';",
         "",
         "export const ISO_THEME_IMAGES: Record<string, string> = {",
-        *[f"  {v['imageKey']}: '/sprites/iso/{v['imageKey']}.png'," for v in atlases.values()],
+        *[f"  {v[key]}: '/sprites/iso/{v[key]}.png'," for v in atlases.values() for key in ("imageKey", "glowImageKey")],
         "};",
         "",
     ]

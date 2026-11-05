@@ -268,6 +268,7 @@ class Sprite:
     rgba: np.ndarray
     ox: int  # sprite pixel of the world point (0, 0, 0): the footprint's north-west floor corner
     oy: int
+    glow: np.ndarray | None = None  # light-emitting pixels (screens, neon, lamps), same size as rgba
 
 
 def render(model: Model, facing: str = "down", outline: bool = True) -> Sprite:
@@ -352,6 +353,13 @@ def render(model: Model, facing: str = "down", outline: bool = True) -> Sprite:
         idx = np.where(contour & ~silhouette, idx - 2, idx)
         idx = np.where(silhouette, 0, idx)
 
+    glow = np.zeros((h, w), dtype=bool)
+    for k, (p, *_rest) in enumerate(placed):
+        if p.glow:
+            glow |= pid == k
+    if outline:
+        glow &= ~silhouette
+
     idx = np.clip(idx, 0, N_STEPS - 1).astype(np.int32)
     rgba = np.zeros((h, w, 4), dtype=np.uint8)
     for mat in set(m for m in mat_of[mask]):
@@ -362,7 +370,7 @@ def render(model: Model, facing: str = "down", outline: bool = True) -> Sprite:
     # Crop to content, keeping the origin.
     ys, xs = np.nonzero(rgba[..., 3])
     y0, y1, x0, x1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
-    return Sprite(rgba[y0:y1, x0:x1].copy(), ox=-sx0 - int(x0), oy=-sy0 - int(y0))
+    return Sprite(rgba[y0:y1, x0:x1].copy(), ox=-sx0 - int(x0), oy=-sy0 - int(y0), glow=glow[y0:y1, x0:x1].copy())
 
 
 # ---------------------------------------------------------------------------------------------

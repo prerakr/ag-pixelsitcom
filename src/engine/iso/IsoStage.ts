@@ -5,10 +5,10 @@ import { IsoThemeAtlas } from '../../types/sprite';
 import { ISO_PROP_CATALOG, ISO_THEME_ATLAS, ISO_THEME_IMAGES } from '../../data/sprites/generated/isoAtlas';
 import { CharacterRenderer } from '../CharacterRenderer';
 import { particleSystem } from '../ParticleSystem';
-import { lightingEngine } from '../LightingEngine';
 import { spriteManager } from '../SpriteManager';
 import { FOOT_OFFSET_PX } from '../NavGrid';
 import { ISO, applyIsoFloorTransform } from './IsoProjection';
+import { IsoLighting, IsoLightSource } from './IsoLighting';
 import { IsoBake, IsoMapBaker, IsoWallPiece } from './IsoMapBaker';
 
 const T = 32;
@@ -18,6 +18,13 @@ const PICK_H = 56;
 const PICK_H_SEATED = 46;
 const FLAME_COLOURS = ['#dc2626', '#f59e0b', '#fef08a'];
 const FLAME_SCALE = [1, 0.66, 0.33];
+/** Heights (view px above the feet) sampled to tell whether a character is hidden, head last. */
+const HIDE_SAMPLES_STANDING = [8, 20, 34, 48];
+/** Scratch canvas size for a hidden character's silhouette, and where its feet go on it. */
+const GHOST_W = 96;
+const GHOST_H = 96;
+const GHOST_FOOT_Y = 78;
+const GHOST_COLOUR = '#fde68a';
 
 /** What a click in view space landed on: a character (index into the states) or a prop. */
 export type IsoPick = { kind: 'character'; index: number } | { kind: 'prop'; index: number };
@@ -95,8 +102,33 @@ export class IsoStage {
   private drawnIndex = new Int32Array(256);
   private drawnCount = 0;
 
+  /** Glow-only copy of the atlas, and the per-frame layer of glowing pixels left visible. */
+  private glowAtlas: HTMLImageElement | null = null;
+  private glowLayer: HTMLCanvasElement | null = null;
+  private glowCtx: CanvasRenderingContext2D | null = null;
+  private readonly lighting = new IsoLighting();
+  private lights: IsoLightSource[] = [];
+  /** Wall decorations that glow (neon signs, sconces): baked into the back wall, so their glow is added separately. */
+  private wallGlows: number[] = [];
+  private propStates: ReadonlyMap<string, Record<string, any>> = new Map();
+  private lightProps: PropInstance[] = [];
+  private readonly isLightOn = (light: IsoLightSource) => !this.propStates.get(this.lightProps[light.propIndex]?.id)?.pickedUp;
+  /** The world buffer's origin (view px) and scale, so the glow layer can match its transform. */
+  private bufferX = 0;
+  private bufferY = 0;
+  private bufferScale = 1;
+  private ghostCanvas: HTMLCanvasElement | null = null;
+  private ghostCtx: CanvasRenderingContext2D | null = null;
+
   private viewState = {} as CharacterRuntimeState;
   private isoDefs = new Map<string, CharacterDefinition | null>();
+
+  /** Tells the stage how the world buffer it draws into is placed (its view-space origin and integer scale). */
+  public setBuffer(originX: number, originY: number, scale: number) {
+    this.bufferX = originX;
+    this.bufferY = originY;
+    this.bufferScale = scale;
+  }
 
   public invalidate() {
     this.dirty = true;
@@ -125,8 +157,21 @@ export class IsoStage {
     const baked = this.baked!;
     const W = setting.gridWidth * T;
     const H = setting.gridHeight * T;
+    this.propStates = propStates;
+    // Away from plain daylight, collect what glows as it is drawn: each later item erases what it covers.
+    const g = this.lighting.active() && this.glowAtlas ? this.prepareGlowLayer(ctx.canvas) : null;
 
     ctx.drawImage(baked.back, baked.originX, baked.originY);
+    if (g && this.glowAtlas && this.atlas) {
+      g.globalCompositeOperation = 'source-over';
+      for (const i of this.wallGlows) {
+        const prop = setting.props[i];
+        const f = this.atlas.frames[`${prop.type}:${prop.facing || 'down'}`];
+        const vx = Math.round(ISO.toViewX(prop.x * T, prop.y * T)) - f.ox;
+        const vy = Math.round(ISO.toViewY(prop.x * T, prop.y * T)) - f.oy;
+        g.drawImage(this.glowAtlas, f.x, f.y, f.w, f.h, vx, vy, f.w, f.h);
+      }
+    }
 
     ctx.save();
     applyIsoFloorTransform(ctx);
@@ -181,6 +226,10 @@ export class IsoStage {
         const c = order[ci++];
         const s = states[c];
         this.drawCharacter(ctx, characters[s.id], s, gameTime);
+        if (g) {
+          g.globalCompositeOperation = 'destination-out';
+          this.drawCharacter(g, characters[s.id], s, gameTime);
+        }
         this.drawnKind[drawn] = 1;
         this.drawnIndex[drawn++] = c;
       }
@@ -189,9 +238,13 @@ export class IsoStage {
       if (ref < 0) {
         const piece = baked.pieces[-ref - 1];
         ctx.drawImage(piece.canvas, piece.originX, piece.originY);
+        if (g) {
+          g.globalCompositeOperation = 'destination-out';
+          g.drawImage(piece.canvas, piece.originX, piece.originY);
+        }
       } else {
         const prop = setting.props[ref];
-        if (this.drawProp(ctx, prop, propStates.get(prop.id), gameTime)) {
+        if (this.drawProp(ctx, prop, propStates.get(prop.id), gameTime, g)) {
           this.drawnKind[drawn] = 0;
           this.drawnIndex[drawn++] = ref;
         }
@@ -200,21 +253,101 @@ export class IsoStage {
     this.drawnCount = drawn;
 
     ctx.drawImage(baked.front, baked.originX, baked.originY);
+    if (g) {
+      g.globalCompositeOperation = 'destination-out';
+      g.drawImage(baked.front, baked.originX, baked.originY);
+    }
 
-    // Particles are drawn upright at their projected height; only lighting lies on the floor.
+    // Anyone on their feet hidden behind something tall shows through as a faint silhouette.
+    // (Someone seated behind their own backrest is meant to be partly hidden.)
+    for (let i = 0; i < drawn; i++) {
+      if (this.drawnKind[i] !== 1) continue;
+      const s = states[this.drawnIndex[i]];
+      if (!s.isSitting && this.isHidden(i, s, setting)) this.drawGhost(ctx, characters[s.id], s, gameTime);
+    }
+
+    // Particles are drawn upright at their projected height; then the time-of-day mood over it all.
     particleSystem.drawParticles(ctx, true);
+    if (this.atlas) {
+      this.lighting.draw(ctx, W, H, this.atlas.wallHeight, this.atlas.wallThickness, this.lights, this.isLightOn, g ? this.glowLayer : null, gameTime);
+    }
+  }
+
+  /** Clears the glow layer (resized to the world buffer) and gives it the buffer's transform. */
+  private prepareGlowLayer(target: HTMLCanvasElement): CanvasRenderingContext2D | null {
+    if (!this.glowLayer) {
+      this.glowLayer = document.createElement('canvas');
+      this.glowCtx = this.glowLayer.getContext('2d');
+    }
+    const g = this.glowCtx;
+    if (!g) return null;
+    if (this.glowLayer.width !== target.width || this.glowLayer.height !== target.height) {
+      this.glowLayer.width = target.width;
+      this.glowLayer.height = target.height;
+    }
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.globalCompositeOperation = 'source-over';
+    g.clearRect(0, 0, this.glowLayer.width, this.glowLayer.height);
+    const k = this.bufferScale;
+    g.setTransform(k, 0, 0, k, -this.bufferX * k, -this.bufferY * k);
+    g.imageSmoothingEnabled = false;
+    return g;
+  }
+
+  /** Whether a standing character drawn at position `i` of the last frame is hidden: head and most of the body under later props. */
+  private isHidden(i: number, s: CharacterRuntimeState, setting: SettingDefinition): boolean {
+    const fx = ISO.toViewX(s.x, s.y + FOOT_OFFSET_PX);
+    const fy = ISO.toViewY(s.x, s.y + FOOT_OFFSET_PX);
+    const samples = HIDE_SAMPLES_STANDING;
+    let covered = 0;
+    for (let k = 0; k < samples.length; k++) {
+      const vy = fy - samples[k];
+      let hit = false;
+      for (let j = i + 1; j < this.drawnCount && !hit; j++) {
+        if (this.drawnKind[j] === 0) hit = this.propHit(setting.props[this.drawnIndex[j]], fx, vy);
+      }
+      if (hit) covered++;
+      else if (k === samples.length - 1) return false; // the head shows
+    }
+    return covered >= samples.length - 1;
+  }
+
+  /** Draws a character as a flat translucent silhouette over everything. */
+  private drawGhost(ctx: CanvasRenderingContext2D, def: CharacterDefinition, state: CharacterRuntimeState, gameTime: number) {
+    if (!this.ghostCanvas) {
+      this.ghostCanvas = document.createElement('canvas');
+      this.ghostCanvas.width = GHOST_W;
+      this.ghostCanvas.height = GHOST_H;
+      this.ghostCtx = this.ghostCanvas.getContext('2d');
+    }
+    const gc = this.ghostCtx;
+    if (!gc) return;
+    const vx = Math.round(ISO.toViewX(state.x, state.y + FOOT_OFFSET_PX));
+    const vy = Math.round(ISO.toViewY(state.x, state.y + FOOT_OFFSET_PX));
+    gc.setTransform(1, 0, 0, 1, 0, 0);
+    gc.globalCompositeOperation = 'source-over';
+    gc.clearRect(0, 0, GHOST_W, GHOST_H);
+    gc.imageSmoothingEnabled = false;
+    gc.setTransform(1, 0, 0, 1, GHOST_W / 2 - vx, GHOST_FOOT_Y - vy);
+    this.drawCharacter(gc, def, state, gameTime);
+    gc.setTransform(1, 0, 0, 1, 0, 0);
+    gc.globalCompositeOperation = 'source-in';
+    gc.fillStyle = GHOST_COLOUR;
+    gc.fillRect(0, 0, GHOST_W, GHOST_H);
     ctx.save();
-    applyIsoFloorTransform(ctx);
-    // Lighting moods paint world-sized shapes; keep them on the set.
-    ctx.beginPath();
-    ctx.rect(0, 0, W, H);
-    ctx.clip();
-    lightingEngine.drawLighting(ctx, setting, W, H, gameTime);
+    ctx.globalAlpha = 0.4;
+    ctx.drawImage(this.ghostCanvas, vx - GHOST_W / 2, vy - GHOST_FOOT_Y);
     ctx.restore();
   }
 
   /** Draws a prop in its current state (hidden while carried, alight when ignited); false when nothing was drawn. */
-  private drawProp(ctx: CanvasRenderingContext2D, prop: PropInstance, state: Record<string, any> | undefined, gameTime: number): boolean {
+  private drawProp(
+    ctx: CanvasRenderingContext2D,
+    prop: PropInstance,
+    state: Record<string, any> | undefined,
+    gameTime: number,
+    glow: CanvasRenderingContext2D | null
+  ): boolean {
     const atlas = this.atlas;
     if (!atlas || !this.atlasCanvas || state?.pickedUp) return false;
     const f = atlas.frames[`${prop.type}:${prop.facing || 'down'}`];
@@ -222,7 +355,16 @@ export class IsoStage {
     const vx = Math.round(ISO.toViewX(prop.x * T, prop.y * T)) - f.ox;
     const vy = Math.round(ISO.toViewY(prop.x * T, prop.y * T)) - f.oy;
     ctx.drawImage(this.atlasCanvas, f.x, f.y, f.w, f.h, vx, vy, f.w, f.h);
-    if (state?.ignited) drawFlames(ctx, vx + f.w / 2, vy + 5, Math.max(12, f.w + 2), gameTime);
+    if (glow) {
+      glow.globalCompositeOperation = 'destination-out';
+      glow.drawImage(this.atlasCanvas, f.x, f.y, f.w, f.h, vx, vy, f.w, f.h);
+      glow.globalCompositeOperation = 'source-over';
+      if (f.glow && this.glowAtlas) glow.drawImage(this.glowAtlas, f.x, f.y, f.w, f.h, vx, vy, f.w, f.h);
+    }
+    if (state?.ignited) {
+      drawFlames(ctx, vx + f.w / 2, vy + 5, Math.max(12, f.w + 2), gameTime);
+      if (glow) drawFlames(glow, vx + f.w / 2, vy + 5, Math.max(12, f.w + 2), gameTime);
+    }
     return true;
   }
 
@@ -293,6 +435,12 @@ export class IsoStage {
     this.atlas = atlas;
     this.atlasCanvas = null;
     this.atlasPixels = null;
+    this.glowAtlas = null;
+    const glowImg = new Image();
+    glowImg.onload = () => {
+      if (this.loadingKey === atlas.imageKey) this.glowAtlas = glowImg;
+    };
+    glowImg.src = ISO_THEME_IMAGES[atlas.glowImageKey];
     const img = new Image();
     img.onload = () => {
       if (this.loadingKey !== atlas.imageKey) return;
@@ -320,6 +468,31 @@ export class IsoStage {
     this.bakedSetting = setting;
     this.dirty = false;
     this.sortProps(setting, this.baked.pieces);
+    this.findLights(setting);
+  }
+
+  /** The props that emit light, with where their pool falls on the floor and their halo hangs in view. */
+  private findLights(setting: SettingDefinition) {
+    this.lights = [];
+    this.wallGlows = [];
+    this.lightProps = setting.props;
+    this.lighting.reset();
+    setting.props.forEach((prop, i) => {
+      const f = this.atlas?.frames[`${prop.type}:${prop.facing || 'down'}`];
+      if (!f?.glow) return;
+      if (ISO_PROP_CATALOG[prop.type]?.kind === 'wall') this.wallGlows.push(i);
+      const size = Math.sqrt(f.glow.n);
+      this.lights.push({
+        propIndex: i,
+        floorX: (prop.x + (prop.width || 1) / 2) * T,
+        floorY: (prop.y + (prop.height || 1) / 2) * T,
+        viewX: Math.round(ISO.toViewX(prop.x * T, prop.y * T)) - f.ox + f.glow.x,
+        viewY: Math.round(ISO.toViewY(prop.x * T, prop.y * T)) - f.oy + f.glow.y,
+        radius: Math.max(26, Math.min(84, 18 + size * 3.2)),
+        halo: Math.max(8, Math.min(26, 4 + size * 1.4)),
+        colour: `${f.glow.r}, ${f.glow.g}, ${f.glow.b}`,
+      });
+    });
   }
 
   /**

@@ -407,6 +407,7 @@ export class VisualizerEngine {
           this.isoStage.invalidate();
           this.isTileMapDirty = false;
         }
+        this.isoStage.setBuffer(originX, originY, prescale);
         this.isoStage.draw(ctx, this.setting, this.player.states, this.charactersMap, this.player.propStates, this.gameTime);
       } else {
         // 1. Draw Cached Static Tilemap & Floor Rugs (zero per-frame string formatting)
