@@ -44,7 +44,7 @@ python scripts/sprites/build_review_page.py
 # One theme module per show in scripts/sprites/iso_themes/ (coffee, office, pub, hostel)
 python scripts/sprites/iso_assets.py --preview <dir>
 
-# Isometric character views: layout (mannequin ref) | generate --only id1,id2 (paid) | build
+# Isometric character views: layout (mannequin refs) | generate --only id1,id2|missing (paid, one sheet per character) | build
 python scripts/sprites/iso_characters.py build --preview <dir>
 ```
 Generated outputs (`public/sprites/**`, `src/data/sprites/generated/*`) are committed; never edit them by hand.
