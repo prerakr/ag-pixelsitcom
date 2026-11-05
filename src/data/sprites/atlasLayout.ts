@@ -89,6 +89,8 @@ export function characterAtlasAnimations(
     right: walk('right'),
     left: walk('right', true),
     idle,
-    sitting: idle,
+    // The sheets have no seated side view: a side idle frame on a sofa or chair reads as someone
+    // standing sideways in it. Seated characters face the camera unless they face away (at a desk).
+    sitting: { down: idle.down, up: idle.up, right: idle.down, left: idle.down },
   };
 }
