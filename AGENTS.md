@@ -12,10 +12,10 @@ The application executes scripted comedy episodes (from shows like *The Office*,
 
 ### Core Capabilities
 - **Declarative Script Engine (`SitcomScript v1.0`)**: Episodes are structured as JSON-based scenes and beats (dialogue, movements, interactions, mockumentary talking heads, camera cues, audio cues, emotes, time of day shifts, and group actions).
-- **Pure Canvas Rendering (Zero External Image Sprites)**: Characters, office/pub/apartment environments, furniture, props, and animations are procedurally rendered in real-time via Canvas 2D primitives with crisp pixelated styling (`imageSmoothingEnabled = false`).
+- **Pixel-Art Canvas Rendering**: Characters, props and tiles are drawn from sprite atlases produced by the offline pipeline in `scripts/sprites/` (see `SPRITE_STUDIO.md`), rendered pixel-perfect through an integer-scaled world buffer. Every asset keeps a procedural Canvas 2D fallback.
 - **Synthesized Web Audio Engine (Zero External Audio Assets)**: Laugh tracks, rimshots, minor chord stings, typewriter chatter, fire alarms, retro phone rings, dramatic booms, and theme jingles are synthesized procedurally via oscillators, gain nodes, and noise buffers.
 - **Dynamic Lighting & Particle Engine**: Multi-mode lighting (`day`, `golden_hour`, `night`, `emergency` alarm pulse) with point lights, accompanied by a 2D particle emitter (fire, smoke, papers, coffee splashes, hearts, sparkles, and confetti).
-- **AI Script Studio**: Integrated generator supporting Google Gemini (`gemini-1.5-flash`), OpenAI (`gpt-4o-mini`), and an offline procedural fallback generator with strict schema validation.
+- **AI Script Studio**: Integrated generator supporting Google Gemini (`gemini-2.5-flash`), OpenAI (`gpt-4o-mini`), and an offline procedural fallback generator with strict schema validation.
 - **Interactive Viewport & Controls**: Timeline scrubbing, speed adjustments (0.5x - 2.0x), camera follow locks, direct character/prop inspection, soundboard, CRT scanline overlay, and mobile touch gestures (pan/pinch-zoom).
 
 ---
@@ -41,6 +41,9 @@ npm run build
 
 # Preview production build locally
 npm run preview
+
+# Run the Vitest suite
+npm test
 ```
 
 ---
@@ -73,7 +76,16 @@ ag-pixelsitcom/
 │   │   ├── ScriptStudio.tsx     # AI generator modal, JSON script editor, validation feedback
 │   │   ├── CharacterRoster.tsx  # Cast drawer with character details, quotes, & focus buttons
 │   │   ├── TalkingHeadModal.tsx # Mockumentary interview portrait overlay
-│   │   └── HelpModal.tsx        # Keyboard shortcuts, manual & script specifications
+│   │   ├── HelpModal.tsx        # Keyboard shortcuts, manual & script specifications
+│   │   └── soundstage/          # Soundstage Studio environment designer & level editor (see SET_STUDIO.md)
+│   │       ├── SoundstageModal.tsx      # Main soundstage editor dialog & hotkey orchestrator
+│   │       ├── SoundstageCanvas.tsx     # High-DPI interactive canvas (tiles, props, zones, director)
+│   │       ├── SoundstageToolbar.tsx    # Left tool palette with hotkeys
+│   │       ├── SoundstageHeader.tsx     # Top bar (dimensions, zoom, snap, undo/redo, export)
+│   │       ├── SoundstageAssetTray.tsx  # Asset drawer (tiles, props, waypoints, zones, prefabs)
+│   │       ├── SoundstageInspector.tsx  # Entity properties inspector & coordinate tuner
+│   │       ├── SoundstagePrefabs.ts     # 1-click authentic sitcom furniture bundles
+│   │       └── useSoundstageHistory.ts  # 50-step undo/redo transaction history hook
 │   │
 │   ├── data/                 # Static presets, characters, settings & episodes
 │   │   ├── characters/       # Character profiles categorized by show
@@ -104,7 +116,9 @@ ag-pixelsitcom/
 │   │
 │   ├── engine/               # Pure TypeScript canvas & sound simulation engine
 │   │   ├── Camera.ts            # Dynamic camera with lerp, target tracking & bounds clamping
-│   │   ├── CanvasRenderer.ts    # Core VisualizerEngine game loop & script execution
+│   │   ├── CanvasRenderer.ts    # VisualizerEngine: canvas, game loop, drawing, stage effects
+│   │   ├── ScriptPlayer.ts      # Timeline, world state, beat execution & seek-by-replay (headless)
+│   │   ├── NavGrid.ts           # Walkability grid + A* routing around walls and furniture
 │   │   ├── CharacterRenderer.ts # Procedural pixel art character renderer
 │   │   ├── LightingEngine.ts    # Atmospheric ambient lighting & point lights
 │   │   ├── MusicEngine.ts       # Procedural 8-bit multi-track background music synthesizers & scheduler
@@ -175,9 +189,8 @@ export interface ScriptScene {
 ## 5. Engine Architecture & Subsystems
 
 ### 1. `VisualizerEngine` ([src/engine/CanvasRenderer.ts](file:///d:/dev/antigravity/ag-pixelsitcom/src/engine/CanvasRenderer.ts))
-- Orchestrates the game loop via `requestAnimationFrame`.
-- Updates character movement (interpolating towards waypoints using delta time).
-- Manages beat lifecycle: triggers callbacks when beats begin/end, computes automatic duration based on character dialogue length, advances to next beat.
+- Orchestrates the game loop via `requestAnimationFrame` and draws the world; implements `StageEffects` (sound, particles, lighting, camera) for the player.
+- Delegates all world state and beat logic to `ScriptPlayer` ([src/engine/ScriptPlayer.ts](file:///d:/dev/antigravity/ag-pixelsitcom/src/engine/ScriptPlayer.ts)): it walks characters along `NavGrid` routes, computes automatic beat durations (dialogue length, routed walk distance), advances beats, and seeks by resetting to the opening and silently replaying earlier beats.
 - Maintains z-index sorting: entities (characters, interactive props) are depth-sorted by `y` coordinate to handle occlusion correctly.
 
 ### 2. `CharacterRenderer` ([src/engine/CharacterRenderer.ts](file:///d:/dev/antigravity/ag-pixelsitcom/src/engine/CharacterRenderer.ts))
@@ -270,4 +283,4 @@ export interface ScriptScene {
 4. **Script Validation**:
    - When modifying or generating scripts, test them with `parseAndValidateScript(scriptJson)` from `src/ai/scriptValidator.ts` to ensure beat structure integrity.
 5. **Strict Typing**:
-   - Always run `npm run build` (`tsc && vite build`) to verify that all TypeScript types, beat unions, and props compile cleanly with zero errors.
+   - Always run `npm run build` (`tsc && vite build`) to verify that all TypeScript types, beat unions, and props compile cleanly with zero errors, and `npm test` to play every preset episode headless.

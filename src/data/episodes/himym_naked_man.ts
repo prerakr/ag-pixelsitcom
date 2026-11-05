@@ -4,11 +4,11 @@ export const HIMYM_NAKED_MAN_EPISODE: SitcomScript = {
   version: '1.0',
   title: 'The Naked Man & The Slap Bet Countdown',
   showId: 'himym',
-  settingId: 'maclarens_pub',
+  settingId: 'maclarens_iso',
   synopsis:
     'Barney dissects the legendary success rate of the Naked Man maneuver in MacLaren’s red booth, while Marshall and Lily prepare for an imminent Slap Bet judgment.',
   author: 'Writer Room',
-  characters: ['ted', 'barney', 'marshall', 'lily', 'robin', 'carl_bartender'],
+  characters: ['ted', 'barney', 'marshall', 'lily', 'robin', 'carl'],
   scenes: [
     {
       id: 'scene_1',

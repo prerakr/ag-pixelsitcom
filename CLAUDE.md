@@ -16,25 +16,58 @@ npm run build
 
 # Preview production build locally
 npm run preview
+
+# Run the Vitest suite (headless: nav grid, script player, validator)
+npm test
 ```
 
-> **Note**: Always run `npm run build` to verify changes, as it runs both `tsc` (strict TypeScript validation) and the Vite production packager.
+> **Note**: Always run `npm run build` and `npm test` to verify changes. The build runs both `tsc` (strict TypeScript validation) and the Vite production packager; the tests play every preset episode headless.
+
+### Art Pipeline Commands
+```bash
+# One-time: Python deps for the sprite pipeline
+pip install -r scripts/sprites/requirements.txt
+
+# Rebuild character atlases from art/source/characters (+ regen/ sheets)
+python scripts/sprites/process_characters.py --preview <dir>
+
+# Rebuild themed tilesets (floors, wall faces, doors, windows)
+python scripts/sprites/generate_tiles.py --preview <dir>
+
+# Re-key prop sheets into transparent PNGs
+python scripts/sprites/process_static.py
+
+# Standalone sprite review page (walk cycles, lineups) -> art/review/sprite_review.html
+python scripts/sprites/build_review_page.py
+
+# Isometric sets: props (modelled at real size, all 4 facings), wall faces, floors, rugs -> public/sprites/iso
+# One theme module per show in scripts/sprites/iso_themes/ (coffee, office, pub, hostel)
+python scripts/sprites/iso_assets.py --preview <dir>
+
+# Isometric character views: layout (mannequin refs) | generate --only id1,id2|missing (paid, one sheet per character) | build
+python scripts/sprites/iso_characters.py build --preview <dir>
+```
+Generated outputs (`public/sprites/**`, `src/data/sprites/generated/*`) are committed; never edit them by hand.
 
 ---
 
 ## 2. Project Architecture & Stack
 
 - **Stack**: React 18, TypeScript 5.5, Vite 5.4, Tailwind CSS v4, Lucide React, Canvas-confetti.
-- **Visuals**: Pure HTML5 Canvas 2D (`imageSmoothingEnabled = false`) with zero external image files. All tiles, furniture, character sprites, hair styles, and emotes are procedurally drawn.
+- **Visuals**: HTML5 Canvas 2D pixel art. Characters, props and tiles come from sprite atlases built offline by the Python art pipeline in `scripts/sprites/` (see `SPRITE_STUDIO.md`); every asset also has a procedural fallback drawn in code (`CharacterRenderer`, `TileRenderer`).
 - **Audio**: Web Audio API synthesizer (`src/engine/SoundEngine.ts`) generating multi-voice laugh tracks, stings, rimshots, and jingles procedurally with zero external audio assets.
 - **Data Engine**: Episodic scripts defined via `SitcomScript v1.0` JSON structure.
 
 ### Module Layout
-- `src/engine/`: Pure TypeScript simulation engine (`CanvasRenderer`, `CharacterRenderer`, `TileRenderer`, `SoundEngine`, `LightingEngine`, `ParticleSystem`, `Camera`, `SpeechBubble`).
+- `src/engine/`: Pure TypeScript simulation engine (`CanvasRenderer`, `ScriptPlayer`, `NavGrid`, `CharacterRenderer`, `TileRenderer`, `SoundEngine`, `LightingEngine`, `ParticleSystem`, `Camera`, `SpeechBubble`).
+  - `ScriptPlayer` owns the timeline, all character/prop state and beat execution, with no DOM or audio imports; side effects (sound, particles, camera, lighting) go through its `StageEffects` interface. Seeking resets to the episode opening and silently replays earlier beats.
+  - `NavGrid` is the half-tile walkability grid (walls block, doors open, solid props block their floor footprint) with A* routing; movement beats walk its routes.
+  - `VisualizerEngine` (`CanvasRenderer.ts`) only presents: canvas, camera, game loop, drawing, and the `StageEffects` implementation. Constructing one has no side effects; `Viewport` calls `mount(canvas)` / `unmount()`, which subscribe to sprite updates and run the loop. The sprite manifest is loaded once in `main.tsx`. In development the mounted engine is `window.__pixelsitcomEngine`, and editing an engine module reloads the page (Fast Refresh would keep the old engine running old code).
+  - `iso/` draws sets with `projection: 'iso'` (2:1 cut-away stage: `central_perk_iso`, `dunder_mifflin_iso`, `maclarens_iso`, `hacker_hostel_iso`, laid out with the helpers in `src/data/settings/isoLayout.ts`). The iso stages are the defaults and what preset episodes name; the original top-down sets stay as legacy options (`STAGE_PAIRS` in `src/data/settings/index.ts`). Each pair shares waypoint and prop ids, so any episode plays on either; picking a legacy set in the header switches episodes to legacy sets until an iso one is picked again (remembered in `localStorage`). Music themes stay keyed by the legacy ids (`musicThemeId`). Time-of-day moods on iso sets come from `iso/IsoLighting.ts`: the whole set is tinted in view space, then light-emitting pixels (marked `glow=True` in the theme models and baked by `iso_assets.py` into `iso_<theme>_glow.png`) are restored from a glow layer built during the depth-sorted pass, with floor pools and halos around each glowing prop. The outer ring of tiles is the shell (north/west walls full height, south/east cut away); interior walls are depth-sorted pieces: glass (`wall_glass`, `door_glass`) stays full height and see-through, opaque walls are cut down, opaque doors are openings. The simulation stays in world coordinates; `Camera` works in view space through a `ViewProjection`, so camera targets are always given in world coordinates. Iso props come from `ISO_PROP_CATALOG` (real-size footprints that `NavGrid` blocks exactly); characters with iso art are registered as `<id>@iso`, others fall back to their top-down frames.
 - `src/types/`: Core type definitions (`script.ts`, `character.ts`, `environment.ts`).
 - `src/data/`: Static registries for characters (`characters/`), show settings (`settings/`), and episodes (`episodes/`).
 - `src/ai/`: AI script generation via Gemini/OpenAI APIs, prompt templates, and schema validator.
-- `src/components/`: React UI overlays (`Viewport`, `PlaybackControls`, `ScriptStudio`, `Header`, `CharacterRoster`, `TalkingHeadModal`, `HelpModal`).
+- `src/components/`: React UI overlays (`Viewport`, `PlaybackControls`, `ScriptStudio`, `Header`, `CharacterRoster`, `TalkingHeadModal`, `HelpModal`, `SpriteGalleryModal` with its Isometric tab in `IsoStudioTab`).
 
 ---
 
@@ -88,10 +121,12 @@ Episodes are structured as `SitcomScript` objects with `ScriptScene` arrays cont
 
 ### TypeScript & Typing
 - Maintain strict typing throughout the project. Avoid using `any` when defining beats, settings, or character state.
-- Ensure all new beat types or options are updated in `src/types/script.ts`, `src/ai/scriptValidator.ts`, and `src/engine/CanvasRenderer.ts`.
+- Ensure all new beat types or options are updated in `src/types/script.ts`, `src/ai/scriptValidator.ts`, and `src/engine/ScriptPlayer.ts`. Anything a beat does beyond changing state (sound, particles, camera) goes through `StageEffects` so seeking can replay it silently.
 
 ### Canvas 2D Rendering
+- **One art pixel = one world pixel**: Sprites are authored at native size (characters ~54px tall in 48x64 cells, 32px tiles) and drawn at scale 1. Never scale a sprite by a fractional factor; zoom is handled only by the engine's world buffer (`VisualizerEngine.render()`), which upscales by an integer and filters the fractional remainder.
 - **No Smoothing**: Maintain pixel sharpness by setting `ctx.imageSmoothingEnabled = false` whenever canvas dimensions or contexts change.
+- **Text on the overlay**: Name tags and speech bubbles are drawn in the high-resolution overlay pass, not into the pixel-art world buffer.
 - **Integer Coordinates**: Floor or round screen-space coordinates (`Math.floor(x)`) in `CharacterRenderer` and `TileRenderer` to avoid fuzzy sub-pixel anti-aliasing.
 - **Zero Allocations in Render Loop**: Avoid allocating temporary arrays or objects inside `VisualizerEngine.render()` or `TileRenderer.render()` to prevent garbage collection frame drops.
 
@@ -114,12 +149,14 @@ Episodes are structured as `SitcomScript` objects with `ScriptScene` arrays cont
 3. Export from `src/data/characters/index.ts`.
 
 ### 2. Adding an Episode
-1. Create `src/data/episodes/<episode_name>.ts` with valid `SitcomScript`.
+1. Create `src/data/episodes/<episode_name>.ts` with valid `SitcomScript`, naming the show's iso stage as `settingId`. Every waypoint and prop it targets must exist in both the iso stage and its legacy set (`npm test` checks). `parseAndValidateScript()` rejects any script (preset, pasted or AI-generated) whose beats name a waypoint, prop or character its setting and cast don't have. Walking a character to a seat (any chair, stool, sofa or booth bench, see `src/engine/Seats.ts`) sits them down facing the way the seat faces; the AI prompt marks those waypoints as [SEAT].
 2. Register it in `PRESET_EPISODES` array in `src/data/episodes/index.ts`.
 
 ### 3. Adding a New Setting
 1. Create `src/data/settings/<setting_name>.ts` with `gridWidth`, `gridHeight`, `tiles`, `props`, and `waypoints`.
 2. Register in `ALL_SETTINGS` in `src/data/settings/index.ts`.
+   Set Studio (`src/components/soundstage/`) edits iso sets on the top-down grid: iso props show as plan-view footprints (`isoEditing.ts`), the palette offers the iso catalogue, Q / Shift+Q turns a prop (footprints are fixed by the model, never stretched), and `IsoPreviewPanel` renders the set live with `IsoStage`. A new set copies the style (iso or top-down) of the one open. Only edits are saved to local storage, under the set's id, and a saved set overrides a built-in one of the same id.
+3. Run `npm test`: it fails if any waypoint or spawn point can't be reached on foot (a room with no door, a waypoint boxed in by furniture). New prop types that should not block walking go in `NON_BLOCKING` in `src/engine/NavGrid.ts`.
 
 ### 4. Adding a Sound Effect
 1. Add sound name to `SfxType` in `src/types/script.ts`.
@@ -130,5 +167,5 @@ Episodes are structured as `SitcomScript` objects with `ScriptScene` arrays cont
 ## 6. Verification Checklist Before Committing Changes
 
 1. Run `npm run build` and ensure clean exit with zero type errors.
-2. Verify visual playback in viewport without stutter or coordinate displacement.
-3. If changing scripts or validation rules, check that `parseAndValidateScript()` passes against all `PRESET_EPISODES`.
+2. Run `npm test` (covers `parseAndValidateScript()` against all `PRESET_EPISODES`, waypoint reachability, and seek consistency).
+3. Verify visual playback in viewport without stutter or coordinate displacement.

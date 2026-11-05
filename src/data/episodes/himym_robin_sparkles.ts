@@ -4,11 +4,11 @@ export const HIMYM_ROBIN_SPARKLES_EPISODE: SitcomScript = {
   version: '1.0',
   title: "Let's Go To The Mall & The Ducky Tie",
   showId: 'himym',
-  settingId: 'maclarens_pub',
+  settingId: 'maclarens_iso',
   synopsis:
     'Barney is forced to wear the infamous yellow ducky tie to MacLaren’s while the jukebox unexpectedly plays Canadian teen sensation Robin Sparkles.',
   author: 'Writer Room',
-  characters: ['barney', 'robin', 'ted', 'marshall', 'lily', 'carl_bartender'],
+  characters: ['barney', 'robin', 'ted', 'marshall', 'lily', 'carl'],
   scenes: [
     {
       id: 'scene_1',

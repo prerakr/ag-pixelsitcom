@@ -4,7 +4,7 @@ export const HIMYM_PLAYBOOK_EPISODE: SitcomScript = {
   version: '1.0',
   title: 'The Playbook & The Slap Bet Commission',
   showId: 'himym',
-  settingId: 'maclarens_pub',
+  settingId: 'maclarens_iso',
   synopsis:
     'Barney unveils a fresh play from The Playbook at the corner booth, Carl serves up a fresh pitcher of Wharmpess, Ranjit brings wisdom from his cab, and Marshall exercises his powers as Slap Bet Commissioner.',
   author: 'Carter Bays & Craig Thomas',

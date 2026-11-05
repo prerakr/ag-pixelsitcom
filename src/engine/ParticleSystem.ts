@@ -18,9 +18,18 @@ export interface Particle {
   targetY?: number;
 }
 
+/** Height a thrown paper plane leaves the hand at (world px). */
+const PLANE_CRUISE_Z = 24;
+
 export class ParticleSystem {
   private particles: Particle[] = [];
   private puddles: { x: number; y: number; radius: number; maxRadius: number; alpha: number; age: number; lifespan: number }[] = [];
+
+  /** Removes every particle and puddle (used when the timeline jumps). */
+  public clear() {
+    this.particles.length = 0;
+    this.puddles.length = 0;
+  }
 
   public update(dt: number) {
     // 1. Update active flying/moving particles
@@ -67,6 +76,8 @@ export class ParticleSystem {
             p.vx = (dx / dist) * 120;
             p.vy = (dy / dist) * 80;
             p.rotation = Math.atan2(dy, dx);
+            // Glide down towards the target rather than falling: height shrinks with the distance left.
+            p.z = Math.min(PLANE_CRUISE_Z, 4 + dist * 0.15);
           } else {
             p.vx *= 0.8;
             p.vy *= 0.8;
@@ -119,10 +130,9 @@ export class ParticleSystem {
       type: 'paper_airplane',
       x: startX,
       y: startY - 14,
-      z: 22,
+      z: PLANE_CRUISE_Z,
       vx: Math.cos(angle) * 130,
       vy: Math.sin(angle) * 90,
-      vz: 8,
       size: 10,
       color: '#f8fafc',
       alpha: 1.0,
@@ -211,6 +221,7 @@ export class ParticleSystem {
         y: Math.random() * areaH,
         vx: (Math.random() - 0.5) * 6,
         vy: (Math.random() - 0.5) * 4,
+        z: 8 + Math.random() * 56, // only used on isometric sets (no vz, so no gravity)
         size: 1 + Math.random() * 1.5,
         color: '#fef08a',
         alpha: 0.4 + Math.random() * 0.4,
@@ -232,24 +243,32 @@ export class ParticleSystem {
     ctx.restore();
   }
 
-  // Draw Flying Particles (rendered in Y-sorted / upper pass)
-  public drawParticles(ctx: CanvasRenderingContext2D) {
+  /**
+   * Draws the flying particles upright. On an isometric set (`iso`) each one is projected from its
+   * world position and height, so a paper plane arcs above the floor and casts its shadow on it;
+   * top-down, height simply lifts it up the screen.
+   */
+  public drawParticles(ctx: CanvasRenderingContext2D, iso: boolean) {
     ctx.save();
 
     for (const p of this.particles) {
-      const renderY = p.y - (p.z || 0);
+      const z = p.z || 0;
+      const renderX = iso ? p.x - p.y : p.x;
+      const renderY = iso ? (p.x + p.y) / 2 - z : p.y - z;
 
       switch (p.type) {
         case 'paper_airplane': {
+          // Heading on screen: the projected direction of travel.
+          const heading = iso ? Math.atan2((p.vx + p.vy) / 2, p.vx - p.vy) : p.rotation || 0;
           ctx.save();
-          ctx.translate(p.x, renderY);
-          ctx.rotate(p.rotation || 0);
-
-          // Shadow on ground
+          // Shadow on the floor straight below.
           ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
           ctx.beginPath();
-          ctx.ellipse(0, (p.z || 0), 6, 2.5, 0, 0, Math.PI * 2);
+          ctx.ellipse(renderX, renderY + z, 6, 2.5, 0, 0, Math.PI * 2);
           ctx.fill();
+
+          ctx.translate(renderX, renderY);
+          ctx.rotate(heading);
 
           // Pixel Airplane Body
           ctx.fillStyle = '#ffffff';
@@ -276,7 +295,7 @@ export class ParticleSystem {
         case 'coffee_droplet': {
           ctx.fillStyle = `rgba(69, 26, 3, ${p.alpha})`;
           ctx.beginPath();
-          ctx.arc(p.x, renderY, p.size, 0, Math.PI * 2);
+          ctx.arc(renderX, renderY, p.size, 0, Math.PI * 2);
           ctx.fill();
           break;
         }
@@ -284,28 +303,29 @@ export class ParticleSystem {
         case 'foam': {
           ctx.fillStyle = `rgba(241, 245, 249, ${p.alpha})`;
           ctx.beginPath();
-          ctx.arc(p.x, renderY, p.size, 0, Math.PI * 2);
+          ctx.arc(renderX, renderY, p.size, 0, Math.PI * 2);
           ctx.fill();
           break;
         }
 
         case 'dust_mote': {
           ctx.fillStyle = `rgba(254, 240, 138, ${p.alpha})`;
-          ctx.fillRect(Math.round(p.x), Math.round(p.y), p.size, p.size);
+          // Motes hang in the air on an isometric set; top-down they drift over the floor.
+          ctx.fillRect(Math.round(renderX), Math.round(iso ? renderY : p.y), p.size, p.size);
           break;
         }
 
         case 'smoke': {
           ctx.fillStyle = `rgba(148, 163, 184, ${p.alpha})`;
           ctx.beginPath();
-          ctx.arc(p.x, renderY, p.size, 0, Math.PI * 2);
+          ctx.arc(renderX, renderY, p.size, 0, Math.PI * 2);
           ctx.fill();
           break;
         }
 
         case 'confetti': {
           ctx.fillStyle = p.color;
-          ctx.fillRect(Math.round(p.x), Math.round(renderY), 3, 2);
+          ctx.fillRect(Math.round(renderX), Math.round(renderY), 3, 2);
           break;
         }
       }

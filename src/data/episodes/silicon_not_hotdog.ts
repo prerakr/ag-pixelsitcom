@@ -4,7 +4,7 @@ export const SILICON_NOT_HOTDOG_EPISODE: SitcomScript = {
   version: '1.0',
   title: 'Middle-Out & The Not-Hotdog Catastrophe',
   showId: 'silicon_valley',
-  settingId: 'hacker_hostel',
+  settingId: 'hacker_hostel_iso',
   synopsis:
     'Richard stresses over compression ratios, Gilfoyle and Dinesh wage psychological warfare over tabs vs spaces, and Jian-Yang unveils his SeeFood AI demo.',
   author: 'Mike Judge & Alec Berg',

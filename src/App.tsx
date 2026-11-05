@@ -1,7 +1,18 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import confetti from 'canvas-confetti';
 import { VisualizerEngine } from './engine/CanvasRenderer';
-import { ALL_SETTINGS, DEFAULT_SETTING_ID, getShowIdForSetting } from './data/settings';
+import {
+  ALL_SETTINGS,
+  DEFAULT_SETTING_ID,
+  getShowIdForSetting,
+  getMergedSettings,
+  getSettingById,
+  isLegacySetting,
+  loadStageStyle,
+  saveStageStyle,
+  settingForStyle,
+  StageStyle,
+} from './data/settings';
 import { ALL_CHARACTERS, getCharactersForShow } from './data/characters';
 import { PRESET_EPISODES } from './data/episodes';
 import { SitcomScript, ScriptBeat, TalkingHeadBeat } from './types/script';
@@ -10,14 +21,23 @@ import { Viewport } from './components/Viewport';
 import { PlaybackControls } from './components/PlaybackControls';
 import { TalkingHeadModal } from './components/TalkingHeadModal';
 import { ScriptStudio } from './components/ScriptStudio';
+import { SoundstageModal } from './components/soundstage/SoundstageModal';
 import { CharacterRoster } from './components/CharacterRoster';
 import { HelpModal } from './components/HelpModal';
+import { SpriteGalleryModal } from './components/SpriteGalleryModal';
 import { soundEngine } from './engine/SoundEngine';
 import { musicEngine } from './engine/MusicEngine';
 
 export function App() {
-  const [settingId, setSettingId] = useState<string>(DEFAULT_SETTING_ID);
-  const currentSetting = ALL_SETTINGS[settingId] || ALL_SETTINGS[DEFAULT_SETTING_ID];
+  // Isometric stages by default; picking a legacy top-down set switches every episode to legacy sets
+  // until an isometric one is picked again (remembered per browser).
+  const [stageStyle, setStageStyle] = useState<StageStyle>(() => loadStageStyle());
+  const [settingId, setSettingId] = useState<string>(() => settingForStyle(DEFAULT_SETTING_ID, stageStyle));
+  /** The episode's show on the stage style in use. */
+  const stageFor = (id: string) => settingForStyle(id, stageStyle);
+  const [settingsVersion, setSettingsVersion] = useState<number>(0);
+  const allMergedSettings = useMemo(() => getMergedSettings(), [settingId, settingsVersion]);
+  const currentSetting = useMemo(() => getSettingById(settingId), [settingId, settingsVersion]);
 
   // Characters for active show
   const currentShowCharacters = useMemo(() => {
@@ -27,7 +47,10 @@ export function App() {
 
   // Current Episode
   const [currentEpisodeIndex, setCurrentEpisodeIndex] = useState<number>(0);
-  const [activeScript, setActiveScript] = useState<SitcomScript>(PRESET_EPISODES[0]);
+  const [activeScript, setActiveScript] = useState<SitcomScript>(() => ({
+    ...PRESET_EPISODES[0],
+    settingId: settingForStyle(PRESET_EPISODES[0].settingId, stageStyle),
+  }));
 
   // Playback state
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
@@ -38,12 +61,15 @@ export function App() {
   const [talkingHead, setTalkingHead] = useState<TalkingHeadBeat | null>(null);
 
   // Modals & Drawers
+  const [isSoundstageOpen, setIsSoundstageOpen] = useState<boolean>(false);
   const [isScriptStudioOpen, setIsScriptStudioOpen] = useState<boolean>(false);
+  const [isSpriteGalleryOpen, setIsSpriteGalleryOpen] = useState<boolean>(false);
   const [isCastDrawerOpen, setIsCastDrawerOpen] = useState<boolean>(false);
   const [isHelpOpen, setIsHelpOpen] = useState<boolean>(false);
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [isBgmMuted, setIsBgmMuted] = useState<boolean>(musicEngine.getMuted());
   const [allowCameraJumps, setAllowCameraJumps] = useState<boolean>(true);
+
 
   // Create & maintain VisualizerEngine instance
   const engine = useMemo(() => {
@@ -129,14 +155,21 @@ export function App() {
   // Handler functions
   const handleSelectSetting = (id: string) => {
     setSettingId(id);
-    const newSetting = ALL_SETTINGS[id];
+    // Custom sets keep whichever style was in use.
+    if (ALL_SETTINGS[id]) {
+      const style: StageStyle = isLegacySetting(id) ? 'legacy' : 'iso';
+      setStageStyle(style);
+      saveStageStyle(style);
+    }
+    const merged = getMergedSettings();
+    const newSetting = merged[id];
     if (newSetting) {
       const showId = getShowIdForSetting(id);
       const matchingEp = PRESET_EPISODES.find((ep) => ep.settingId === id || ep.showId === showId);
       if (matchingEp) {
         const epIdx = PRESET_EPISODES.indexOf(matchingEp);
         if (epIdx >= 0) setCurrentEpisodeIndex(epIdx);
-        setActiveScript(matchingEp);
+        setActiveScript({ ...matchingEp, settingId: id });
       } else {
         const showChars = getCharactersForShow(showId);
         const adaptedScript: SitcomScript = {
@@ -154,18 +187,22 @@ export function App() {
     setCurrentEpisodeIndex(idx);
     const ep = PRESET_EPISODES[idx];
     if (ep) {
-      if (ep.settingId && ALL_SETTINGS[ep.settingId]) {
-        setSettingId(ep.settingId);
+      const merged = getMergedSettings();
+      const stage = stageFor(ep.settingId);
+      if (stage && merged[stage]) {
+        setSettingId(stage);
       }
-      setActiveScript(ep);
+      setActiveScript({ ...ep, settingId: stage });
     }
   };
 
   const handleLoadCustomScript = (script: SitcomScript) => {
-    if (script.settingId && ALL_SETTINGS[script.settingId]) {
-      setSettingId(script.settingId);
+    const merged = getMergedSettings();
+    const stage = script.settingId ? stageFor(script.settingId) : script.settingId;
+    if (stage && merged[stage]) {
+      setSettingId(stage);
     }
-    setActiveScript(script);
+    setActiveScript(stage ? { ...script, settingId: stage } : script);
   };
 
   const handleToggleMute = () => {
@@ -194,9 +231,12 @@ export function App() {
       <Header
         currentSettingId={settingId}
         onSelectSetting={handleSelectSetting}
+        allSettings={allMergedSettings}
         currentEpisodeTitle={String(currentEpisodeIndex)}
         onSelectEpisode={handleSelectPresetEpisode}
+        onOpenSoundstage={() => setIsSoundstageOpen(true)}
         onOpenScriptStudio={() => setIsScriptStudioOpen(true)}
+        onOpenSpriteGallery={() => setIsSpriteGalleryOpen(true)}
         onToggleCastDrawer={() => setIsCastDrawerOpen(!isCastDrawerOpen)}
         onOpenHelp={() => setIsHelpOpen(true)}
         isCastDrawerOpen={isCastDrawerOpen}
@@ -221,6 +261,7 @@ export function App() {
           onClose={() => setIsCastDrawerOpen(false)}
           characters={currentShowCharacters}
           onFocusCharacter={handleFocusCharacter}
+          isoView={currentSetting.projection === 'iso'}
         />
       </main>
 
@@ -257,12 +298,35 @@ export function App() {
         <TalkingHeadModal
           talkingHead={talkingHead}
           charactersMap={ALL_CHARACTERS}
+          isoView={currentSetting.projection === 'iso'}
           onClose={() => {
             setTalkingHead(null);
             engine.nextBeat();
           }}
         />
       )}
+
+      {/* Soundstage & Environment Editor Modal */}
+      <SoundstageModal
+        isOpen={isSoundstageOpen}
+        onClose={() => {
+          setIsSoundstageOpen(false);
+          setSettingsVersion(v => v + 1);
+        }}
+        initialSettingId={settingId}
+        onApplySettingToApp={(newSettingId) => {
+          handleSelectSetting(newSettingId);
+          setSettingsVersion(v => v + 1);
+        }}
+        characters={currentShowCharacters}
+      />
+
+
+      {/* Sprite Studio & Art Pipeline Modal */}
+      <SpriteGalleryModal
+        isOpen={isSpriteGalleryOpen}
+        onClose={() => setIsSpriteGalleryOpen(false)}
+      />
 
       {/* AI Script Studio Modal */}
       <ScriptStudio
@@ -280,3 +344,4 @@ export function App() {
   );
 }
 export default App;
+

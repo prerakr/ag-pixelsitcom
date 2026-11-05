@@ -1,13 +1,21 @@
 import { SettingDefinition } from '../types/environment';
 import { CharacterDefinition } from '../types/character';
+import { seatAtWaypoint } from '../engine/Seats';
+
+const FACING_WORDS: Record<string, string> = { up: 'north', down: 'south', left: 'west', right: 'east' };
 
 export function buildSitcomPrompt(
   setting: SettingDefinition,
   characters: CharacterDefinition[],
   userIdea: string
 ): string {
+  // Seats are marked so the writer knows that walking there sits the character down.
   const waypointList = Object.entries(setting.waypoints)
-    .map(([id, wp]) => `- "${id}": ${wp.name} (${wp.zone || 'area'})`)
+    .map(([id, wp]) => {
+      const seat = seatAtWaypoint(setting, id);
+      const seatNote = seat ? ` [SEAT${seat.facing ? `, faces ${FACING_WORDS[seat.facing] ?? seat.facing}` : ''}]` : '';
+      return `- "${id}": ${wp.name} (${wp.zone || 'area'})${seatNote}`;
+    })
     .join('\n');
 
   const propList = setting.props
@@ -29,7 +37,7 @@ Your goal is to write a hilarious, dynamic 1-3 scene episode script in the stric
 Show: ${setting.showTitle}
 Location: ${setting.name} (settingId: "${setting.id}")
 
-Available Waypoints to navigate characters:
+Available Waypoints to navigate characters (walking a character to a [SEAT] sits them down facing the way the seat faces, so a movement "facing" there is ignored; a later movement or a "stand" interaction gets them up; if someone already sits there, the walker stops beside it):
 ${waypointList}
 
 Available Interactive Props:
@@ -161,7 +169,8 @@ Format:
 ### WRITING RULES:
 - Keep the dialogue snappy, in-character, and comedy-first.
 - Use mockumentary talking_head confessional interviews between major comedic beats.
-- Ensure characters move to valid waypoint IDs defined in the setting.
+- Use ONLY the waypoint, prop and character IDs listed above (exact spelling): scripts that name anything else are rejected.
+- Seat characters for conversations by walking them to [SEAT] waypoints; keep standing scenes on the other waypoints.
 - Use sound effects (laugh_track, tension_sting, rimshot, gasp, glass_shatter) for comedic timing.
 - Return ONLY the JSON object.`;
 }

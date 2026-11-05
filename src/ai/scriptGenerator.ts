@@ -71,11 +71,13 @@ export async function generateSitcomEpisode(options: GenerationOptions): Promise
 }
 
 async function generateWithGemini(apiKey: string, prompt: string): Promise<SitcomScript> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  // gemini-1.5-* models were retired by Google; keep the key in a header rather than the URL
+  // so it doesn't end up in logs or browser history.
+  const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
   const response = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
     body: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: {

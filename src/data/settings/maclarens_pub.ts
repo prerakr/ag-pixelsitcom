@@ -9,6 +9,7 @@ export const MACLARENS_PUB: SettingDefinition = {
   gridHeight: 24,
   tileSize: 32,
   backgroundColor: '#0c0a09',
+  tileTheme: 'pub',
   defaultCamera: {
     x: 576,
     y: 384,
@@ -241,11 +242,13 @@ export const MACLARENS_PUB: SettingDefinition = {
     booth_barney: { id: 'booth_barney', name: "Barney's Corner", x: 9.8, y: 8.2, facing: 'left', zone: 'gang_booth' },
     booth_marshall: { id: 'booth_marshall', name: "Marshall's Side", x: 8, y: 7.5, facing: 'down', zone: 'gang_booth' },
     booth_lily: { id: 'booth_lily', name: "Lily's Seat", x: 6.2, y: 10.2, facing: 'right', zone: 'gang_booth' },
+    booth_table_center: { id: 'booth_table_center', name: 'Booth Table End', x: 11.4, y: 10.2, facing: 'left', zone: 'gang_booth' },
     bar_stool_robin: { id: 'bar_stool_robin', name: "Robin's Bar Stool", x: 22, y: 8.2, facing: 'up', zone: 'bar_counter' },
 
     // NPC Characters
     bartender_station: { id: 'bartender_station', name: "Carl's Bartender Station", x: 23.5, y: 4.2, facing: 'down', zone: 'bar_counter' },
     ranjit_stool: { id: 'ranjit_stool', name: "Ranjit's Bar Stool", x: 19.5, y: 8.2, facing: 'up', zone: 'bar_counter' },
+    bar_stool_1: { id: 'bar_stool_1', name: 'Bar Stool 1', x: 19.5, y: 8.2, facing: 'up', zone: 'bar_counter' },
     waitress_station: { id: 'waitress_station', name: "Wendy Service Floor", x: 13.5, y: 9.5, facing: 'left', zone: 'main_floor' },
     high_top_patrice: { id: 'high_top_patrice', name: 'Patrice High Top', x: 21, y: 13.8, facing: 'right', zone: 'high_tops' },
     booth_captain: { id: 'booth_captain', name: "The Captain's VIP Table", x: 8, y: 14.5, facing: 'down', zone: 'vip_booth' },

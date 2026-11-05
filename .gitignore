@@ -1,2 +1,9 @@
 node_modules
 dist
+.env
+# Sprite pipeline intermediates
+art/source/characters/regen/_work/
+art/source/characters/regen/_rejected/
+art/source/characters/iso/_work/
+__pycache__/
+art/review/

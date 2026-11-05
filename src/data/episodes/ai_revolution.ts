@@ -4,7 +4,7 @@ export const AI_REVOLUTION_EPISODE: SitcomScript = {
   version: '1.0',
   title: 'Michael Scott: AI Visionary',
   showId: 'the_office',
-  settingId: 'dunder_mifflin_scranton',
+  settingId: 'dunder_mifflin_iso',
   synopsis: 'Michael discovers artificial intelligence and decides Dunder Mifflin Scranton will be 100% automated by lunchtime.',
   author: 'Michael Scott',
   characters: ['michael', 'dwight', 'pam', 'angela', 'kevin', 'toby'],

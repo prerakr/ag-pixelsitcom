@@ -4,7 +4,7 @@ export const FIRE_DRILL_EPISODE: SitcomScript = {
   version: '1.0',
   title: 'Stress Relief: The Fire Drill',
   showId: 'the_office',
-  settingId: 'dunder_mifflin_scranton',
+  settingId: 'dunder_mifflin_iso',
   synopsis: 'Dwight conducts an unannounced fire safety drill. Absolute pandemonium ensues across the Scranton branch.',
   author: 'Dunder Mifflin Studios',
   characters: ['dwight', 'michael', 'jim', 'pam', 'angela', 'kevin', 'stanley'],
