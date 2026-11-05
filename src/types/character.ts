@@ -89,6 +89,8 @@ export interface CharacterRuntimeState {
   actionTimer?: number;
   runLean?: number;
   isSitting?: boolean;
+  /** Sit down on reaching the end of the current walk (it ends at a free seat). */
+  sitOnArrival?: boolean;
   heldItem?: HoldableItemType;
   currentSpeech?: {
     text: string;

@@ -104,6 +104,40 @@ describe('ScriptPlayer', () => {
     expect(jim.isMoving).toBe(false);
   });
 
+  it('sits a character who walks to a free seat, facing the way the seat faces', () => {
+    const pub = ALL_SETTINGS.maclarens_iso;
+    const player = new ScriptPlayer(pub, ALL_CHARACTERS);
+    player.load({
+      ...WALK_SCRIPT,
+      showId: 'himym',
+      settingId: pub.id,
+      characters: ['barney', 'ted'],
+      scenes: [{ id: 's', name: 's', beats: [{ type: 'movement', character: 'barney', target: 'bar_stool_1', facing: 'left' }] }],
+    });
+    settle(player);
+    const barney = player.characterStates.get('barney')!;
+    expect(barney.isSitting).toBe(true);
+    expect(barney.facing).toBe(pub.props.find((p) => p.id === 'prop_bar_stool_1')!.facing);
+  });
+
+  it('leaves a second walker standing beside a seat someone already has', () => {
+    const pub = ALL_SETTINGS.maclarens_iso;
+    const player = new ScriptPlayer(pub, ALL_CHARACTERS);
+    player.load({
+      ...WALK_SCRIPT,
+      showId: 'himym',
+      settingId: pub.id,
+      characters: ['barney', 'ted'],
+      scenes: [{ id: 's', name: 's', beats: [{ type: 'movement', character: 'ted', target: 'booth_barney' }] }],
+    });
+    settle(player);
+    const barney = player.characterStates.get('barney')!;
+    const ted = player.characterStates.get('ted')!;
+    expect(barney.isSitting).toBe(true);
+    expect(ted.isSitting).toBe(false);
+    expect(Math.hypot(ted.x - barney.x, ted.y - barney.y)).toBeGreaterThan(12);
+  });
+
   it('restores earlier positions and props when stepping back', () => {
     const player = new ScriptPlayer(OFFICE, ALL_CHARACTERS);
     player.load(WALK_SCRIPT);

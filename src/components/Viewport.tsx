@@ -107,6 +107,27 @@ export const Viewport: React.FC<ViewportProps> = ({ engine, onInspectCharacter }
   const handleInspectAtPoint = (screenX: number, screenY: number) => {
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
+    // Isometric sets: what is drawn under the click, front-most first.
+    const picked = engine.pickAt(screenX, screenY, rect.width, rect.height);
+    if (picked?.type === 'character') {
+      const char = engine.charactersMap[picked.id];
+      const state = engine.characterStates.get(picked.id);
+      if (char && state) {
+        setSelectedEntity({ type: 'character', data: char, state });
+        if (onInspectCharacter) onInspectCharacter(char);
+        soundEngine.playSfx('typewriter', 0.5);
+        return;
+      }
+    } else if (picked?.type === 'prop') {
+      setSelectedEntity({ type: 'prop', data: picked.prop });
+      soundEngine.playSfx('stapler_click', 0.5);
+      return;
+    }
+    if (engine.setting.projection === 'iso') {
+      setSelectedEntity(null);
+      return;
+    }
+
     const world = engine.camera.screenToWorld(screenX, screenY, rect.width, rect.height);
     const tileSize = engine.setting.tileSize;
 

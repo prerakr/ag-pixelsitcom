@@ -98,17 +98,25 @@ export class Camera {
     this.targetZoom = fitZoom;
   }
 
+  /** A screen point in view coordinates (before the projection is undone). */
+  public screenToView(
+    screenX: number,
+    screenY: number,
+    viewportW: number,
+    viewportH: number
+  ): { x: number; y: number } {
+    return { x: (screenX - viewportW / 2) / this.zoom + this.x, y: (screenY - viewportH / 2) / this.zoom + this.y };
+  }
+
+  /** A screen point on the floor, in world coordinates. */
   public screenToWorld(
     screenX: number,
     screenY: number,
     viewportW: number,
     viewportH: number
   ): { x: number; y: number } {
-    const cx = viewportW / 2;
-    const cy = viewportH / 2;
-    const viewX = (screenX - cx) / this.zoom + this.x;
-    const viewY = (screenY - cy) / this.zoom + this.y;
-    return { x: this.projection.toWorldX(viewX, viewY), y: this.projection.toWorldY(viewX, viewY) };
+    const v = this.screenToView(screenX, screenY, viewportW, viewportH);
+    return { x: this.projection.toWorldX(v.x, v.y), y: this.projection.toWorldY(v.x, v.y) };
   }
 
   public worldToScreen(

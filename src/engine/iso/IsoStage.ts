@@ -12,6 +12,29 @@ import { ISO, applyIsoFloorTransform } from './IsoProjection';
 import { IsoBake, IsoMapBaker, IsoWallPiece } from './IsoMapBaker';
 
 const T = 32;
+/** Character hit box around the projected foot point (view px): half width, standing and seated height. */
+const PICK_HALF_W = 11;
+const PICK_H = 56;
+const PICK_H_SEATED = 46;
+const FLAME_COLOURS = ['#dc2626', '#f59e0b', '#fef08a'];
+const FLAME_SCALE = [1, 0.66, 0.33];
+
+/** What a click in view space landed on: a character (index into the states) or a prop. */
+export type IsoPick = { kind: 'character'; index: number } | { kind: 'prop'; index: number };
+
+/** Flickering pixel flames rising from (cx, baseY), `width` px wide, for a burning prop. */
+function drawFlames(ctx: CanvasRenderingContext2D, cx: number, baseY: number, width: number, time: number) {
+  const x0 = Math.round(cx - width / 2);
+  for (let l = 0; l < FLAME_COLOURS.length; l++) {
+    ctx.fillStyle = FLAME_COLOURS[l];
+    for (let col = 0; col < width; col++) {
+      const middle = 1 - Math.abs(((col + 0.5) / width) * 2 - 1);
+      const flicker = 0.5 * Math.sin(time / 90 + col * 1.9) + 0.5 * Math.sin(time / 53 + col * 0.7);
+      const h = Math.round((4 + 14 * middle) * (0.8 + 0.25 * flicker) * FLAME_SCALE[l]);
+      if (h > 0) ctx.fillRect(x0 + col, baseY - h, 1, h);
+    }
+  }
+}
 const EPS = 1e-3;
 /** Screen extent of a standing character around its foot point, for overlap tests (view px). */
 const CHAR_HALF_W = 14;
@@ -67,6 +90,11 @@ export class IsoStage {
   private readonly compareChars = (a: number, b: number) =>
     this.charSlot[a] - this.charSlot[b] || this.charDepth[a] - this.charDepth[b];
 
+  /** What the last frame drew, in order (0 prop, 1 character), for picking the front-most thing under a click. */
+  private drawnKind = new Uint8Array(256);
+  private drawnIndex = new Int32Array(256);
+  private drawnCount = 0;
+
   private viewState = {} as CharacterRuntimeState;
   private isoDefs = new Map<string, CharacterDefinition | null>();
 
@@ -89,6 +117,7 @@ export class IsoStage {
     setting: SettingDefinition,
     states: CharacterRuntimeState[],
     characters: Record<string, CharacterDefinition>,
+    propStates: ReadonlyMap<string, Record<string, any>>,
     gameTime: number
   ) {
     this.ensureAtlas(setting.tileTheme || 'coffee');
@@ -141,12 +170,19 @@ export class IsoStage {
     }
     order.sort(this.compareChars);
 
-    const atlas = this.atlas;
+    if (this.drawnKind.length < n + order.length) {
+      this.drawnKind = new Uint8Array((n + order.length) * 2);
+      this.drawnIndex = new Int32Array((n + order.length) * 2);
+    }
+    let drawn = 0;
     let ci = 0;
     for (let k = 0; k <= n; k++) {
       while (ci < order.length && this.charSlot[order[ci]] === k) {
-        const s = states[order[ci++]];
+        const c = order[ci++];
+        const s = states[c];
         this.drawCharacter(ctx, characters[s.id], s, gameTime);
+        this.drawnKind[drawn] = 1;
+        this.drawnIndex[drawn++] = c;
       }
       if (k === n) continue;
       const ref = this.order[k];
@@ -154,15 +190,21 @@ export class IsoStage {
         const piece = baked.pieces[-ref - 1];
         ctx.drawImage(piece.canvas, piece.originX, piece.originY);
       } else {
-        this.drawProp(ctx, setting.props[ref]);
+        const prop = setting.props[ref];
+        if (this.drawProp(ctx, prop, propStates.get(prop.id), gameTime)) {
+          this.drawnKind[drawn] = 0;
+          this.drawnIndex[drawn++] = ref;
+        }
       }
     }
+    this.drawnCount = drawn;
 
     ctx.drawImage(baked.front, baked.originX, baked.originY);
 
+    // Particles are drawn upright at their projected height; only lighting lies on the floor.
+    particleSystem.drawParticles(ctx, true);
     ctx.save();
     applyIsoFloorTransform(ctx);
-    particleSystem.drawParticles(ctx);
     // Lighting moods paint world-sized shapes; keep them on the set.
     ctx.beginPath();
     ctx.rect(0, 0, W, H);
@@ -171,14 +213,55 @@ export class IsoStage {
     ctx.restore();
   }
 
-  private drawProp(ctx: CanvasRenderingContext2D, prop: PropInstance) {
+  /** Draws a prop in its current state (hidden while carried, alight when ignited); false when nothing was drawn. */
+  private drawProp(ctx: CanvasRenderingContext2D, prop: PropInstance, state: Record<string, any> | undefined, gameTime: number): boolean {
     const atlas = this.atlas;
-    if (!atlas || !this.atlasCanvas) return;
+    if (!atlas || !this.atlasCanvas || state?.pickedUp) return false;
     const f = atlas.frames[`${prop.type}:${prop.facing || 'down'}`];
-    if (!f) return;
+    if (!f) return false;
     const vx = Math.round(ISO.toViewX(prop.x * T, prop.y * T)) - f.ox;
     const vy = Math.round(ISO.toViewY(prop.x * T, prop.y * T)) - f.oy;
     ctx.drawImage(this.atlasCanvas, f.x, f.y, f.w, f.h, vx, vy, f.w, f.h);
+    if (state?.ignited) drawFlames(ctx, vx + f.w / 2, vy + 5, Math.max(12, f.w + 2), gameTime);
+    return true;
+  }
+
+  /**
+   * The front-most character or prop at a view-space point, from the last frame drawn. Props are
+   * tested against their sprite's opaque pixels, characters against a box around the figure; wall
+   * decorations, baked into the back wall, come last.
+   */
+  public pick(vx: number, vy: number, setting: SettingDefinition, states: CharacterRuntimeState[]): IsoPick | null {
+    for (let i = this.drawnCount - 1; i >= 0; i--) {
+      const index = this.drawnIndex[i];
+      if (this.drawnKind[i] === 1) {
+        const s = states[index];
+        if (!s) continue;
+        const fx = ISO.toViewX(s.x, s.y + FOOT_OFFSET_PX);
+        const fy = ISO.toViewY(s.x, s.y + FOOT_OFFSET_PX);
+        const h = s.isSitting ? PICK_H_SEATED : PICK_H;
+        if (vx >= fx - PICK_HALF_W && vx <= fx + PICK_HALF_W && vy >= fy - h && vy <= fy) return { kind: 'character', index };
+      } else if (this.propHit(setting.props[index], vx, vy)) {
+        return { kind: 'prop', index };
+      }
+    }
+    for (let i = 0; i < setting.props.length; i++) {
+      if (ISO_PROP_CATALOG[setting.props[i].type]?.kind === 'wall' && this.propHit(setting.props[i], vx, vy)) {
+        return { kind: 'prop', index: i };
+      }
+    }
+    return null;
+  }
+
+  /** Whether the prop's sprite has an opaque pixel at the view-space point. */
+  private propHit(prop: PropInstance, vx: number, vy: number): boolean {
+    const f = this.atlas?.frames[`${prop.type}:${prop.facing || 'down'}`];
+    const pixels = this.atlasPixels;
+    if (!f || !pixels) return false;
+    const px = Math.floor(vx - (Math.round(ISO.toViewX(prop.x * T, prop.y * T)) - f.ox));
+    const py = Math.floor(vy - (Math.round(ISO.toViewY(prop.x * T, prop.y * T)) - f.oy));
+    if (px < 0 || py < 0 || px >= f.w || py >= f.h) return false;
+    return pixels.data[((f.y + py) * pixels.width + f.x + px) * 4 + 3] > 0;
   }
 
   private drawCharacter(ctx: CanvasRenderingContext2D, def: CharacterDefinition, state: CharacterRuntimeState, gameTime: number) {

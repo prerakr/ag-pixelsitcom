@@ -1,4 +1,4 @@
-import { SettingDefinition } from '../types/environment';
+import { PropInstance, SettingDefinition } from '../types/environment';
 import { CharacterDefinition, CharacterRuntimeState } from '../types/character';
 import { SitcomScript, ScriptBeat, TalkingHeadBeat, CameraCueBeat } from '../types/script';
 import { TileRenderer } from './TileRenderer';
@@ -111,6 +111,23 @@ export class VisualizerEngine {
   public get characterStates(): Map<string, CharacterRuntimeState> {
     return this.player.characterStates;
   }
+  /**
+   * What is under a screen point on an isometric set: the front-most character or prop as drawn,
+   * so clicking a character's head or a tall prop's top finds it. Null on top-down sets, where
+   * the floor point under the click is accurate enough.
+   */
+  public pickAt(screenX: number, screenY: number, viewportW: number, viewportH: number):
+    | { type: 'character'; id: string }
+    | { type: 'prop'; prop: PropInstance }
+    | null {
+    if (this.setting.projection !== 'iso') return null;
+    const v = this.camera.screenToView(screenX, screenY, viewportW, viewportH);
+    const hit = this.isoStage.pick(v.x, v.y, this.setting, this.player.states);
+    if (!hit) return null;
+    if (hit.kind === 'character') return { type: 'character', id: this.player.states[hit.index].id };
+    return { type: 'prop', prop: this.setting.props[hit.index] };
+  }
+
   public get propStates(): Map<string, Record<string, any>> {
     return this.player.propStates;
   }
@@ -390,7 +407,7 @@ export class VisualizerEngine {
           this.isoStage.invalidate();
           this.isTileMapDirty = false;
         }
-        this.isoStage.draw(ctx, this.setting, this.player.states, this.charactersMap, this.gameTime);
+        this.isoStage.draw(ctx, this.setting, this.player.states, this.charactersMap, this.player.propStates, this.gameTime);
       } else {
         // 1. Draw Cached Static Tilemap & Floor Rugs (zero per-frame string formatting)
         if (this.isTileMapDirty || !this.tileCanvas) {
@@ -451,7 +468,7 @@ export class VisualizerEngine {
         }
 
         // 4. Draw Airborne Flying Particles (Paper Airplanes, Foam, Coffee Droplets, Confetti)
-        particleSystem.drawParticles(ctx);
+        particleSystem.drawParticles(ctx, false);
 
         // 5. Dynamic Ambient Lighting & Light Rays
         lightingEngine.drawLighting(ctx, this.setting, worldW, worldH, this.gameTime);

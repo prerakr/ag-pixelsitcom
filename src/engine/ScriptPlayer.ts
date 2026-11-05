@@ -14,9 +14,10 @@ import {
   GroupActionBeat,
   SfxType,
   TimeOfDay,
+  Direction,
 } from '../types/script';
 import { advanceWalkCycle, faceAlong } from './Locomotion';
-import { NavGrid, PathPoint } from './NavGrid';
+import { FOOT_OFFSET_PX, NavGrid, PathPoint } from './NavGrid';
 
 /** Walking speed at `speed: 1`, in world pixels per second. */
 export const WALK_SPEED_PX = 110;
@@ -59,7 +60,14 @@ const NO_EFFECTS: StageEffects = {
   talkingHead() {},
 };
 
-const SEAT_WAYPOINT_HINTS = ['desk', 'seat', 'couch', 'booth', 'armchair'];
+/** Spawn waypoint names that start a character seated on top-down sets, whose desks have no chair props. */
+const SEAT_WAYPOINT_HINTS = ['desk', 'seat', 'couch', 'booth', 'armchair', 'stool'];
+/** Prop types people sit in or on. */
+const SEAT_PROP = /chair|stool|sofa|couch|lounger|beanbag|booth_bench/;
+/** How far (tiles) a sitter's feet may be outside a seat's footprint and still be in it. */
+const SEAT_SLACK = 0.1;
+/** Two characters closer than this (px) are on the same seat. */
+const SAME_SEAT_PX = 12;
 
 const FACING_ANGLES: Record<string, number> = {
   down: Math.PI / 2,
@@ -141,12 +149,15 @@ export class ScriptPlayer {
       const char = this.characters[charId];
       if (!char) return;
       const spawn = this.setting.spawnPoints[char.id] || this.setting.waypoints[char.defaultWaypoint];
-      const isAtSeat = SEAT_WAYPOINT_HINTS.some((hint) => char.defaultWaypoint?.includes(hint));
+      const x = spawn ? spawn.x * tileSize : 10 * tileSize;
+      const y = spawn ? spawn.y * tileSize : 10 * tileSize;
+      const seat = this.setting.projection === 'iso' ? this.seatAt(x, y) : null;
+      const isAtSeat = seat ? true : this.setting.projection !== 'iso' && SEAT_WAYPOINT_HINTS.some((hint) => char.defaultWaypoint?.includes(hint));
       this.characterStates.set(char.id, {
         id: char.id,
-        x: spawn ? spawn.x * tileSize : 10 * tileSize,
-        y: spawn ? spawn.y * tileSize : 10 * tileSize,
-        facing: spawn?.facing || char.defaultFacing || 'down',
+        x,
+        y,
+        facing: seat?.facing || spawn?.facing || char.defaultFacing || 'down',
         isMoving: false,
         speed: 1.0,
         animFrame: 0,
@@ -369,6 +380,10 @@ export class ScriptPlayer {
     if (state.targetFacing) {
       state.facing = state.targetFacing;
       state.targetFacing = undefined;
+    }
+    if (state.sitOnArrival) {
+      state.isSitting = true;
+      state.sitOnArrival = undefined;
     }
     state.state = state.isSitting ? 'sitting_desk' : 'idle';
   }
@@ -676,23 +691,66 @@ export class ScriptPlayer {
     this.propStates.set(propId, { ...(this.propStates.get(propId) || {}), ...patch });
   }
 
-  /** Resolves a movement target to world pixels, and whether it is a seat to settle into. */
-  private resolveTarget(m: MovementBeat, state: CharacterRuntimeState): { x: number; y: number; isSeat: boolean } {
+  /**
+   * Resolves a movement target to world pixels, and the seat there if it is one: walking to a
+   * seat ends sitting in it, facing the way it faces.
+   */
+  private resolveTarget(
+    m: MovementBeat,
+    state: CharacterRuntimeState
+  ): { x: number; y: number; seat: { facing?: Direction } | null } {
     const T = this.setting.tileSize;
     if (typeof m.target === 'object' && m.target !== null) {
-      return { x: m.target.x * T, y: m.target.y * T, isSeat: false };
+      const x = m.target.x * T;
+      const y = m.target.y * T;
+      return { x, y, seat: this.seatAt(x, y) };
     }
     if (typeof m.target === 'string') {
       const wp = this.setting.waypoints[m.target];
-      if (wp) return { x: wp.x * T, y: wp.y * T, isSeat: m.target.includes('seat') || m.target.includes('desk') };
+      if (wp) {
+        const x = wp.x * T;
+        const y = wp.y * T;
+        const seat = this.seatAt(x, y);
+        // Top-down props carry no facing: sit the way the waypoint (or the beat) says.
+        return { x, y, seat: seat && { facing: seat.facing || m.facing || wp.facing } };
+      }
       const targetChar = this.characterStates.get(m.target);
-      if (targetChar) return { x: targetChar.x, y: targetChar.y, isSeat: false };
+      if (targetChar) return { x: targetChar.x, y: targetChar.y, seat: null };
       const prop = this.setting.props.find((p) => p.id === m.target);
       if (prop) {
-        return { x: (prop.x + (prop.width || 1) * 0.5) * T, y: (prop.y + (prop.height || 1) * 0.5) * T, isSeat: false };
+        return { x: (prop.x + (prop.width || 1) * 0.5) * T, y: (prop.y + (prop.height || 1) * 0.5) * T, seat: null };
       }
     }
-    return { x: state.x, y: state.y, isSeat: false };
+    return { x: state.x, y: state.y, seat: null };
+  }
+
+  /**
+   * The seat at a world point (px), if any: a seat prop whose footprint holds the sitter's feet.
+   * `facing` is the way its sitter faces, known on isometric sets where every prop has a facing.
+   */
+  private seatAt(x: number, y: number): { facing?: Direction } | null {
+    const T = this.setting.tileSize;
+    const iso = this.setting.projection === 'iso';
+    const fx = x / T;
+    const fy = (y + FOOT_OFFSET_PX) / T;
+    for (const p of this.setting.props) {
+      if (!SEAT_PROP.test(p.type)) continue;
+      const inside =
+        fx >= p.x - SEAT_SLACK && fx <= p.x + (p.width || 1) + SEAT_SLACK && fy >= p.y - SEAT_SLACK && fy <= p.y + (p.height || 1) + SEAT_SLACK;
+      if (inside) return { facing: iso ? p.facing || 'down' : undefined };
+    }
+    return null;
+  }
+
+  /** Whether someone else is sitting at (or walking to sit at) this spot. */
+  private seatTaken(movingId: string, x: number, y: number): boolean {
+    for (const other of this.states) {
+      if (other.id === movingId) continue;
+      const ox = other.sitOnArrival && other.targetX !== undefined ? other.targetX : other.x;
+      const oy = other.sitOnArrival && other.targetY !== undefined ? other.targetY : other.y;
+      if ((other.isSitting || other.sitOnArrival) && Math.hypot(x - ox, y - oy) < SAME_SEAT_PX) return true;
+    }
+    return false;
   }
 
   /** Picks a free spot at or near the target so two characters don't end up stacked. */
@@ -730,7 +788,8 @@ export class ScriptPlayer {
     if (!state) return m.durationMs || 1200;
 
     const target = this.resolveTarget(m, state);
-    const dest = this.findVacantDestination(m.character, target.x, target.y, target.isSeat);
+    const seat = target.seat && !this.seatTaken(m.character, target.x, target.y) ? target.seat : null;
+    const dest = this.findVacantDestination(m.character, target.x, target.y, seat !== null);
     const route = this.nav.findPath(state, dest) ?? [dest];
 
     state.targetX = dest.x;
@@ -739,7 +798,8 @@ export class ScriptPlayer {
     state.routeIndex = 0;
     state.isMoving = true;
     state.isSitting = false;
-    state.targetFacing = m.facing;
+    state.sitOnArrival = seat !== null;
+    state.targetFacing = seat?.facing || m.facing;
 
     let gait = 1.0;
     if (m.animationState === 'run') {
