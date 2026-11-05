@@ -61,15 +61,19 @@ function blocksTile(type: string | undefined): boolean {
   return type === undefined || type.startsWith('wall_') || type.startsWith('window_');
 }
 
-/** Floor rectangle a prop occupies, in tile units, or null when it can be walked through. */
-export function propFootprint(prop: PropInstance): { x0: number; y0: number; x1: number; y1: number } | null {
-  if (NON_BLOCKING.has(prop.type)) return null;
+/**
+ * Floor rectangle a prop occupies, in tile units, or null when it can be walked through. On an
+ * isometric set (`iso`) props come from the iso catalogue, modelled at real size, so their whole
+ * rectangle is floor contact.
+ */
+export function propFootprint(prop: PropInstance, iso = false): { x0: number; y0: number; x1: number; y1: number } | null {
   const w = prop.width || 1;
   const h = prop.height || 1;
-  const iso = ISO_PROP_CATALOG[prop.type];
-  if (iso) {
+  const entry = iso ? ISO_PROP_CATALOG[prop.type] : undefined;
+  if (!entry && NON_BLOCKING.has(prop.type)) return null;
+  if (entry) {
     // Isometric props are modelled at real size, so their rectangle is their floor contact.
-    if (iso.kind !== 'floor') return null;
+    if (entry.kind !== 'floor') return null;
     return { x0: prop.x + FOOTPRINT_INSET, x1: prop.x + w - FOOTPRINT_INSET, y0: prop.y + FOOTPRINT_INSET, y1: prop.y + h - FOOTPRINT_INSET };
   }
   const share = UPRIGHT.has(prop.type) ? UPRIGHT_FLOOR_SHARE : FLAT_FLOOR_SHARE;
@@ -157,7 +161,7 @@ export class NavGrid {
     }
 
     for (const prop of setting.props) {
-      const fp = propFootprint(prop);
+      const fp = propFootprint(prop, setting.projection === 'iso');
       if (!fp) continue;
       // A cell is blocked when its centre falls inside the footprint.
       const cx0 = Math.max(0, Math.ceil(fp.x0 * 2 - 0.5));

@@ -1,4 +1,4 @@
-import { SettingDefinition } from '../../types/environment';
+import { PropInstance, SettingDefinition } from '../../types/environment';
 import { CharacterDefinition, CharacterRuntimeState } from '../../types/character';
 import { Direction } from '../../types/script';
 import { IsoThemeAtlas } from '../../types/sprite';
@@ -9,10 +9,13 @@ import { lightingEngine } from '../LightingEngine';
 import { spriteManager } from '../SpriteManager';
 import { FOOT_OFFSET_PX } from '../NavGrid';
 import { ISO, applyIsoFloorTransform } from './IsoProjection';
-import { IsoBake, IsoMapBaker } from './IsoMapBaker';
+import { IsoBake, IsoMapBaker, IsoWallPiece } from './IsoMapBaker';
 
 const T = 32;
 const EPS = 1e-3;
+/** Screen extent of a standing character around its foot point, for overlap tests (view px). */
+const CHAR_HALF_W = 14;
+const CHAR_H = 60;
 
 /**
  * Character sprites drawn for the four world facings when a character has no isometric views
@@ -41,7 +44,10 @@ export class IsoStage {
   private bakedSetting: SettingDefinition | null = null;
   private dirty = true;
 
-  /** Floor props in draw order, with their footprints in tiles. */
+  /**
+   * Floor props and interior wall pieces in draw order, with their footprints in tiles. An entry
+   * k >= 0 is setting.props[k]; k < 0 is wall piece -k - 1.
+   */
   private order: number[] = [];
   private fx0 = new Float64Array(0);
   private fy0 = new Float64Array(0);
@@ -49,6 +55,11 @@ export class IsoStage {
   private fy1 = new Float64Array(0);
   /** Whether someone inside the footprint is drawn over the prop (its front faces the camera). */
   private sitsInFront = new Uint8Array(0);
+  /** Screen (view-space) bounds of each sorted item: only items that overlap on screen need ordering. */
+  private sx0 = new Float64Array(0);
+  private sy0 = new Float64Array(0);
+  private sx1 = new Float64Array(0);
+  private sy1 = new Float64Array(0);
 
   private charOrder: number[] = [];
   private charSlot = new Float64Array(64);
@@ -106,12 +117,15 @@ export class IsoStage {
       if (!characters[s.id]) continue;
       const fx = s.x / T;
       const fy = (s.y + FOOT_OFFSET_PX) / T;
+      const cvx = ISO.toViewX(s.x, s.y + FOOT_OFFSET_PX);
+      const cvy = ISO.toViewY(s.x, s.y + FOOT_OFFSET_PX);
       // After every prop it is in front of, before every prop it is behind. Someone inside a
       // footprint (sitting) goes over a seat that faces the camera and under one that faces away,
       // so the backrest hides them.
       let after = 0;
       let before = n;
       for (let k = 0; k < n; k++) {
+        if (cvx + CHAR_HALF_W < this.sx0[k] || cvx - CHAR_HALF_W > this.sx1[k] || cvy < this.sy0[k] || cvy - CHAR_H > this.sy1[k]) continue;
         const front = fx >= this.fx1[k] - EPS || fy >= this.fy1[k] - EPS;
         const behind = fx <= this.fx0[k] + EPS || fy <= this.fy0[k] + EPS;
         if (front && !behind) after = k + 1;
@@ -134,13 +148,14 @@ export class IsoStage {
         const s = states[order[ci++]];
         this.drawCharacter(ctx, characters[s.id], s, gameTime);
       }
-      if (k === n || !atlas || !this.atlasCanvas) continue;
-      const prop = setting.props[this.order[k]];
-      const f = atlas.frames[`${prop.type}:${prop.facing || 'down'}`];
-      if (!f) continue;
-      const vx = Math.round(ISO.toViewX(prop.x * T, prop.y * T)) - f.ox;
-      const vy = Math.round(ISO.toViewY(prop.x * T, prop.y * T)) - f.oy;
-      ctx.drawImage(this.atlasCanvas, f.x, f.y, f.w, f.h, vx, vy, f.w, f.h);
+      if (k === n) continue;
+      const ref = this.order[k];
+      if (ref < 0) {
+        const piece = baked.pieces[-ref - 1];
+        ctx.drawImage(piece.canvas, piece.originX, piece.originY);
+      } else {
+        this.drawProp(ctx, setting.props[ref]);
+      }
     }
 
     ctx.drawImage(baked.front, baked.originX, baked.originY);
@@ -154,6 +169,16 @@ export class IsoStage {
     ctx.clip();
     lightingEngine.drawLighting(ctx, setting, W, H, gameTime);
     ctx.restore();
+  }
+
+  private drawProp(ctx: CanvasRenderingContext2D, prop: PropInstance) {
+    const atlas = this.atlas;
+    if (!atlas || !this.atlasCanvas) return;
+    const f = atlas.frames[`${prop.type}:${prop.facing || 'down'}`];
+    if (!f) return;
+    const vx = Math.round(ISO.toViewX(prop.x * T, prop.y * T)) - f.ox;
+    const vy = Math.round(ISO.toViewY(prop.x * T, prop.y * T)) - f.oy;
+    ctx.drawImage(this.atlasCanvas, f.x, f.y, f.w, f.h, vx, vy, f.w, f.h);
   }
 
   private drawCharacter(ctx: CanvasRenderingContext2D, def: CharacterDefinition, state: CharacterRuntimeState, gameTime: number) {
@@ -211,24 +236,40 @@ export class IsoStage {
     );
     this.bakedSetting = setting;
     this.dirty = false;
-    this.sortProps(setting);
+    this.sortProps(setting, this.baked.pieces);
   }
 
-  /** Topological depth sort of the floor props by footprint, nearest-corner depth as tie-break. */
-  private sortProps(setting: SettingDefinition) {
+  /**
+   * Topological depth sort of the floor props and interior wall pieces by footprint, with the
+   * nearest-corner depth as tie-break.
+   */
+  private sortProps(setting: SettingDefinition, pieces: IsoWallPiece[]) {
     const ids: number[] = [];
     setting.props.forEach((p, i) => {
       const kind = ISO_PROP_CATALOG[p.type]?.kind;
-      if (kind === 'floor' || kind === 'seat') ids.push(i);
+      if (kind && kind !== 'wall') ids.push(i);
     });
+    pieces.forEach((_, i) => ids.push(-i - 1));
     const m = ids.length;
-    const x0 = ids.map((i) => setting.props[i].x);
-    const y0 = ids.map((i) => setting.props[i].y);
-    const x1 = ids.map((i) => setting.props[i].x + (setting.props[i].width || 1));
-    const y1 = ids.map((i) => setting.props[i].y + (setting.props[i].height || 1));
+    const rect = (ref: number) => {
+      if (ref < 0) return pieces[-ref - 1];
+      const p = setting.props[ref];
+      return { x0: p.x, y0: p.y, x1: p.x + (p.width || 1), y1: p.y + (p.height || 1) };
+    };
+    const rects = ids.map(rect);
+    const x0 = rects.map((r) => r.x0);
+    const y0 = rects.map((r) => r.y0);
+    const x1 = rects.map((r) => r.x1);
+    const y1 = rects.map((r) => r.y1);
     const depth = (a: number) => x1[a] + y1[a];
+    const screen = ids.map((ref, i) => this.screenRect(setting, pieces, ref, rects[i]));
+    const overlaps = (a: number, b: number) =>
+      screen[a].x0 < screen[b].x1 && screen[b].x0 < screen[a].x1 && screen[a].y0 < screen[b].y1 && screen[b].y0 < screen[a].y1;
     // a must be drawn before b when it lies wholly north or west of b and not also south / east.
+    // Only pairs that overlap on screen are ordered: long thin walls would otherwise chain far-apart
+    // items into cycles.
     const before = (a: number, b: number) => {
+      if (!overlaps(a, b)) return false;
       const ab = x1[a] <= x0[b] + EPS || y1[a] <= y0[b] + EPS;
       const ba = x1[b] <= x0[a] + EPS || y1[b] <= y0[a] + EPS;
       if (ab && !ba) return true;
@@ -252,8 +293,11 @@ export class IsoStage {
       let pick = -1;
       for (const a of ready) if (pick < 0 || depth(a) < depth(pick)) pick = a;
       if (pick < 0) {
-        // Cycle (overlapping footprints): fall back to the shallowest remaining prop.
-        for (let a = 0; a < m; a++) if (!out.includes(a) && (pick < 0 || depth(a) < depth(pick))) pick = a;
+        // A cycle: break it at the remaining item with the fewest unmet constraints.
+        for (let a = 0; a < m; a++) {
+          if (out.includes(a)) continue;
+          if (pick < 0 || indeg[a] < indeg[pick] || (indeg[a] === indeg[pick] && depth(a) < depth(pick))) pick = a;
+        }
       }
       ready.delete(pick);
       out.push(pick);
@@ -264,9 +308,44 @@ export class IsoStage {
     this.fy0 = Float64Array.from(out.map((a) => y0[a]));
     this.fx1 = Float64Array.from(out.map((a) => x1[a]));
     this.fy1 = Float64Array.from(out.map((a) => y1[a]));
+    this.sx0 = Float64Array.from(out.map((a) => screen[a].x0));
+    this.sy0 = Float64Array.from(out.map((a) => screen[a].y0));
+    this.sx1 = Float64Array.from(out.map((a) => screen[a].x1));
+    this.sy1 = Float64Array.from(out.map((a) => screen[a].y1));
     this.sitsInFront = Uint8Array.from(out.map((a) => {
+      if (ids[a] < 0) return 1;
+      const kind = ISO_PROP_CATALOG[setting.props[ids[a]].type]?.kind;
+      if (kind === 'stool') return 1;
+      if (kind === 'overhead') return 0; // anyone under a roof is drawn before it
       const facing = setting.props[ids[a]].facing || 'down';
       return facing === 'down' || facing === 'right' ? 1 : 0;
     }));
+  }
+
+  /** View-space bounds of a sortable item: its sprite, or its footprint raised to a nominal height. */
+  private screenRect(
+    setting: SettingDefinition,
+    pieces: IsoWallPiece[],
+    ref: number,
+    fp: { x0: number; y0: number; x1: number; y1: number }
+  ): { x0: number; y0: number; x1: number; y1: number } {
+    if (ref < 0) {
+      const p = pieces[-ref - 1];
+      return { x0: p.originX, y0: p.originY, x1: p.originX + p.canvas.width, y1: p.originY + p.canvas.height };
+    }
+    const prop = setting.props[ref];
+    const f = this.atlas?.frames[`${prop.type}:${prop.facing || 'down'}`];
+    if (f) {
+      const vx = Math.round(ISO.toViewX(prop.x * T, prop.y * T)) - f.ox;
+      const vy = Math.round(ISO.toViewY(prop.x * T, prop.y * T)) - f.oy;
+      return { x0: vx, y0: vy, x1: vx + f.w, y1: vy + f.h };
+    }
+    const height = ISO_PROP_CATALOG[prop.type]?.height ?? 32;
+    return {
+      x0: ISO.toViewX(fp.x0 * T, fp.y1 * T),
+      x1: ISO.toViewX(fp.x1 * T, fp.y0 * T),
+      y0: ISO.toViewY(fp.x0 * T, fp.y0 * T, height),
+      y1: ISO.toViewY(fp.x1 * T, fp.y1 * T),
+    };
   }
 }

@@ -1,5 +1,5 @@
-import { PropInstance, SettingDefinition, TileType } from '../../types/environment';
-import { ISO_PROP_CATALOG } from '../sprites/generated/isoAtlas';
+import { SettingDefinition, TileType } from '../../types/environment';
+import { isoProp as prop } from './isoLayout';
 
 /**
  * Central Perk as a 2:1 isometric stage (projection test). One tile is one metre: the room is
@@ -24,22 +24,6 @@ function buildTiles(): Record<string, TileType> {
   tiles['12,0'] = 'door_wood';
   tiles['0,8'] = 'door_wood'; // to the restrooms
   return tiles;
-}
-
-/** A catalogue prop at tile (x, y) with its footprint sized from its real dimensions. */
-function prop(id: string, type: PropInstance['type'], x: number, y: number, facing: PropInstance['facing'] = 'down', extra: Partial<PropInstance> = {}): PropInstance {
-  const cat = ISO_PROP_CATALOG[type];
-  const turned = facing === 'left' || facing === 'right';
-  return {
-    id,
-    type,
-    x,
-    y,
-    width: cat ? (turned ? cat.depth : cat.width) : 1,
-    height: cat ? (turned ? cat.width : cat.depth) : 1,
-    facing,
-    ...extra,
-  };
 }
 
 export const CENTRAL_PERK_ISO: SettingDefinition = {

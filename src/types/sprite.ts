@@ -132,22 +132,35 @@ export interface IsoThemeAtlas {
   imageKey: string;
   wallHeight: number;
   wallThickness: number;
-  caps: { fill: string; light: string; dark: string };
+  caps: IsoCap;
+  /** Cap colours for tile types that differ from the theme's (a hedge's top is leaves). */
+  capsByType: Record<string, IsoCap>;
+  /** Wall heights (world px) for tile types shorter than `wallHeight`. */
+  wallHeights: Record<string, number>;
   /** Keyed `${propType}:${facing}`. */
   frames: Record<string, IsoFrame>;
   walls: Record<string, IsoWallFace>;
   /** Top-down floor textures (rugs) laid into the floor before it is projected. */
   decals: Record<string, { x: number; y: number; w: number; h: number }>;
+  /** 128x128 seamless floor textures (4x4 tiles) by tile type; others use the top-down tileset. */
+  floors: Record<string, { x: number; y: number }>;
+}
+
+export interface IsoCap {
+  fill: string;
+  light: string;
+  dark: string;
 }
 
 /**
  * Real-world size of an isometric prop, in tiles (1 tile = 1 m) for the 'down' facing; height in
- * world px. 'floor' props block their footprint, 'seat' props are sat in, 'wall' props hang on a
- * back wall.
+ * world px. 'floor' props block their footprint, 'seat' props are sat in (a backrest facing away
+ * hides the sitter), 'stool' props are backless seats, 'wall' props hang on a back wall, and
+ * 'overhead' props (a roof over a patio table) are drawn above everyone under them.
  */
 export interface IsoPropCatalogEntry {
   width: number;
   depth: number;
   height: number;
-  kind: 'floor' | 'seat' | 'wall';
+  kind: 'floor' | 'seat' | 'stool' | 'wall' | 'overhead';
 }

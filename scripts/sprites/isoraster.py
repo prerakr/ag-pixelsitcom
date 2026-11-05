@@ -64,6 +64,40 @@ RAMPS: dict[str, list[str]] = {
     "art_yellow": ["#4a360b", "#7a5a12", "#a8801c", "#d0a52b", "#e8c547", "#f6e27c"],
     "art_blue": ["#101b3a", "#1a2b5c", "#24407f", "#335aa0", "#4c78bd", "#7299d6"],
 }
+RAMPS.update({
+    # Offices
+    "laminate": ["#4a3a26", "#6e573a", "#93774f", "#b39365", "#ccad7e", "#e2c89c"],
+    "grey_metal": ["#24272b", "#3d4249", "#5a6069", "#7a8089", "#9aa0a8", "#c0c5cb"],
+    "beige_metal": ["#4a4436", "#6e6650", "#91886c", "#b0a787", "#cbc3a4", "#e3dcc2"],
+    "drywall": ["#5e5849", "#827a66", "#a49b84", "#c2b9a0", "#d8d0b9", "#ebe5d2"],
+    "carpet_blue": ["#1c2433", "#273248", "#33415c", "#425272", "#566887", "#6f819e"],
+    "navy": ["#0d1426", "#16213d", "#21305a", "#2d4178", "#3e5697", "#5874b3"],
+    "black_leather": ["#09090b", "#141417", "#1f1f24", "#2c2c33", "#3d3d47", "#62626f"],
+    "screen": ["#0a1f33", "#123456", "#1d5582", "#2e7bb0", "#4fa3d6", "#8fd0f2"],
+    "screen_green": ["#04140a", "#082611", "#0e3d1c", "#17592b", "#26813f", "#4cc46a"],
+    "jello": ["#4a4508", "#7a720f", "#ada218", "#d6cb2a", "#ece24e", "#f8f290"],
+    # Pubs
+    "mahogany": ["#1a0806", "#2e0f0a", "#461811", "#602318", "#7b3022", "#984232"],
+    "brass": ["#3a2a0a", "#5f4612", "#8a6a1e", "#b38f2e", "#d6b44a", "#f1d988"],
+    "red_leather": ["#2a0606", "#480b0b", "#6a1210", "#8c1b16", "#ad2a20", "#cc4636"],
+    "green_paint": ["#0e1a14", "#16281f", "#20392c", "#2c4c3b", "#3b614c", "#527a62"],
+    "amber": ["#3a1c04", "#6b3507", "#9c520c", "#c87217", "#e8962e", "#f8c066"],
+    "bottle_green": ["#06180d", "#0b2a16", "#124022", "#1b5a31", "#287744", "#3f9a5e"],
+    "neon_pink": ["#4a0e2c", "#7d1749", "#b52367", "#e23b88", "#f56fae", "#ffb3d6"],
+    "neon_orange": ["#4a1d04", "#7d3207", "#b54d0d", "#e2701a", "#f5994a", "#ffc890"],
+    "sepia": ["#2a1f14", "#45331f", "#62492c", "#80613b", "#a07e52", "#c3a274"],
+    # Houses
+    "slate_fabric": ["#1d2124", "#2e3338", "#41484f", "#566068", "#6f7a83", "#8f9aa3"],
+    "stainless": ["#2a2d30", "#474c51", "#6a7076", "#90969c", "#b6bbc0", "#dfe2e5"],
+    "white_plastic": ["#5c6166", "#8a9095", "#b3b8bc", "#d3d7da", "#e9ebed", "#fdfdfd"],
+    "stone": ["#3a3833", "#58554e", "#78746b", "#98938a", "#b5b0a6", "#d2cec5"],
+    "water": ["#06263a", "#0b3d5c", "#125883", "#1d76a8", "#3a98c8", "#7cc4e6"],
+    "straw": ["#3f2e12", "#64491c", "#8a6728", "#ad8536", "#c9a24c", "#e2c172"],
+    "pizza": ["#5a3a14", "#86591f", "#b07a2e", "#cf9b46", "#e5bb6a", "#f4d796"],
+    "led_green": ["#062a10", "#0b4a1c", "#127a2e", "#1fb047", "#4fe07a", "#b0ffc8"],
+    "led_blue": ["#061a3a", "#0b2d63", "#124796", "#1f6ad0", "#4f96f0", "#b0d4ff"],
+    "led_amber": ["#3a2004", "#633807", "#96560c", "#d07c17", "#f0a43e", "#ffd590"],
+})
 RAMP_RGB = {k: np.array([hexrgb(c) for c in v], dtype=np.uint8) for k, v in RAMPS.items()}
 N_STEPS = 6
 
@@ -81,6 +115,7 @@ class Prim:
     axis: str = "z"
     shade: float = 0.0
     detail: Detail | None = None
+    glow: bool = False  # light-emitting (screens, neon, lamps): ignores the scene lighting
 
 
 @dataclass
@@ -285,8 +320,8 @@ def render(model: Model, facing: str = "down", outline: bool = True) -> Sprite:
         sel = pid == k
         if not sel.any():
             continue
-        f = bright[sel] * (N_STEPS - 1) + p.shade
-        if p.shape != "box":
+        f = (np.full(int(sel.sum()), 4.0, dtype=np.float32) if p.glow else bright[sel] * (N_STEPS - 1)) + p.shade
+        if p.shape != "box" and not p.glow:
             f = f + bayer[sel] * 0.9
         if p.detail is not None:
             lo_c = p.lo
@@ -396,3 +431,55 @@ def combine(*details: Detail) -> Detail:
             total = total + d(*args)
         return total
     return f
+
+
+# 3x5 pixel font for signage. Rows top to bottom, '#' lit.
+FONT: dict[str, list[str]] = {
+    "A": ["###", "#.#", "###", "#.#", "#.#"], "B": ["##.", "#.#", "##.", "#.#", "##."],
+    "C": ["###", "#..", "#..", "#..", "###"], "D": ["##.", "#.#", "#.#", "#.#", "##."],
+    "E": ["###", "#..", "##.", "#..", "###"], "F": ["###", "#..", "##.", "#..", "#.."],
+    "G": ["###", "#..", "#.#", "#.#", "###"], "H": ["#.#", "#.#", "###", "#.#", "#.#"],
+    "I": ["###", ".#.", ".#.", ".#.", "###"], "J": ["..#", "..#", "..#", "#.#", "###"],
+    "K": ["#.#", "#.#", "##.", "#.#", "#.#"], "L": ["#..", "#..", "#..", "#..", "###"],
+    "M": ["#.#", "###", "###", "#.#", "#.#"], "N": ["##.", "#.#", "#.#", "#.#", "#.#"],
+    "O": ["###", "#.#", "#.#", "#.#", "###"], "P": ["###", "#.#", "###", "#..", "#.."],
+    "Q": ["###", "#.#", "#.#", "###", "..#"], "R": ["##.", "#.#", "##.", "#.#", "#.#"],
+    "S": ["###", "#..", "###", "..#", "###"], "T": ["###", ".#.", ".#.", ".#.", ".#."],
+    "U": ["#.#", "#.#", "#.#", "#.#", "###"], "V": ["#.#", "#.#", "#.#", "#.#", ".#."],
+    "W": ["#.#", "#.#", "###", "###", "#.#"], "X": ["#.#", "#.#", ".#.", "#.#", "#.#"],
+    "Y": ["#.#", "#.#", ".#.", ".#.", ".#."], "Z": ["###", "..#", ".#.", "#..", "###"],
+    "0": ["###", "#.#", "#.#", "#.#", "###"], "1": [".#.", "##.", ".#.", ".#.", "###"],
+    "2": ["###", "..#", "###", "#..", "###"], "3": ["###", "..#", "###", "..#", "###"],
+    "'": [".#.", ".#.", "...", "...", "..."], "-": ["...", "...", "###", "...", "..."],
+    "&": [".#.", "#.#", ".#.", "#.#", ".##"], ".": ["...", "...", "...", "...", ".#."],
+    " ": ["...", "...", "...", "...", "..."],
+}
+
+
+def text_mask(text: str, u0: float, z_top: float, u: np.ndarray, z: np.ndarray, spacing: int = 1) -> np.ndarray:
+    """Pixels of `text` (3x5 glyphs) whose left edge is at u0 and top row at z_top, on a face whose
+    local coords are (u right, z up)."""
+    on = np.zeros(u.shape, dtype=bool)
+    col = np.floor(u - u0).astype(int)
+    row = np.floor(z_top - z).astype(int)
+    for i, ch in enumerate(text.upper()):
+        glyph = FONT.get(ch, FONT[" "])
+        gx = col - i * (3 + spacing)
+        inside = (gx >= 0) & (gx < 3) & (row >= 0) & (row < 5)
+        for r in range(5):
+            for c in range(3):
+                if glyph[r][c] == "#":
+                    on |= inside & (gx == c) & (row == r)
+    return on
+
+
+def text_detail(text: str, u0: float, z_top: float, lift: float = 3.0, face: str = "front", spacing: int = 1) -> Detail:
+    """Ramp offset that lights up `text` on a solid's front (+v) face, in solid-local pixels."""
+    def f(u, v, z, nu, nv, nz):
+        front = nv > 0.5 if face == "front" else nz > 0.5
+        return np.where(front & text_mask(text, u0, z_top, u, z if face == "front" else -v, spacing), lift, 0.0)
+    return f
+
+
+def text_width(text: str, spacing: int = 1) -> int:
+    return len(text) * (3 + spacing) - spacing
