@@ -4,7 +4,7 @@ export const FRIENDS_PIVOT_EPISODE: SitcomScript = {
   version: '1.0',
   title: 'The One with the Pivot Couch & Unagi',
   showId: 'friends',
-  settingId: 'central_coffee',
+  settingId: 'central_perk_iso',
   synopsis:
     'Ross attempts to lecture the gang on the martial arts concept of Unagi, Joey refuses to share his meatball sandwich, and Chandler delivers cutting sarcasm over cappuccino.',
   author: 'David Crane & Marta Kauffman',

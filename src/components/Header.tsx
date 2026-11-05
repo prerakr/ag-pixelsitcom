@@ -1,10 +1,17 @@
 import React from 'react';
 import { Volume2, VolumeX, Music, Sparkles, Users, HelpCircle, Film, Tv, Radio, Palette, LayoutGrid } from 'lucide-react';
-import { ALL_SETTINGS } from '../data/settings';
+import { ALL_SETTINGS, isLegacySetting } from '../data/settings';
 import { SettingDefinition } from '../types/environment';
 import { PRESET_EPISODES } from '../data/episodes';
 import { soundEngine } from '../engine/SoundEngine';
 import { musicEngine } from '../engine/MusicEngine';
+
+/** Setting picker groups: the isometric stages first, then the original top-down sets, then the user's own. */
+const SETTING_GROUPS: { label: string; pick: (s: SettingDefinition) => boolean }[] = [
+  { label: 'Isometric stages', pick: (s) => !s.id.startsWith('custom_') && !isLegacySetting(s.id) },
+  { label: 'Legacy (top-down)', pick: (s) => isLegacySetting(s.id) },
+  { label: 'Custom sets', pick: (s) => s.id.startsWith('custom_') },
+];
 
 interface HeaderProps {
   currentSettingId: string;
@@ -123,12 +130,19 @@ export const Header: React.FC<HeaderProps> = ({
             aria-label="Select Sitcom Setting"
             className="bg-transparent text-[11px] sm:text-xs text-slate-200 outline-none cursor-pointer font-medium w-full sm:w-auto"
           >
-            {Object.values(allSettings).map((s) => (
-              <option key={s.id} value={s.id} className="bg-[#131b26] text-white">
-                {s.id.startsWith('custom_') ? '★ ' : ''}
-                {s.showTitle} ({s.name})
-              </option>
-            ))}
+            {SETTING_GROUPS.map(({ label, pick }) => {
+              const group = Object.values(allSettings).filter(pick);
+              return group.length === 0 ? null : (
+                <optgroup key={label} label={label} className="bg-[#131b26] text-slate-400">
+                  {group.map((s) => (
+                    <option key={s.id} value={s.id} className="bg-[#131b26] text-white">
+                      {s.id.startsWith('custom_') ? '★ ' : ''}
+                      {s.showTitle} ({s.name})
+                    </option>
+                  ))}
+                </optgroup>
+              );
+            })}
           </select>
         </div>
 

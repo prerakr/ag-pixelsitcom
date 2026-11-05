@@ -4,7 +4,7 @@ export const FRIENDS_HOLIDAY_ARMADILLO_EPISODE: SitcomScript = {
   version: '1.0',
   title: 'The Holiday Armadillo & The Trifle Disaster',
   showId: 'friends',
-  settingId: 'central_coffee',
+  settingId: 'central_perk_iso',
   synopsis:
     'Ross invents the Holiday Armadillo at Central Perk, Rachel unveils a traditional English trifle made with minced beef, and Janice makes an unannounced holiday entrance.',
   author: 'Writer Room',

@@ -4,7 +4,7 @@ export const STAPLER_JELLO_EPISODE: SitcomScript = {
   version: '1.0',
   title: 'The Jello Prank',
   showId: 'the_office',
-  settingId: 'dunder_mifflin_scranton',
+  settingId: 'dunder_mifflin_iso',
   synopsis: "Dwight discovers his office stapler suspended inside a block of lime gelatin. Jim denies all involvement.",
   author: 'Jim Halpert',
   characters: ['jim', 'dwight', 'michael', 'pam'],

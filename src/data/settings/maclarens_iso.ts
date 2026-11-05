@@ -76,7 +76,7 @@ const benchSeat = (b: PropInstance, along: number) => ({ x: b.x + along, y: b.y 
 
 export const MACLARENS_ISO: SettingDefinition = {
   id: 'maclarens_iso',
-  name: "MacLaren's Pub (Isometric)",
+  name: "MacLaren's Pub",
   showTitle: 'How I Met Your Mother',
   description: "The gang's basement bar at true scale: the long bar, the booth, darts and the jukebox.",
   gridWidth: GW,

@@ -4,7 +4,7 @@ export const SILICON_ALWAYS_BLUE_EPISODE: SitcomScript = {
   version: '1.0',
   title: 'The Always Blue Championship',
   showId: 'silicon_valley',
-  settingId: 'hacker_hostel',
+  settingId: 'hacker_hostel_iso',
   synopsis:
     'Waiting for their beta release build to compile, the Pied Piper crew engages in a high-stakes, hostel-wide game of Always Blue, interrupted by Jian-Yang and Monica Hall.',
   author: 'Writer Room',

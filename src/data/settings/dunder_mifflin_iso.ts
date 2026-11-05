@@ -138,7 +138,7 @@ props.push(
 
 export const DUNDER_MIFFLIN_ISO: SettingDefinition = {
   id: 'dunder_mifflin_iso',
-  name: 'Dunder Mifflin Scranton (Isometric)',
+  name: 'Dunder Mifflin Scranton Branch',
   showTitle: 'The Office',
   description: 'The Scranton branch at true scale: Michael\'s glass office, reception, the bullpen pairs, accounting, the annex and the kitchen.',
   gridWidth: GW,

@@ -4,7 +4,7 @@ export const PARKOUR_EPISODE: SitcomScript = {
   version: '1.0',
   title: 'Hardcore Parkour!',
   showId: 'the_office',
-  settingId: 'dunder_mifflin_scranton',
+  settingId: 'dunder_mifflin_iso',
   synopsis: 'Michael, Dwight, and Jim discover the French art of Parkour. The office bullpen becomes an extreme obstacle course.',
   author: 'Michael Scott Productions',
   characters: ['michael', 'dwight', 'jim', 'stanley', 'angela'],

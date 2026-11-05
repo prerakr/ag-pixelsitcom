@@ -4,7 +4,7 @@ export const FRIENDS_LEATHER_PANTS_EPISODE: SitcomScript = {
   version: '1.0',
   title: "Ross's Paste Pants Dilemma",
   showId: 'friends',
-  settingId: 'central_coffee',
+  settingId: 'central_perk_iso',
   synopsis:
     'Ross struts into Central Perk debuting a pair of extremely tight leather pants for New Year’s, but rising coffeehouse temperatures create an unprecedented chemical paste crisis.',
   author: 'Writer Room',

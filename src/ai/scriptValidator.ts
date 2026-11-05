@@ -1,4 +1,5 @@
 import { SitcomScript, Scene, ScriptBeat } from '../types/script';
+import { DEFAULT_SETTING_ID } from '../data/settings';
 
 export interface ValidationResult {
   isValid: boolean;
@@ -45,7 +46,7 @@ export function parseAndValidateScript(rawInput: string | object): ValidationRes
   }
 
   if (!parsed.settingId || typeof parsed.settingId !== 'string') {
-    parsed.settingId = 'dunder_mifflin_scranton';
+    parsed.settingId = DEFAULT_SETTING_ID;
   }
 
   if (!Array.isArray(parsed.scenes) || parsed.scenes.length === 0) {

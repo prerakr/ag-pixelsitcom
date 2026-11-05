@@ -4,7 +4,7 @@ export const DUNDIES_HEIST_EPISODE: SitcomScript = {
   version: '1.0',
   title: 'The Dundies & The Great Pretzel Heist',
   showId: 'the_office',
-  settingId: 'dunder_mifflin_scranton',
+  settingId: 'dunder_mifflin_iso',
   synopsis:
     'Michael declares impromptu Dundie Awards on annual Pretzel Day. Dwight constructs Megadesk, Kevin guards the vending machine, and absolute mayhem engulfs Dunder Mifflin Scranton.',
   author: 'Michael Scott & Jim Halpert',

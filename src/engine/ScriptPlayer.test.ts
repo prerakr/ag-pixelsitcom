@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { ALL_CHARACTERS } from '../data/characters';
-import { ALL_SETTINGS } from '../data/settings';
+import { ALL_SETTINGS, settingForStyle } from '../data/settings';
 import { PRESET_EPISODES } from '../data/episodes';
-import { SitcomScript } from '../types/script';
+import { ScriptBeat, SitcomScript } from '../types/script';
 import { ScriptPlayer, StageEffects } from './ScriptPlayer';
 
 const OFFICE = ALL_SETTINGS.dunder_mifflin_scranton;
@@ -151,10 +151,31 @@ describe('ScriptPlayer', () => {
     expect(calls).toContain('tod:night:fade');
   });
 
-  for (const episode of PRESET_EPISODES) {
-    it(`plays "${episode.title}" to the end and seeks consistently`, () => {
-      const setting = ALL_SETTINGS[episode.settingId];
-      expect(setting, `unknown setting ${episode.settingId}`).toBeDefined();
+  // Every preset plays on its show's isometric stage (the default) and on the legacy top-down set.
+  for (const episode of PRESET_EPISODES) for (const style of ['iso', 'legacy'] as const) {
+    const settingId = settingForStyle(episode.settingId, style);
+
+    it(`finds every place "${episode.title}" names in ${settingId}`, () => {
+      const setting = ALL_SETTINGS[settingId];
+      const places = new Set([...Object.keys(setting.waypoints), ...setting.props.map((p) => p.id), ...episode.characters, 'overview']);
+      const missing = new Set<string>();
+      const visit = (b: ScriptBeat) => {
+        if (b.type === 'group_action') b.actions.forEach(visit);
+        else if (b.type === 'movement' && typeof b.target === 'string' && !places.has(b.target)) missing.add(b.target);
+        else if (b.type === 'interaction' && b.targetProp && !places.has(b.targetProp)) missing.add(b.targetProp);
+        else if (b.type === 'camera_cue' && typeof b.target === 'string' && !places.has(b.target)) missing.add(b.target);
+      };
+      episode.scenes.forEach((sc) => sc.beats.forEach(visit));
+      for (const id of episode.characters) {
+        const c = ALL_CHARACTERS[id];
+        if (c && !setting.spawnPoints[id] && !setting.waypoints[c.defaultWaypoint]) missing.add(`spawn of ${id}`);
+      }
+      expect([...missing]).toEqual([]);
+    });
+
+    it(`plays "${episode.title}" in ${settingId} to the end and seeks consistently`, () => {
+      const setting = ALL_SETTINGS[settingId];
+      expect(setting, `unknown setting ${settingId}`).toBeDefined();
 
       let ended = false;
       const player = new ScriptPlayer(setting, ALL_CHARACTERS, undefined, { onEpisodeEnd: () => (ended = true) });

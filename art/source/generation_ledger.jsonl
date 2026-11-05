@@ -177,3 +177,5 @@
 {"time": "2026-11-05T17:47:10", "model": "google/gemini-3-pro-image", "out": "art\\source\\characters\\iso\\_work\\erlich_try4.png", "status": 200, "cost_usd": 0.143026, "seconds": 24.9}
 {"time": "2026-11-05T17:47:11", "model": "google/gemini-3-pro-image", "out": "art\\source\\characters\\iso\\_work\\the_captain_try4.png", "status": 200, "cost_usd": 0.141484, "seconds": 26.1}
 {"time": "2026-11-05T17:48:34", "model": "google/gemini-3-pro-image", "out": "art\\source\\characters\\iso\\_work\\stanley_try4.png", "status": 403, "cost_usd": 0.0, "seconds": 1.0}
+{"time": "2026-11-06T00:37:50", "model": "google/gemini-3-pro-image", "out": "art\\source\\characters\\iso\\_work\\erlich_try5.png", "status": 403, "cost_usd": 0.0, "seconds": 0.9}
+{"time": "2026-11-06T00:37:50", "model": "google/gemini-3-pro-image", "out": "art\\source\\characters\\iso\\_work\\stanley_try4.png", "status": 403, "cost_usd": 0.0, "seconds": 1.0}

@@ -4,7 +4,7 @@ export const SILICON_TABS_SPACES_EPISODE: SitcomScript = {
   version: '1.0',
   title: 'Tabs vs Spaces & The Anton Overclock',
   showId: 'silicon_valley',
-  settingId: 'hacker_hostel',
+  settingId: 'hacker_hostel_iso',
   synopsis:
     'Richard falls into an existential crisis over code indentation formatting, while Gilfoyle overclocks the Anton server rack to mine crypto, attracting an uninvited visit from Gavin Belson.',
   author: 'Writer Room',

@@ -323,7 +323,7 @@ export const DUNDER_MIFFLIN_SCRANTON: SettingDefinition = {
       interactive: true,
     },
     {
-      id: 'prop_vending_snack',
+      id: 'prop_vending_machine',
       type: 'vending_machine',
       x: 31.5,
       y: 2.2,

@@ -16,6 +16,7 @@ import { PathPoint } from './NavGrid';
 import { IsoStage } from './iso/IsoStage';
 import { ISO, TOPDOWN } from './iso/IsoProjection';
 import { SPRITE_ATLAS_MANIFEST } from '../data/sprites/SpriteAtlas';
+import { musicThemeId } from '../data/settings';
 
 export interface VisualizerCallbacks {
   onBeatChange?: (sceneIndex: number, beatIndex: number, currentBeat: ScriptBeat | null) => void;
@@ -224,7 +225,7 @@ export class VisualizerEngine {
     this.camera.projection = setting.projection === 'iso' ? ISO : TOPDOWN;
     this.camera.snapTo(setting.defaultCamera.x, setting.defaultCamera.y, setting.defaultCamera.zoom);
     this.player.setSetting(setting);
-    musicEngine.playTheme(setting.id);
+    musicEngine.playTheme(musicThemeId(setting.id));
   }
 
   public initCharacters() {
@@ -235,7 +236,7 @@ export class VisualizerEngine {
   public loadScript(script: SitcomScript) {
     this.isTileMapDirty = true;
     this.player.load(script);
-    musicEngine.playTheme(script.settingId || this.setting.id);
+    musicEngine.playTheme(musicThemeId(script.settingId || this.setting.id));
   }
 
   public start() {

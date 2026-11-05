@@ -28,7 +28,7 @@ function buildTiles(): Record<string, TileType> {
 
 export const CENTRAL_PERK_ISO: SettingDefinition = {
   id: 'central_perk_iso',
-  name: 'Central Perk (Isometric Test)',
+  name: 'Central Perk Coffeehouse',
   showTitle: 'Friends',
   description: 'Projection test: Central Perk rebuilt at true scale as a cut-away isometric stage.',
   gridWidth: GW,

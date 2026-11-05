@@ -100,7 +100,7 @@ props.push(
 
 export const HACKER_HOSTEL_ISO: SettingDefinition = {
   id: 'hacker_hostel_iso',
-  name: 'Pied Piper Hacker Hostel (Isometric)',
+  name: 'Pied Piper Hacker Hostel',
   showTitle: 'Silicon Valley',
   description: "Erlich's Palo Alto incubator at true scale: the desks, the kitchen, Anton in the garage, the pool and the palapa.",
   gridWidth: GW,
