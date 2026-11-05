@@ -20,6 +20,7 @@ import {
   saveCustomSetting,
   deleteCustomSetting,
   createBlankSetting,
+  createBlankIsoSetting,
   duplicateSetting,
   exportSettingAsTypeScript,
   exportSettingAsJSON,
@@ -37,6 +38,9 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { soundEngine } from '../../engine/SoundEngine';
+import { Direction } from '../../types/script';
+import { faceIsoProp, isIsoProp, isIsoSet, turnFacing } from './isoEditing';
+import { IsoPreviewPanel } from './IsoPreviewPanel';
 
 interface SoundstageModalProps {
   isOpen: boolean;
@@ -87,6 +91,8 @@ export const SoundstageModal: React.FC<SoundstageModalProps> = ({
   const [showGrid, setShowGrid] = useState<boolean>(true);
   const [zoom, setZoom] = useState<number>(1.2);
   const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
+  /** Facing new iso props are stamped with (Q turns it, or the selected iso prop). */
+  const [stampFacing, setStampFacing] = useState<Direction>('down');
 
   // Export & Import Modal State
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
@@ -110,7 +116,9 @@ export const SoundstageModal: React.FC<SoundstageModalProps> = ({
   };
 
   const handleCreateNewSetting = () => {
-    const newSet = createBlankSetting(`Soundstage ${Object.keys(allSettingsMap).length + 1}`);
+    // A new set takes the style of the one on screen: isometric (its theme, walls and floor) or top-down.
+    const name = `Soundstage ${Object.keys(allSettingsMap).length + 1}`;
+    const newSet = isIsoSet(setting) ? createBlankIsoSetting(setting, name) : createBlankSetting(name);
     saveCustomSetting(newSet);
     refreshSettingsList();
     resetSetting(newSet);
@@ -291,6 +299,15 @@ export const SoundstageModal: React.FC<SoundstageModalProps> = ({
       } else if (e.code === 'KeyZ') {
         setActiveTool('zone');
         setActiveAssetCategory('zones');
+      } else if (e.code === 'KeyQ' && isIsoSet(setting)) {
+        // Turn the selected iso prop about its centre, or the facing new props are stamped with.
+        const step = e.shiftKey ? -1 : 1;
+        const prop = selectedItem?.type === 'prop' ? setting.props[selectedItem.index] : undefined;
+        if (selectedItem?.type === 'prop' && prop && isIsoProp(setting, prop)) {
+          handleUpdateProp(selectedItem.index, faceIsoProp(prop, turnFacing(prop.facing, step)));
+        } else {
+          setStampFacing((f) => turnFacing(f, step));
+        }
       } else if (e.code === 'Delete' || e.code === 'Backspace') {
         if (selectedItem?.type === 'prop') {
           handleDeleteProp(selectedItem.index);
@@ -307,7 +324,7 @@ export const SoundstageModal: React.FC<SoundstageModalProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, selectedItem, undo, redo, onClose]);
+  }, [isOpen, selectedItem, setting, undo, redo, onClose]);
 
   // Export String Generation
   const exportCode = useMemo(() => {
@@ -397,7 +414,8 @@ export const SoundstageModal: React.FC<SoundstageModalProps> = ({
           }}
         />
 
-        {/* Center Canvas */}
+        {/* Center Canvas (with a live iso preview over it on isometric sets) */}
+        <div className="relative flex-1 flex overflow-hidden">
         <SoundstageCanvas
           setting={setting}
           onUpdateSetting={setSetting}
@@ -414,7 +432,10 @@ export const SoundstageModal: React.FC<SoundstageModalProps> = ({
           characters={characters}
           zoom={zoom}
           onZoomChange={setZoom}
+          stampFacing={stampFacing}
         />
+        {isIsoSet(setting) && <IsoPreviewPanel setting={setting} />}
+        </div>
 
         {/* Right Properties Inspector */}
         <SoundstageInspector
@@ -458,6 +479,9 @@ export const SoundstageModal: React.FC<SoundstageModalProps> = ({
           setSelectedCharacterSpawn(charId);
           setActiveTool('spawn');
         }}
+        isoTheme={isIsoSet(setting) ? setting.tileTheme || 'office' : undefined}
+        stampFacing={stampFacing}
+        onTurnStamp={() => setStampFacing((f) => turnFacing(f, 1))}
       />
 
       {/* Export / Import Modal Overlay */}

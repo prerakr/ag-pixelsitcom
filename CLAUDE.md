@@ -155,6 +155,7 @@ Episodes are structured as `SitcomScript` objects with `ScriptScene` arrays cont
 ### 3. Adding a New Setting
 1. Create `src/data/settings/<setting_name>.ts` with `gridWidth`, `gridHeight`, `tiles`, `props`, and `waypoints`.
 2. Register in `ALL_SETTINGS` in `src/data/settings/index.ts`.
+   Set Studio (`src/components/soundstage/`) edits iso sets on the top-down grid: iso props show as plan-view footprints (`isoEditing.ts`), the palette offers the iso catalogue, Q / Shift+Q turns a prop (footprints are fixed by the model, never stretched), and `IsoPreviewPanel` renders the set live with `IsoStage`. A new set copies the style (iso or top-down) of the one open. Only edits are saved to local storage, under the set's id, and a saved set overrides a built-in one of the same id.
 3. Run `npm test`: it fails if any waypoint or spawn point can't be reached on foot (a room with no door, a waypoint boxed in by furniture). New prop types that should not block walking go in `NON_BLOCKING` in `src/engine/NavGrid.ts`.
 
 ### 4. Adding a Sound Effect

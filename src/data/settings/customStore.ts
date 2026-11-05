@@ -182,6 +182,46 @@ export function createBlankSetting(
 /**
  * Deep clones an existing setting with a new unique ID and name
  */
+/**
+ * A blank isometric set in the style of `like` (an iso set): its theme, the wall type of its
+ * shell and its most common floor, an empty room `gridWidth` x `gridHeight` tiles (shell included).
+ */
+export function createBlankIsoSetting(like: SettingDefinition, name: string, gridWidth = 14, gridHeight = 10): SettingDefinition {
+  const cleanId = 'custom_' + name.toLowerCase().replace(/[^a-z0-9]+/g, '_') + '_' + Date.now().toString(36);
+  const wall: TileType = like.tiles['1,0'] || 'wall_office_side';
+  const counts = new Map<TileType, number>();
+  for (const t of Object.values(like.tiles)) {
+    if (t.startsWith('floor')) counts.set(t, (counts.get(t) ?? 0) + 1);
+  }
+  const floor: TileType = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'floor_carpet_grey';
+  const tiles: Record<string, TileType> = {};
+  for (let y = 0; y < gridHeight; y++) {
+    for (let x = 0; x < gridWidth; x++) {
+      tiles[`${x},${y}`] = x === 0 || y === 0 || x === gridWidth - 1 || y === gridHeight - 1 ? wall : floor;
+    }
+  }
+  const T = like.tileSize;
+  const centre: Waypoint = { id: 'room_center', name: 'Room Center', x: gridWidth / 2, y: gridHeight / 2, facing: 'down', zone: 'main_hall' };
+  return {
+    id: cleanId,
+    name,
+    showTitle: like.showTitle,
+    description: 'Custom isometric soundstage',
+    gridWidth,
+    gridHeight,
+    tileSize: T,
+    backgroundColor: like.backgroundColor,
+    tileTheme: like.tileTheme,
+    projection: 'iso',
+    defaultCamera: { x: (gridWidth * T) / 2, y: (gridHeight * T) / 2, zoom: 1.6 },
+    zones: [{ id: 'main_hall', name: 'Main Room', x: 1, y: 1, w: gridWidth - 2, h: gridHeight - 2, color: '#38bdf8' }],
+    tiles,
+    props: [],
+    waypoints: { room_center: centre },
+    spawnPoints: {},
+  };
+}
+
 export function duplicateSetting(source: SettingDefinition, newName?: string): SettingDefinition {
   const name = newName || `${source.name} (Copy)`;
   const cleanId = 'custom_' + name.toLowerCase().replace(/[^a-z0-9]+/g, '_') + '_' + Date.now().toString(36);

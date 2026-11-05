@@ -105,7 +105,7 @@ export const SoundstageHeader: React.FC<SoundstageHeaderProps> = ({
         <button
           onClick={onCreateNewSetting}
           className="p-1.5 bg-[#182333] hover:bg-amber-600/30 border border-[#2a374a] hover:border-amber-500 text-slate-300 hover:text-amber-300 rounded transition-colors"
-          title="Create New Blank Set"
+          title="Create a new blank set (isometric or top-down, like the current one)"
         >
           <Plus className="w-3.5 h-3.5" />
         </button>

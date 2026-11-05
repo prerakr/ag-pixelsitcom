@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import { PropInstance, PropType, Waypoint, RoomZone, SettingDefinition } from '../../types/environment';
 import { Direction, SfxType } from '../../types/script';
+import { ISO_PROP_CATALOG } from '../../data/sprites/generated/isoAtlas';
+import { faceIsoProp, isIsoProp, turnFacing } from './isoEditing';
 
 export type SelectedItem =
   | { type: 'prop'; index: number; data: PropInstance }
@@ -113,6 +115,42 @@ export const SoundstageInspector: React.FC<SoundstageInspectorProps> = ({
               </div>
             </div>
 
+            {isIsoProp(setting, selectedItem.data) ? (
+              // Iso props are modelled at real size: the footprint follows the facing, never a stretch.
+              <div className="flex flex-col gap-2 p-2 bg-[#182333] border border-[#2a374a] rounded">
+                <div className="text-[10px] font-mono text-slate-400">
+                  Footprint {(selectedItem.data.width || 1).toFixed(2)} × {(selectedItem.data.height || 1).toFixed(2)} cells
+                  <span className="text-slate-500"> · {ISO_PROP_CATALOG[selectedItem.data.type]?.kind} · fixed by the model</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => onUpdateProp(selectedItem.index, faceIsoProp(selectedItem.data, turnFacing(selectedItem.data.facing, -1)))}
+                    className="px-2 py-1 text-[11px] font-mono rounded bg-[#0d141e] border border-[#2a374a] hover:border-amber-500 text-slate-200"
+                    title="Turn anticlockwise (Shift+Q)"
+                  >
+                    ↺
+                  </button>
+                  <select
+                    value={selectedItem.data.facing || 'down'}
+                    onChange={(e) => onUpdateProp(selectedItem.index, faceIsoProp(selectedItem.data, e.target.value as Direction))}
+                    className="flex-1 bg-[#0d141e] border border-[#2a374a] rounded px-2 py-1 text-xs text-white font-mono focus:border-amber-500 focus:outline-none"
+                  >
+                    <option value="down">Faces ↙ (down)</option>
+                    <option value="left">Faces ↖ (left)</option>
+                    <option value="up">Faces ↗ (up)</option>
+                    <option value="right">Faces ↘ (right)</option>
+                  </select>
+                  <button
+                    onClick={() => onUpdateProp(selectedItem.index, faceIsoProp(selectedItem.data, turnFacing(selectedItem.data.facing, 1)))}
+                    className="px-2 py-1 text-[11px] font-mono rounded bg-[#0d141e] border border-[#2a374a] hover:border-amber-500 text-slate-200"
+                    title="Turn clockwise (Q)"
+                  >
+                    ↻
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-[10px] font-mono uppercase text-slate-400 block mb-1">Width (Cells)</label>
@@ -153,6 +191,8 @@ export const SoundstageInspector: React.FC<SoundstageInspectorProps> = ({
                 <option value="right">Right</option>
               </select>
             </div>
+              </>
+            )}
 
             <div className="flex items-center justify-between p-2 bg-[#182333] border border-[#2a374a] rounded">
               <label className="text-xs font-mono text-slate-300">Interactive Object</label>

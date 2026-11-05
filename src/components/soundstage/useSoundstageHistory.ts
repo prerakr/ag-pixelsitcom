@@ -71,13 +71,17 @@ export function useSoundstageHistory(initialSetting: SettingDefinition) {
     });
   }, []);
 
+  /**
+   * Switches to another set without saving it: only edits are saved. Saving here stored an
+   * untouched copy of every built-in set merely opened, which then shadowed the built-in (custom
+   * sets override presets by id) so later updates to it never showed.
+   */
   const resetSetting = useCallback((setting: SettingDefinition) => {
     setHistory({
       past: [],
       present: setting,
       future: [],
     });
-    saveCustomSetting(setting);
   }, []);
 
   const canUndo = history.past.length > 0;

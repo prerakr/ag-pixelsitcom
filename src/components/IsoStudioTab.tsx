@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { AtlasCanvas, useImage } from './IsoAtlasCanvas';
 import { spriteManager } from '../engine/SpriteManager';
 import { ALL_CHARACTERS } from '../data/characters';
 import { ALL_SETTINGS } from '../data/settings';
@@ -36,55 +37,6 @@ const SHOW_FILTERS = [
   { id: 'silicon_valley', label: 'Silicon' },
   { id: 'himym', label: 'HIMYM' },
 ];
-
-/** Loads an image once per URL for the life of the page. */
-const imageCache = new Map<string, HTMLImageElement>();
-function useImage(url: string | undefined): HTMLImageElement | null {
-  const [img, setImg] = useState<HTMLImageElement | null>(() => (url && imageCache.get(url)?.complete ? imageCache.get(url)! : null));
-  useEffect(() => {
-    if (!url) return;
-    let image = imageCache.get(url);
-    if (!image) {
-      image = new Image();
-      image.src = url;
-      imageCache.set(url, image);
-    }
-    if (image.complete && image.naturalWidth > 0) {
-      setImg(image);
-      return;
-    }
-    const done = () => setImg(image!);
-    image.addEventListener('load', done);
-    return () => image!.removeEventListener('load', done);
-  }, [url]);
-  return img;
-}
-
-/** A source rectangle of an atlas, drawn at an integer scale. */
-const AtlasCanvas: React.FC<{
-  image: CanvasImageSource | null;
-  rect: { x: number; y: number; w: number; h: number };
-  scale: number;
-  className?: string;
-}> = ({ image, rect, scale, className }) => {
-  const ref = useRef<HTMLCanvasElement | null>(null);
-  useEffect(() => {
-    const ctx = ref.current?.getContext('2d');
-    if (!ctx) return;
-    ctx.clearRect(0, 0, rect.w * scale, rect.h * scale);
-    ctx.imageSmoothingEnabled = false;
-    if (image) ctx.drawImage(image, rect.x, rect.y, rect.w, rect.h, 0, 0, rect.w * scale, rect.h * scale);
-  }, [image, rect.x, rect.y, rect.w, rect.h, scale]);
-  return (
-    <canvas
-      ref={ref}
-      width={rect.w * scale}
-      height={rect.h * scale}
-      className={className}
-      style={{ imageRendering: 'pixelated' }}
-    />
-  );
-};
 
 export const IsoStudioTab: React.FC = () => {
   const [section, setSection] = useState<IsoSection>('cast');

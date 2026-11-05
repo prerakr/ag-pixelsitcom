@@ -19,6 +19,7 @@ import { CharacterDefinition, CharacterRuntimeState } from '../../types/characte
 import { soundEngine } from '../../engine/SoundEngine';
 import { SoundstagePrefab } from './SoundstagePrefabs';
 import { Direction } from '../../types/script';
+import { drawIsoBlueprint, isIsoProp, stampIsoProp } from './isoEditing';
 
 interface SoundstageCanvasProps {
   setting: SettingDefinition;
@@ -36,6 +37,8 @@ interface SoundstageCanvasProps {
   characters: CharacterDefinition[];
   zoom: number;
   onZoomChange: (z: number) => void;
+  /** Facing given to iso props as they are stamped. */
+  stampFacing: Direction;
 }
 
 export const SoundstageCanvas: React.FC<SoundstageCanvasProps> = ({
@@ -54,6 +57,7 @@ export const SoundstageCanvas: React.FC<SoundstageCanvasProps> = ({
   characters,
   zoom,
   onZoomChange,
+  stampFacing,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const tileCacheRef = useRef({
@@ -414,7 +418,9 @@ export const SoundstageCanvas: React.FC<SoundstageCanvasProps> = ({
       });
 
       sortedProps.forEach((prop) => {
-        TileRenderer.drawProp(ctx, prop, tileSize, prop.state, now);
+        // Iso props are edited in plan view: their real footprint and the way they face.
+        if (isIsoProp(setting, prop)) drawIsoBlueprint(ctx, prop, tileSize, zoom);
+        else TileRenderer.drawProp(ctx, prop, tileSize, prop.state, now);
 
         // Draw Selection Outline & Handles
         const pIdx = setting.props.indexOf(prop);
@@ -667,7 +673,9 @@ const handleMouseDown = (e: React.MouseEvent) => {
     if (activeTool === 'prop_stamp') {
       const snappedX = snapCoord(gridX, snapLevel);
       const snappedY = snapCoord(gridY, snapLevel);
-      const newProp: PropInstance = {
+      const newProp: PropInstance = isIsoProp(setting, { type: selectedPropType })
+        ? stampIsoProp(selectedPropType, snappedX, snappedY, stampFacing)
+        : {
         id: `prop_${selectedPropType}_${Date.now().toString(36)}`,
         type: selectedPropType,
         x: snappedX,

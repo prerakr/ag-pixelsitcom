@@ -11,6 +11,8 @@ import {
 import { TileType, PropType } from '../../types/environment';
 import { SOUNDSTAGE_PREFABS, SoundstagePrefab } from './SoundstagePrefabs';
 import { CharacterDefinition } from '../../types/character';
+import { Direction } from '../../types/script';
+import { IsoPropPalette } from './IsoPropPalette';
 
 export type AssetCategory = 'tiles' | 'props' | 'waypoints' | 'zones' | 'prefabs';
 
@@ -26,6 +28,10 @@ interface SoundstageAssetTrayProps {
   characters: CharacterDefinition[];
   selectedCharacterSpawn: string;
   onSelectCharacterSpawn: (charId: string) => void;
+  /** Set on isometric sets (their theme): the props tab offers the iso catalogue instead. */
+  isoTheme?: string;
+  stampFacing: Direction;
+  onTurnStamp: () => void;
 }
 
 const FLOOR_TILES: Array<{ type: TileType; label: string; color: string; desc: string }> = [
@@ -108,6 +114,9 @@ export const SoundstageAssetTray: React.FC<SoundstageAssetTrayProps> = ({
   characters,
   selectedCharacterSpawn,
   onSelectCharacterSpawn,
+  isoTheme,
+  stampFacing,
+  onTurnStamp,
 }) => {
   const [propSubCat, setPropSubCat] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -261,8 +270,20 @@ export const SoundstageAssetTray: React.FC<SoundstageAssetTrayProps> = ({
           </div>
         )}
 
-        {/* TAB 2: PROPS & FURNITURE */}
-        {activeCategory === 'props' && (
+        {/* TAB 2: PROPS & FURNITURE (iso catalogue on isometric sets) */}
+        {activeCategory === 'props' && isoTheme && (
+          <IsoPropPalette
+            setTheme={isoTheme}
+            selectedPropType={selectedPropType}
+            onSelectPropType={(type) => {
+              onSelectPropType(type);
+              onSelectPrefab(null);
+            }}
+            stampFacing={stampFacing}
+            onTurnStamp={onTurnStamp}
+          />
+        )}
+        {activeCategory === 'props' && !isoTheme && (
           <div className="flex flex-col h-full gap-1.5">
             {/* Filter Sub-categories */}
             <div className="flex gap-1 shrink-0">
@@ -313,8 +334,13 @@ export const SoundstageAssetTray: React.FC<SoundstageAssetTrayProps> = ({
           </div>
         )}
 
-        {/* TAB 3: 1-CLICK PREFABS */}
-        {activeCategory === 'prefabs' && (
+        {/* TAB 3: 1-CLICK PREFABS (built from top-down props, which isometric sets don't draw) */}
+        {activeCategory === 'prefabs' && isoTheme && (
+          <div className="flex items-center h-full px-2 text-[11px] font-mono text-slate-400">
+            Prefabs are made of top-down props, which isometric sets can't draw. Stamp props from the Props tab instead.
+          </div>
+        )}
+        {activeCategory === 'prefabs' && !isoTheme && (
           <div className="flex gap-3 items-center h-full">
             {SOUNDSTAGE_PREFABS.map((prefab) => {
               const isSelected = selectedPrefab?.id === prefab.id;
