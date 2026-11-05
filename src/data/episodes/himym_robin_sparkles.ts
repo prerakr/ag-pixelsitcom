@@ -8,7 +8,7 @@ export const HIMYM_ROBIN_SPARKLES_EPISODE: SitcomScript = {
   synopsis:
     'Barney is forced to wear the infamous yellow ducky tie to MacLaren’s while the jukebox unexpectedly plays Canadian teen sensation Robin Sparkles.',
   author: 'Writer Room',
-  characters: ['barney', 'robin', 'ted', 'marshall', 'lily', 'carl_bartender'],
+  characters: ['barney', 'robin', 'ted', 'marshall', 'lily', 'carl'],
   scenes: [
     {
       id: 'scene_1',

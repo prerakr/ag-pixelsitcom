@@ -1,5 +1,7 @@
 import { SitcomScript, Scene, ScriptBeat } from '../types/script';
-import { DEFAULT_SETTING_ID } from '../data/settings';
+import { SettingDefinition } from '../types/environment';
+import { DEFAULT_SETTING_ID, getMergedSettings } from '../data/settings';
+import { ALL_CHARACTERS } from '../data/characters';
 
 export interface ValidationResult {
   isValid: boolean;
@@ -64,6 +66,16 @@ export function parseAndValidateScript(rawInput: string | object): ValidationRes
     }
   }
 
+  const settings = getMergedSettings();
+  const setting: SettingDefinition | undefined = settings[parsed.settingId];
+  if (!setting) {
+    errors.push(`Unknown settingId "${parsed.settingId}" (known: ${Object.keys(settings).join(', ')})`);
+  }
+  const cast: string[] = Array.isArray(parsed.characters) && parsed.characters.length > 0 ? parsed.characters : Object.keys(ALL_CHARACTERS);
+  for (const id of cast) {
+    if (!ALL_CHARACTERS[id]) errors.push(`Unknown character "${id}" in "characters"`);
+  }
+
   // Validate beats inside scenes
   if (Array.isArray(parsed.scenes)) {
     parsed.scenes.forEach((scene: Scene, sIdx: number) => {
@@ -75,6 +87,8 @@ export function parseAndValidateScript(rawInput: string | object): ValidationRes
         scene.beats.forEach((beat: ScriptBeat, bIdx: number) => {
           if (!beat.type) {
             errors.push(`Scene ${scene.id} Beat #${bIdx + 1} is missing a "type"`);
+          } else if (setting) {
+            checkReferences(beat, `Scene ${scene.id} Beat #${bIdx + 1}`, setting, cast, errors);
           }
         });
       }
@@ -86,4 +100,44 @@ export function parseAndValidateScript(rawInput: string | object): ValidationRes
     script: errors.length === 0 ? (parsed as SitcomScript) : undefined,
     errors,
   };
+}
+
+/**
+ * Every character and place a beat names must exist: a typo would otherwise play as a character
+ * who never speaks or a walk that goes nowhere. Places are the setting's waypoints and props;
+ * characters may also be walked to, thrown at or framed by the camera.
+ */
+function checkReferences(beat: ScriptBeat, where: string, setting: SettingDefinition, cast: string[], errors: string[]) {
+  const isPlace = (id: string) => !!setting.waypoints[id] || setting.props.some((p) => p.id === id);
+  const isCast = (id: string) => cast.includes(id);
+  const who = (id: unknown, field: string) => {
+    if (typeof id === 'string' && !isCast(id)) errors.push(`${where}: ${field} "${id}" is not in the episode's cast`);
+  };
+  const place = (id: unknown, field: string, alsoCast: boolean, extra: string[] = []) => {
+    if (typeof id !== 'string' || extra.includes(id) || isPlace(id) || (alsoCast && isCast(id))) return;
+    errors.push(`${where}: ${field} "${id}" is not a waypoint${alsoCast ? ', prop or cast member' : ' or prop'} in ${setting.name}`);
+  };
+  switch (beat.type) {
+    case 'dialogue':
+    case 'talking_head':
+      who(beat.speaker, 'speaker');
+      break;
+    case 'movement':
+      who(beat.character, 'character');
+      place(beat.target, 'target', true);
+      break;
+    case 'interaction':
+      who(beat.character, 'character');
+      place(beat.targetProp, 'targetProp', true);
+      break;
+    case 'emote':
+      who(beat.character, 'character');
+      break;
+    case 'camera_cue':
+      place(beat.target, 'target', true, ['overview']);
+      break;
+    case 'group_action':
+      (beat.actions || []).forEach((a, i) => checkReferences(a as ScriptBeat, `${where} action #${i + 1}`, setting, cast, errors));
+      break;
+  }
 }

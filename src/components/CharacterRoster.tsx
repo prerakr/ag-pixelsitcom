@@ -3,15 +3,21 @@ import { CharacterDefinition, CharacterRuntimeState } from '../types/character';
 import { CharacterRenderer } from '../engine/CharacterRenderer';
 import { Users, Crosshair } from 'lucide-react';
 import { soundEngine } from '../engine/SoundEngine';
+import { portraitView } from '../engine/iso/isoCharacters';
 
 interface CharacterRosterProps {
   isOpen: boolean;
   onClose: () => void;
   characters: CharacterDefinition[];
   onFocusCharacter: (charId: string) => void;
+  /** The current set is isometric: show the cast's iso sprites. */
+  isoView?: boolean;
 }
 
-const CharacterAvatarPreview: React.FC<{ character: CharacterDefinition }> = ({ character }) => {
+/** World pixels across the head-and-shoulders crop shown in a cast thumbnail. */
+const BUST_SRC_W = 22;
+
+const CharacterAvatarPreview: React.FC<{ character: CharacterDefinition; isoView: boolean }> = ({ character, isoView }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -23,24 +29,36 @@ const CharacterAvatarPreview: React.FC<{ character: CharacterDefinition }> = ({ 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.imageSmoothingEnabled = false;
 
-    ctx.save();
-    ctx.scale(2.2, 2.2);
-    ctx.translate(11, 15);
-
+    // Draw the whole figure offscreen at native size, then frame its head and shoulders, starting
+    // just above the top of the head so tall and short characters crop the same way.
+    const off = document.createElement('canvas');
+    off.width = BUST_SRC_W * 3;
+    off.height = 96;
+    const octx = off.getContext('2d');
+    if (!octx) return;
+    octx.imageSmoothingEnabled = false;
+    octx.translate(off.width / 2, 80);
+    const view = portraitView(character, isoView);
     const dummyState: CharacterRuntimeState = {
-      id: character.id,
+      id: view.def.id,
       x: 0,
       y: 0,
-      facing: 'down',
+      facing: view.facing,
       isMoving: false,
       speed: 1,
       animFrame: 0,
       animTimer: 0,
     };
+    CharacterRenderer.drawCharacter(octx, view.def, dummyState, false);
 
-    CharacterRenderer.drawCharacter(ctx, character, dummyState, false);
-    ctx.restore();
-  }, [character]);
+    const pixels = octx.getImageData(0, 0, off.width, off.height).data;
+    let top = 0;
+    scan: for (; top < off.height; top++) {
+      for (let x = 0; x < off.width; x++) if (pixels[(top * off.width + x) * 4 + 3] > 0) break scan;
+    }
+    const srcH = Math.round((BUST_SRC_W * canvas.height) / canvas.width);
+    ctx.drawImage(off, (off.width - BUST_SRC_W) / 2, Math.max(0, top - 1), BUST_SRC_W, srcH, 0, 0, canvas.width, canvas.height);
+  }, [character, isoView]);
 
   return (
     <canvas
@@ -57,6 +75,7 @@ export const CharacterRoster: React.FC<CharacterRosterProps> = ({
   onClose,
   characters,
   onFocusCharacter,
+  isoView = false,
 }) => {
   if (!isOpen) return null;
 
@@ -94,7 +113,7 @@ export const CharacterRoster: React.FC<CharacterRosterProps> = ({
               className="bg-[#0b0f17] border border-[#2a374a] hover:border-amber-500/60 rounded-lg p-3.5 transition-all shadow-md"
             >
               <div className="flex items-center gap-3 mb-2.5">
-                <CharacterAvatarPreview character={char} />
+                <CharacterAvatarPreview character={char} isoView={isoView} />
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-1">

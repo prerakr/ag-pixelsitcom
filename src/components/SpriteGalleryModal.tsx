@@ -22,6 +22,7 @@ import { SPRITE_ATLAS_MANIFEST } from '../data/sprites/SpriteAtlas';
 import { ALL_CHARACTERS } from '../data/characters';
 import { ALL_SETTINGS } from '../data/settings';
 import { Direction } from '../types/script';
+import { IsoStudioTab } from './IsoStudioTab';
 
 interface SpriteGalleryModalProps {
   isOpen: boolean;
@@ -155,7 +156,7 @@ const StatusBadge: React.FC<{ hasSprite: boolean }> = ({ hasSprite }) =>
 // ─── Main Modal ─────────────────────────────────────────────────────────────
 
 export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, onClose }) => {
-  const [activeTab, setActiveTab] = useState<'coverage' | 'calibrator' | 'cast' | 'props' | 'tiles' | 'portraits' | 'prompts'>('coverage');
+  const [activeTab, setActiveTab] = useState<'coverage' | 'calibrator' | 'iso' | 'cast' | 'props' | 'tiles' | 'portraits' | 'prompts'>('coverage');
   const [selectedChar, setSelectedChar] = useState<string>('michael');
   const [selectedDirection, setSelectedDirection] = useState<Direction>('down');
   const [isWalking, setIsWalking] = useState(true);
@@ -763,6 +764,7 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
   const TABS = [
     { id: 'coverage' as const, label: '📊 Asset Coverage', count: null },
     { id: 'calibrator' as const, label: '🎯 Calibrator & Swapper', count: null },
+    { id: 'iso' as const, label: '🧊 Isometric', count: null },
     { id: 'cast' as const, label: '🏃 Cast', count: atlasCharacters.length },
     { id: 'props' as const, label: '🪑 Props', count: atlasProps.length },
     { id: 'tiles' as const, label: '🧱 Tiles', count: atlasTiles.length },
@@ -857,6 +859,8 @@ export const SpriteGalleryModal: React.FC<SpriteGalleryModalProps> = ({ isOpen, 
         <div className="flex-1 p-4 overflow-y-auto min-h-[420px]">
 
           {/* ═══════════════════ CALIBRATOR & SWAPPER TAB ═══════════════════ */}
+          {activeTab === 'iso' && <IsoStudioTab />}
+
           {activeTab === 'calibrator' && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
               {/* Left Control Panel */}

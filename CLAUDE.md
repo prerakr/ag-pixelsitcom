@@ -67,7 +67,7 @@ Generated outputs (`public/sprites/**`, `src/data/sprites/generated/*`) are comm
 - `src/types/`: Core type definitions (`script.ts`, `character.ts`, `environment.ts`).
 - `src/data/`: Static registries for characters (`characters/`), show settings (`settings/`), and episodes (`episodes/`).
 - `src/ai/`: AI script generation via Gemini/OpenAI APIs, prompt templates, and schema validator.
-- `src/components/`: React UI overlays (`Viewport`, `PlaybackControls`, `ScriptStudio`, `Header`, `CharacterRoster`, `TalkingHeadModal`, `HelpModal`).
+- `src/components/`: React UI overlays (`Viewport`, `PlaybackControls`, `ScriptStudio`, `Header`, `CharacterRoster`, `TalkingHeadModal`, `HelpModal`, `SpriteGalleryModal` with its Isometric tab in `IsoStudioTab`).
 
 ---
 
@@ -149,7 +149,7 @@ Episodes are structured as `SitcomScript` objects with `ScriptScene` arrays cont
 3. Export from `src/data/characters/index.ts`.
 
 ### 2. Adding an Episode
-1. Create `src/data/episodes/<episode_name>.ts` with valid `SitcomScript`, naming the show's iso stage as `settingId`. Every waypoint and prop it targets must exist in both the iso stage and its legacy set (`npm test` checks).
+1. Create `src/data/episodes/<episode_name>.ts` with valid `SitcomScript`, naming the show's iso stage as `settingId`. Every waypoint and prop it targets must exist in both the iso stage and its legacy set (`npm test` checks). `parseAndValidateScript()` rejects any script (preset, pasted or AI-generated) whose beats name a waypoint, prop or character its setting and cast don't have. Walking a character to a seat (any chair, stool, sofa or booth bench, see `src/engine/Seats.ts`) sits them down facing the way the seat faces; the AI prompt marks those waypoints as [SEAT].
 2. Register it in `PRESET_EPISODES` array in `src/data/episodes/index.ts`.
 
 ### 3. Adding a New Setting

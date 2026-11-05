@@ -261,6 +261,7 @@ export function App() {
           onClose={() => setIsCastDrawerOpen(false)}
           characters={currentShowCharacters}
           onFocusCharacter={handleFocusCharacter}
+          isoView={currentSetting.projection === 'iso'}
         />
       </main>
 
@@ -297,6 +298,7 @@ export function App() {
         <TalkingHeadModal
           talkingHead={talkingHead}
           charactersMap={ALL_CHARACTERS}
+          isoView={currentSetting.projection === 'iso'}
           onClose={() => {
             setTalkingHead(null);
             engine.nextBeat();

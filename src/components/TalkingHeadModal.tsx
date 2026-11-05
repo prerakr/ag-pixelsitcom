@@ -5,17 +5,21 @@ import { CharacterRenderer } from '../engine/CharacterRenderer';
 import { soundEngine } from '../engine/SoundEngine';
 import { spriteManager } from '../engine/SpriteManager';
 import { ArrowRight, Video } from 'lucide-react';
+import { portraitView } from '../engine/iso/isoCharacters';
 
 interface TalkingHeadModalProps {
   talkingHead: TalkingHeadBeat;
   charactersMap: Record<string, CharacterDefinition>;
   onClose: () => void;
+  /** The current set is isometric: without a portrait, fall back to the iso sprite. */
+  isoView?: boolean;
 }
 
 export const TalkingHeadModal: React.FC<TalkingHeadModalProps> = ({
   talkingHead,
   charactersMap,
   onClose,
+  isoView = false,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [displayedText, setDisplayedText] = useState('');
@@ -102,11 +106,12 @@ export const TalkingHeadModal: React.FC<TalkingHeadModalProps> = ({
         ctx.scale(4.5, 4.5);
         ctx.translate(28, 38);
 
+        const view = portraitView(character, isoView);
         const state: CharacterRuntimeState = {
-          id: character.id,
+          id: view.def.id,
           x: 0,
           y: 0,
-          facing: 'down',
+          facing: view.facing,
           isMoving: false,
           speed: 1,
           animFrame: 0,
@@ -123,7 +128,7 @@ export const TalkingHeadModal: React.FC<TalkingHeadModalProps> = ({
           },
         };
 
-        CharacterRenderer.drawCharacter(ctx, character, state, false);
+        CharacterRenderer.drawCharacter(ctx, view.def, state, false);
         ctx.restore();
       }
 
@@ -135,7 +140,7 @@ export const TalkingHeadModal: React.FC<TalkingHeadModalProps> = ({
     return () => {
       cancelAnimationFrame(animId);
     };
-  }, [character, talkingHead, displayedText, fullText]);
+  }, [character, talkingHead, displayedText, fullText, isoView]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4 animate-in fade-in duration-200">

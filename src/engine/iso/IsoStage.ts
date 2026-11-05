@@ -9,6 +9,7 @@ import { spriteManager } from '../SpriteManager';
 import { FOOT_OFFSET_PX } from '../NavGrid';
 import { ISO, applyIsoFloorTransform } from './IsoProjection';
 import { IsoLighting, IsoLightSource } from './IsoLighting';
+import { isoCharacter } from './isoCharacters';
 import { IsoBake, IsoMapBaker, IsoWallPiece } from './IsoMapBaker';
 
 const T = 32;
@@ -421,8 +422,7 @@ export class IsoStage {
   public isoDefinition(def: CharacterDefinition): CharacterDefinition | null {
     let iso = this.isoDefs.get(def.id);
     if (iso === undefined) {
-      const id = `${def.id}@iso`;
-      iso = spriteManager.hasCharacter(id) ? { ...def, id } : null;
+      iso = isoCharacter(def);
       this.isoDefs.set(def.id, iso);
     }
     return iso;

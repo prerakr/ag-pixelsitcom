@@ -17,7 +17,8 @@ import {
   Direction,
 } from '../types/script';
 import { advanceWalkCycle, faceAlong } from './Locomotion';
-import { FOOT_OFFSET_PX, NavGrid, PathPoint } from './NavGrid';
+import { NavGrid, PathPoint } from './NavGrid';
+import { seatAt } from './Seats';
 
 /** Walking speed at `speed: 1`, in world pixels per second. */
 export const WALK_SPEED_PX = 110;
@@ -62,10 +63,6 @@ const NO_EFFECTS: StageEffects = {
 
 /** Spawn waypoint names that start a character seated on top-down sets, whose desks have no chair props. */
 const SEAT_WAYPOINT_HINTS = ['desk', 'seat', 'couch', 'booth', 'armchair', 'stool'];
-/** Prop types people sit in or on. */
-const SEAT_PROP = /chair|stool|sofa|couch|lounger|beanbag|booth_bench/;
-/** How far (tiles) a sitter's feet may be outside a seat's footprint and still be in it. */
-const SEAT_SLACK = 0.1;
 /** Two characters closer than this (px) are on the same seat. */
 const SAME_SEAT_PX = 12;
 
@@ -724,22 +721,8 @@ export class ScriptPlayer {
     return { x: state.x, y: state.y, seat: null };
   }
 
-  /**
-   * The seat at a world point (px), if any: a seat prop whose footprint holds the sitter's feet.
-   * `facing` is the way its sitter faces, known on isometric sets where every prop has a facing.
-   */
   private seatAt(x: number, y: number): { facing?: Direction } | null {
-    const T = this.setting.tileSize;
-    const iso = this.setting.projection === 'iso';
-    const fx = x / T;
-    const fy = (y + FOOT_OFFSET_PX) / T;
-    for (const p of this.setting.props) {
-      if (!SEAT_PROP.test(p.type)) continue;
-      const inside =
-        fx >= p.x - SEAT_SLACK && fx <= p.x + (p.width || 1) + SEAT_SLACK && fy >= p.y - SEAT_SLACK && fy <= p.y + (p.height || 1) + SEAT_SLACK;
-      if (inside) return { facing: iso ? p.facing || 'down' : undefined };
-    }
-    return null;
+    return seatAt(this.setting, x, y);
   }
 
   /** Whether someone else is sitting at (or walking to sit at) this spot. */
