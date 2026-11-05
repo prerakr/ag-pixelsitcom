@@ -15,7 +15,8 @@ the likeness reference; accepted sheets go to art/source/characters/iso/<id>.png
 src/data/sprites/generated/isoCharacterAtlas.ts.
 
 Sheet order: 1 front idle, 2-4 front walk (contact, passing, contact), 5 back idle,
-6-7 back walk (contact, contact), 8 front sitting. "Front" is turned 45 degrees to the viewer's
+6-7 back walk (contact, contact), 8 front sitting. In game both walks run contact, idle, contact,
+idle (see COLUMNS). "Front" is turned 45 degrees to the viewer's
 right (screen south-east, world +x); "back" walks away to the upper right (north-east, world -y).
 The game mirrors both for the other two diagonals.
 """
@@ -55,7 +56,11 @@ TS_OUT = ROOT / "src" / "data" / "sprites" / "generated" / "isoCharacterAtlas.ts
 BASE_ATLAS = ROOT / "public" / "sprites" / "characters"
 
 POSES = ["front_idle", "front_a", "front_pass", "front_b", "back_idle", "back_a", "back_b", "front_sit"]
-COLUMNS = ["front_idle", "front_a", "front_pass", "front_b", "front_pass",
+SEATED_MAX = 0.87  # tallest a seated figure may be, relative to the standing frames
+# Both walks pass through the idle frame between contacts. The generated passing pose is not used:
+# the model draws it in side profile far more often than any other figure, which made the cycle
+# flicker between three-quarter and profile on every other frame.
+COLUMNS = ["front_idle", "front_a", "front_idle", "front_b", "front_idle",
            "back_idle", "back_a", "back_idle", "back_b", "back_idle", "front_sit"]
 
 PROMPT = """Create a pixel art character sprite sheet of {name} from the sitcom {show}, matching EXACTLY the character in the first reference image (same face, hair, skin tone, outfit, proportions and colours) and the same art style: 16-bit pixel art, chunky pixels, clean dark 1-pixel outlines, flat shading, no anti-aliasing, no blur.
@@ -72,10 +77,20 @@ Layout: ONE single horizontal row of 8 full-body figures, evenly spaced, clear e
 7. The same three-quarter back view, walking away: left leg forward.
 8. Three-quarter front view turned to the right, SITTING on an invisible seat: thighs horizontal, lower legs hanging straight down, hands resting on the lap.
 Figures 1 to 7 are the same height with their feet on one ground line. No chair, text, labels, grid lines, borders, shadows or floor.
+
+ANGLE CONSISTENCY (most important): figures 1, 2, 3, 4 and 8 are all turned to EXACTLY the same three-quarter angle - the same amount of face visible, both eyes visible, the nose pointing to the lower right. None of them is ever a side profile and none faces the viewer straight on; only the arms and legs change between them. Likewise figures 5, 6 and 7 are all turned to exactly the same three-quarter back angle - never straight from behind, never in profile.
+STRIDE: in figures 2, 4, 6 and 7 the legs are clearly apart in a long walking stride, the opposite leg forward in 2 than in 4 (and in 6 than in 7), with the arms swinging opposite to the legs.
+OUTFIT: every figure wears exactly the same clothes as the first reference image - a skirt stays a skirt, trousers stay trousers.
 Background: flat solid pure chroma green #00FF00 everywhere.{green_note}{body_note}"""
 
 HEAVY_NOTE = """
 BODY TYPE: {name} is heavy-set - overweight, with a round belly, wide hips, thick arms and legs and a full, round face, exactly as in the first reference image. Draw that build in every pose; the grey mannequins in the second reference image show the heavy build to follow (the belly sticks out in front). Keep all EIGHT figures in ONE row; never add a second row."""
+
+# Corrections for characters whose generations drift, or whose reference sheet is itself wrong.
+CHARACTER_NOTES = {
+    "angela": "\nOUTFIT NOTE: Angela wears a knee-length dark navy pencil skirt with dark flats in EVERY figure, including all walking and back views. The side views in the first reference image wrongly show trousers - ignore that and draw the skirt. When she walks, the skirt stays a straight skirt ending at the knee and her bare lower legs and flats step out below its hem; there are never trouser legs.",
+    "the_captain": "\nLIKENESS NOTE: the Captain is an older man with swept-back silver-grey hair, a stern lined face, a dark navy double-breasted captain's blazer with gold sleeve stripes and white trousers, exactly as in the first reference image. Keep that face, hair colour and age in every figure.",
+}
 
 SHOW_NAMES = {"the_office": "The Office", "friends": "Friends", "silicon_valley": "Silicon Valley", "himym": "How I Met Your Mother"}
 GREEN_CLOTHES = {"meredith", "jianyang"}
@@ -183,10 +198,10 @@ def validate(path: Path) -> str | None:
 
 
 def generate(char_id: str, name: str, show: str, max_spend: float, heavy: bool = False,
-             model: str = DEFAULT_MODEL, compare: str | None = None) -> str:
+             model: str = DEFAULT_MODEL, compare: str | None = None, replace: bool = False) -> str:
     SRC_DIR.mkdir(parents=True, exist_ok=True)
     COMPARE_DIR.mkdir(parents=True, exist_ok=True)
-    if compare is None:
+    if compare is None and not replace:
         for previous in sorted(WORK_DIR.glob(f"{char_id}_try*.png")):
             if validate(previous) is None:
                 (SRC_DIR / f"{char_id}.png").write_bytes(previous.read_bytes())
@@ -200,7 +215,7 @@ def generate(char_id: str, name: str, show: str, max_spend: float, heavy: bool =
         name=name,
         show=show,
         green_note=" The character wears green clothing: keep those greens clearly darker/bluer than the background." if char_id in GREEN_CLOTHES else " Do not use any green in the character.",
-        body_note=HEAVY_NOTE.format(name=name) if heavy else "",
+        body_note=(HEAVY_NOTE.format(name=name) if heavy else "") + CHARACTER_NOTES.get(char_id, ""),
     )
     prompt_file = WORK_DIR / f"{char_id}_prompt.txt"
     prompt_file.write_text(prompt, encoding="utf-8")
@@ -257,8 +272,20 @@ def build(preview: str | None) -> None:
             print(f"  {char_id}: {len(figs)} figures, skipped")
             continue
         target = base_height(char_id, cfg)
-        scale = target / float(np.median([f.height for f in figs[:7]]))
-        small = [crop_to_content(downsample(f.rgba, scale)) for f in figs]
+        median = float(np.median([f.height for f in figs[:7]]))
+        scale = target / median
+        def frame_scale(i: int, f) -> float:
+            # A standing frame drawn more than ~3% off the others' height is a drawing slip, not a
+            # bob; scaled as-is it makes the character pop up or sink on that step, so bring it to
+            # the median height. A seated figure is never taller than ~0.87 of standing; one drawn
+            # taller would look oversized in its chair.
+            if i < 7 and abs(f.height - median) > 0.03 * median:
+                return target / f.height
+            if i == 7 and f.height > SEATED_MAX * median:
+                return target * SEATED_MAX / f.height
+            return scale
+
+        small = [crop_to_content(downsample(f.rgba, frame_scale(i, f))) for i, f in enumerate(figs)]
         palette = build_palette(small)
         frames = dict(zip(POSES, [apply_palette(f, palette) for f in small]))
         cells = []
@@ -311,10 +338,12 @@ def main() -> None:
     sub.add_parser("layout")
     g = sub.add_parser("generate")
     g.add_argument("--only", required=True, help="comma-separated ids, or 'missing' for every character without a sheet")
-    g.add_argument("--max-spend", type=float, default=17.0)
+    g.add_argument("--max-spend", type=float, default=18.5)
     g.add_argument("--model", default=DEFAULT_MODEL)
     g.add_argument("--compare", help="write candidates to _work/compare/<id>_<TAG>.png without installing them")
     g.add_argument("--workers", type=int, default=1)
+    g.add_argument("--replace", action="store_true",
+                   help="always make a new attempt; the current sheet is only overwritten if the new one validates")
     b = sub.add_parser("build")
     b.add_argument("--preview")
     args = parser.parse_args()
@@ -329,7 +358,8 @@ def main() -> None:
         def job(cid: str) -> tuple[str, str]:
             info = cast.get(cid, {})
             return cid, generate(cid, info.get("name", cid), SHOW_NAMES.get(show_of.get(cid, ""), "a sitcom"), args.max_spend,
-                                 heavy=info.get("bodyType") == "large", model=args.model, compare=args.compare)
+                                 heavy=info.get("bodyType") == "large", model=args.model, compare=args.compare,
+                                 replace=args.replace)
 
         print(f"{len(ids)} characters; spent so far ${spent():.2f}", flush=True)
         with ThreadPoolExecutor(max_workers=max(1, args.workers)) as pool:

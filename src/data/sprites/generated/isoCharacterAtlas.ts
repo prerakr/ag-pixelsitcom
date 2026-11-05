@@ -49,6 +49,6 @@ export const ISO_CHARACTER_ROWS: Record<string, number> = {
   wendy: 42,
 };
 
-export const ISO_CHARACTER_COLUMNS = ["front_idle", "front_a", "front_pass", "front_b", "front_pass", "back_idle", "back_a", "back_idle", "back_b", "back_idle", "front_sit"] as const;
+export const ISO_CHARACTER_COLUMNS = ["front_idle", "front_a", "front_idle", "front_b", "front_idle", "back_idle", "back_a", "back_idle", "back_b", "back_idle", "front_sit"] as const;
 
 export const ISO_CHARACTER_IMAGE = '/sprites/characters/characters_iso.png';

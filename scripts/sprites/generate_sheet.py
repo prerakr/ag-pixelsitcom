@@ -21,7 +21,7 @@ import requests
 
 ROOT = Path(__file__).resolve().parents[2]
 LEDGER = ROOT / "art" / "source" / "generation_ledger.jsonl"
-BUDGET_USD = 17.0  # raised by $10 with the owner's approval for the isometric character views
+BUDGET_USD = 18.5  # raised to $17 then $18.50 with the owner's approval for the isometric character views
 ESTIMATE_PER_CALL_USD = 0.35  # conservative ceiling used only for the pre-flight check
 
 
