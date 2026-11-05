@@ -15,7 +15,6 @@ import { ScriptPlayer, StageEffects } from './ScriptPlayer';
 import { PathPoint } from './NavGrid';
 import { IsoStage } from './iso/IsoStage';
 import { ISO, TOPDOWN } from './iso/IsoProjection';
-import { SPRITE_ATLAS_MANIFEST } from '../data/sprites/SpriteAtlas';
 import { musicThemeId } from '../data/settings';
 
 export interface VisualizerCallbacks {
@@ -95,12 +94,6 @@ export class VisualizerEngine {
         this.pause();
         this.callbacks.onEpisodeEnd?.();
       },
-    });
-
-    // Initialize SpriteManager & listen for asset load / mode updates
-    spriteManager.loadManifest(SPRITE_ATLAS_MANIFEST).catch(console.error);
-    this.unsubscribeSprites = spriteManager.subscribe(() => {
-      this.isTileMapDirty = true;
     });
   }
 
@@ -202,11 +195,40 @@ export class VisualizerEngine {
     }
   }
 
-  /** Stops the loop and releases global subscriptions. The engine is unusable afterwards. */
-  public destroy() {
+  /**
+   * Puts the engine on a canvas: listens for sprite loads and art-mode changes and starts the
+   * loop. Construction has no side effects, so an engine React builds and throws away (StrictMode
+   * renders twice in development) never subscribes or draws; only the mounted one does.
+   */
+  public mount(canvas: HTMLCanvasElement) {
+    this.setCanvas(canvas);
+    if (!this.unsubscribeSprites) {
+      this.unsubscribeSprites = spriteManager.subscribe(() => {
+        this.isTileMapDirty = true;
+      });
+    }
+    this.isTileMapDirty = true;
+    this.start();
+    if (import.meta.env.DEV) {
+      // The engine that is actually drawing, for poking at from the browser console.
+      (window as unknown as { __pixelsitcomEngine?: VisualizerEngine }).__pixelsitcomEngine = this;
+    }
+  }
+
+  /** Stops the loop and releases global subscriptions; `mount` can start it again. */
+  public unmount() {
     this.stop();
     this.unsubscribeSprites?.();
     this.unsubscribeSprites = null;
+    if (import.meta.env.DEV) {
+      const w = window as unknown as { __pixelsitcomEngine?: VisualizerEngine };
+      if (w.__pixelsitcomEngine === this) delete w.__pixelsitcomEngine;
+    }
+  }
+
+  /** Same as `unmount`. */
+  public destroy() {
+    this.unmount();
   }
 
   public setCanvas(canvas: HTMLCanvasElement) {
@@ -585,4 +607,10 @@ export class VisualizerEngine {
     this.animFrameId = requestAnimationFrame(this.gameLoop.bind(this));
   }
 
+}
+
+// A changed engine module can't be swapped into the running engine (Fast Refresh would keep the
+// old instance, still running the old code), so reload the page instead.
+if (import.meta.hot) {
+  import.meta.hot.accept(() => window.location.reload());
 }

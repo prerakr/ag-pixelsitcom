@@ -93,13 +93,12 @@ export const Viewport: React.FC<ViewportProps> = ({ engine, onInspectCharacter }
     }
 
     if (canvasRef.current) {
-      engine.setCanvas(canvasRef.current);
-      engine.start();
+      engine.mount(canvasRef.current);
     }
 
     return () => {
       observer.disconnect();
-      engine.stop();
+      engine.unmount();
     };
   }, [engine, autoFitCamera]);
 
